@@ -2,6 +2,22 @@ syntax = "proto3";
 import "google/protobuf/descriptor.proto";
 option go_package = "github.com/Wenchy/tableau/testpb";
 
+
+extend google.protobuf.FileOptions
+{
+	string workbook = 51001;
+}
+
+extend google.protobuf.MessageOptions
+{
+    string worksheet = 52001;
+    int32 metarow = 52002; // [default = 1]; // exact row number of meta info of this tableau
+    int32 descrow = 52003; // [default = 1]; // exact row number of description of this tableau
+    int32 datarow = 52004; // [default = 2]; // start row number of data
+
+	// string x_workbook = 52005;
+}
+
 enum TableauFieldType
 {
     TABLEAU_FIELD_DEFAULT = 0; // auto deduced protobuf basic type
@@ -17,12 +33,12 @@ enum TableauFieldType
 extend google.protobuf.FieldOptions
 {
     // column name if scala type, or name prefix if repeated type
-    string col = 2001;
+    string col = 53001;
     // tableau field type
-    TableauFieldType type = 2002; // [default = TABLEAU_FIELD_DEFAULT];
-    bool required = 2003; // [default = true];
-    string separator = 2004; // [default = ','];
-    string subseparator = 2005; // [default = ':'];
+    TableauFieldType type = 53002; // [default = TABLEAU_FIELD_DEFAULT];
+    bool required = 53003; // [default = true];
+    string separator = 53004; // [default = ','];
+    string subseparator = 53005; // [default = ':'];
 
     ////////////////////////////////////////////////////////////////////////
     // Simple validators below
@@ -31,16 +47,7 @@ extend google.protobuf.FieldOptions
     // repeated: size range of array
     // integer: value range
     // string: range of utf-8 code point
-    int32 min = 3001; // min value
-    int32 max = 3002; // max value
-    string range = 3003; // format like set description: [1,10], (1,10], [1,10), [1,~]
-}
-
-extend google.protobuf.MessageOptions
-{
-	string workbook = 2001;
-    string worksheet = 2002;
-    uint32 metarow = 2003; // [default = 1]; // exact row number of meta info of this tableau
-    uint32 descrow = 2004; // [default = 1]; // exact row number of description of this tableau
-    uint32 datarow = 2005; // [default = 2]; // start row number of data
+    int32 min = 53101; // min value
+    int32 max = 53102; // max value
+    string range = 53103; // format like set description: [1,10], (1,10], [1,10), [1,~]
 }
