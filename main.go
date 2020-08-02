@@ -15,21 +15,19 @@ func main() {
 	// Redact(item.ProtoReflect().Interface())
 
 	testConf := testpb.TestConf{}
-	Redact(testConf.ProtoReflect().Interface())
+	Redact(testConf.ProtoReflect().Descriptor())
 }
 
 // Redact a pb message
-func Redact(pb proto.Message) {
-	m := pb.ProtoReflect()
-
-	for i := 0; i < m.Descriptor().Fields().Len(); i++ {
-		fd := m.Descriptor().Fields().Get(i)
+func Redact(md protoreflect.MessageDescriptor) {
+	for i := 0; i < md.Fields().Len(); i++ {
+		fd := md.Fields().Get(i)
 		if fd.ParentFile().Package() != "test" {
 			return
 		}
 		if fd.Kind() == protoreflect.MessageKind {
 			fmt.Println(fd.Cardinality().String(), fd.Kind().String(), fd.FullName(), fd.Number())
-			Redact(fd.Options())
+			Redact(fd.Message())
 		}
 
 		// if fd.IsList() {
