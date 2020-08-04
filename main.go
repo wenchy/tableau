@@ -65,7 +65,7 @@ func ParseFieldOptions(md protoreflect.MessageDescriptor) {
 		// }
 		opts := fd.Options().(*descriptorpb.FieldOptions)
 		col := proto.GetExtension(opts, testpb.E_Col).(string)
-		etype := proto.GetExtension(opts, testpb.E_Type).(testpb.TableauFieldType)
+		etype := proto.GetExtension(opts, testpb.E_Type).(testpb.FieldType)
 		fmt.Printf("%s %s %s = %d [(col) = \"%s\", (type) = %s];\n", fd.Cardinality().String(), fd.Kind().String(), fd.FullName().Name(), fd.Number(), col, etype.String())
 		// fmt.Println(fd.ContainingMessage().FullName())
 

@@ -14,8 +14,8 @@ message ItemConf
     string desc = 2 [(col) = "描述"];
     int32 reward_id = 3 [(col) = "奖励池ID"];
     repeated Item items  = 4 [(col) = "道具"];
-    int64 datetime = 5 [(col) = "过期时间", (type) = TABLEAU_FIELD_DATETIME];
-    repeated int32 attributes  = 6 [(col) = "属性列表", (type) = TABLEAU_FIELD_ARRAY];
+    int64 datetime = 5 [(col) = "过期时间", (type) = FIELD_TYPE_DATETIME];
+    repeated int32 attributes  = 6 [(col) = "属性列表", (type) = FIELD_TYPE_CELL_ARRAY];
 }
 
 message RewardConf
@@ -25,6 +25,6 @@ message RewardConf
     string desc = 2 [(col) = "描述"];
     int32 reward_id = 3 [(col) = "奖励池ID"];
     repeated Item items  = 4 [(col) = "道具"];
-    int64 datetime = 5 [(col) = "过期时间", (type) = TABLEAU_FIELD_DATETIME];
-    repeated int32 attributes  = 6 [(col) = "属性列表", (type) = TABLEAU_FIELD_ARRAY];
+    int64 datetime = 5 [(col) = "过期时间", (type) = FIELD_TYPE_DATETIME];
+    repeated int32 attributes  = 6 [(col) = "属性列表", (type) = FIELD_TYPE_CELL_ARRAY];
 }
