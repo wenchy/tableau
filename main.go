@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/Wenchy/tableau/testpb"
 	"github.com/tealeg/xlsx/v3"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
@@ -17,14 +21,45 @@ func main() {
 	// item := testpb.Item{}
 	// Redact(item.ProtoReflect().Interface())
 
-	itemConf := testpb.ItemConf{}
-	md := itemConf.ProtoReflect().Descriptor()
+	conf := testpb.RewardConf{
+		Activities: map[int32]*testpb.RewardConf_Activity{
+			1: &testpb.RewardConf_Activity{
+				Chapters: map[int32]*testpb.RewardConf_Chapter{
+					1: &testpb.RewardConf_Chapter{
+						Sections: map[int32]*testpb.RewardConf_Row{
+							1: &testpb.RewardConf_Row{
+								ActivityId: 1,
+								ChapterId:  2,
+								SectionId:  3,
+								Desc:       "aha",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	output, err := protojson.Marshal(conf.ProtoReflect().Interface())
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("json: ", string(output))
+	var out bytes.Buffer
+	json.Indent(&out, output, "", "    ")
+	out.WriteTo(os.Stdout)
+	fmt.Println()
+
+	desc := conf.Activities[1].Chapters[1].Sections[1].Desc
+	fmt.Printf("desc: %s\n", desc)
+
+	md := conf.ProtoReflect().Descriptor()
 
 	ParseFileOptions(md.ParentFile())
 	fmt.Println("==================")
 	ParseMessageOptions(md)
 	fmt.Println("==================")
-	ParseFieldOptions(md)
+	ParseFieldOptions(md, 0)
 	fmt.Println("==================")
 
 	readSheet("tests/Test.xlsx")
@@ -47,16 +82,27 @@ func ParseMessageOptions(md protoreflect.MessageDescriptor) {
 	fmt.Printf("message:%s, worksheet:%s, metarow:%d, descrow:%d, datarow:%d\n", md.FullName(), worksheet, metarow, descrow, datarow)
 }
 
+func GetTabStr(level int) string {
+	tab := ""
+	for i := 0; i < level; i++ {
+		tab += "\t"
+	}
+	return tab
+}
+
 // ParseFieldOptions is aimed to parse the options of all the fields of a protobuf message.
-func ParseFieldOptions(md protoreflect.MessageDescriptor) {
+func ParseFieldOptions(md protoreflect.MessageDescriptor, level int) {
+	fmt.Printf("%s// %s\n", GetTabStr(level), md.FullName())
 	for i := 0; i < md.Fields().Len(); i++ {
 		fd := md.Fields().Get(i)
 		if fd.ParentFile().Package() != tableauPackageName {
 			return
 		}
+		msgName := ""
 		if fd.Kind() == protoreflect.MessageKind {
-			fmt.Println(fd.Cardinality().String(), fd.Kind().String(), fd.FullName(), fd.Number())
-			ParseFieldOptions(fd.Message())
+			msgName = string(fd.Message().FullName())
+			// fmt.Println(fd.Cardinality().String(), fd.Kind().String(), fd.FullName(), fd.Number())
+			// ParseFieldOptions(fd.Message(), level+1)
 		}
 
 		// if fd.IsList() {
@@ -66,9 +112,13 @@ func ParseFieldOptions(md protoreflect.MessageDescriptor) {
 		opts := fd.Options().(*descriptorpb.FieldOptions)
 		col := proto.GetExtension(opts, testpb.E_Col).(string)
 		etype := proto.GetExtension(opts, testpb.E_Type).(testpb.FieldType)
-		fmt.Printf("%s %s %s = %d [(col) = \"%s\", (type) = %s];\n", fd.Cardinality().String(), fd.Kind().String(), fd.FullName().Name(), fd.Number(), col, etype.String())
+		key := proto.GetExtension(opts, testpb.E_Key).(string)
+		fmt.Printf("%s%s %s(%s) %s = %d [(col) = \"%s\", (type) = %s, (key) = \"%s\"];\n", GetTabStr(level), fd.Cardinality().String(), fd.Kind().String(), msgName, fd.FullName().Name(), fd.Number(), col, etype.String(), key)
 		// fmt.Println(fd.ContainingMessage().FullName())
 
+		if fd.Kind() == protoreflect.MessageKind {
+			ParseFieldOptions(fd.Message(), level+1)
+		}
 	}
 
 	// m.Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {

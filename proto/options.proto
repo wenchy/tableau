@@ -67,9 +67,10 @@ extend google.protobuf.FieldOptions
     string col = 53001;
     // tableau field type
     FieldType type = 53002; // [default = FIELD_TYPE_DEFAULT];
-    bool required = 53003; // [default = true];
-    string separator = 53004; // [default = ','];
-    string subseparator = 53005; // [default = ':'];
+    string key = 53003;
+    bool required = 53004; // [default = true];
+    string separator = 53005; // [default = ','];
+    string subseparator = 53006; // [default = ':'];
 
     ////////////////////////////////////////////////////////////////////////
     // Simple validators below

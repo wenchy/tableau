@@ -21,10 +21,23 @@ message ItemConf
 message RewardConf
 {
     option (worksheet) = "Sheet2";
-    int32 id = 1 [(col) = "道具ID"];
-    string desc = 2 [(col) = "描述"];
-    int32 reward_id = 3 [(col) = "奖励池ID"];
-    repeated Item items  = 4 [(col) = "道具"];
-    int64 datetime = 5 [(col) = "过期时间", (type) = FIELD_TYPE_DATETIME];
-    repeated int32 attributes  = 6 [(col) = "属性列表", (type) = FIELD_TYPE_CELL_ARRAY];
+    map<int32, Activity> activities = 1 [(key) = "activity_id"];
+
+    message Activity
+    {
+        map<int32, Chapter> chapters = 1 [(key) = "chapter_id"];
+    }
+
+    message Chapter
+    {
+        map<int32, Row> sections = 1 [(key) = "section_id"];
+    }
+
+    message Row
+    {
+        int32 activity_id = 1 [(col) = "奖励ID"];
+        int32 chapter_id = 2 [(col) = "章"];
+        int32 section_id = 3 [(col) = "节"];
+        string desc = 4 [(col) = "描述"];
+    }
 }
