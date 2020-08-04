@@ -2,6 +2,8 @@ syntax = "proto3";
 package test;
 option go_package = "github.com/Wenchy/tableau/testpb";
 
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
 import "options.proto";
 import "common.proto";
 
@@ -33,5 +35,7 @@ message RewardConf {
     int32 chapter_id = 2 [ (col) = "章" ];
     int32 section_id = 3 [ (col) = "节" ];
     string desc = 4 [ (col) = "描述" ];
+    google.protobuf.Timestamp timestamp = 5 [ (col) = "发生时间" ];
+    google.protobuf.Duration duration = 6 [ (col) = "持续多久" ];
   }
 }

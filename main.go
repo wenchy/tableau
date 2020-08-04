@@ -7,6 +7,8 @@ import (
 	"os"
 
 	"github.com/Wenchy/tableau/testpb"
+	"github.com/golang/protobuf/ptypes/duration"
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/tealeg/xlsx/v3"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -32,6 +34,14 @@ func main() {
 								ChapterId:  2,
 								SectionId:  3,
 								Desc:       "aha",
+								Timestamp: &timestamp.Timestamp{
+									Seconds: 1,
+									Nanos:   1,
+								},
+								Duration: &duration.Duration{
+									Seconds: 2,
+									Nanos:   2,
+								},
 							},
 						},
 					},

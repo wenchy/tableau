@@ -18,13 +18,16 @@ message Tableau
 
 message Field
 {
-    FieldCardinality cardinality = 1;
+    FieldCard card = 1;
     FieldType type = 2;
     string name = 3;
     string col = 4;
     string required = 5; // [default = true];
     string separator = 6; // [default = ','];
     string subseparator = 7; // [default = ':'];
+
+    // valid if type is message
+    Field field = 10;
 
     ////////////////////////////////////////////////////////////////////////
     // Simple validators below
