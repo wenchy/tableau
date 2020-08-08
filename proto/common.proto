@@ -1,7 +1,7 @@
 syntax = "proto3";
 import "options.proto";
 package test;
-option go_package = "github.com/Wenchy/tableau/testpb";
+option go_package = "github.com/Wenchy/tableau/testpb;testpb";
 
 message Item {
   int32 id = 1 [ (col) = "ID" ];

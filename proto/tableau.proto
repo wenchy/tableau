@@ -1,11 +1,11 @@
 syntax = "proto3";
 package test;
-option go_package = "github.com/Wenchy/tableau/testpb";
+option go_package = "github.com/Wenchy/tableau/testpb;testpb";
 
 import "enum.proto";
 import "options.proto";
 
-message Tableau
+message MetaTable
 {
     string workbook = 1;
     string worksheet = 2;
@@ -13,21 +13,21 @@ message Tableau
     int32 descrow = 4; // [default = 1]; // exact row number of description of this tableau
     int32 datarow = 5; // [default = 2]; // start row number of data
 
-    repeated Field fields = 10;
+    repeated MetaField fields = 10;
 }
 
-message Field
+message MetaField
 {
     FieldCard card = 1;
     FieldType type = 2;
     string name = 3;
     string col = 4;
-    string required = 5; // [default = true];
+    bool required = 5; // [default = true];
     string separator = 6; // [default = ','];
     string subseparator = 7; // [default = ':'];
 
-    // valid if type is message
-    Field field = 10;
+    // valid if type is FIELD_TYPE_MESSSAGE
+    repeated MetaField fields = 10;
 
     ////////////////////////////////////////////////////////////////////////
     // Simple validators below
@@ -35,8 +35,7 @@ message Field
     // Different meanings:
     // repeated: size range of array
     // integer: value range
-    // string: range of utf-8 code point
+    // string: count of utf-8 code point
     int32 min = 20; // min value
     int32 max = 21; // max value
-    string range = 22; // format like set description: [1,10], (1,10], [1,10), [1,~]
 }

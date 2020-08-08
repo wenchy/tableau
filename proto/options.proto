@@ -1,6 +1,6 @@
 syntax = "proto3";
 import "google/protobuf/descriptor.proto";
-option go_package = "github.com/Wenchy/tableau/testpb";
+option go_package = "github.com/Wenchy/tableau/testpb;testpb";
 
 // import "enum.proto";
 
@@ -83,7 +83,7 @@ extend google.protobuf.FieldOptions
     // Different meanings:
     // repeated: size range of array
     // integer: value range
-    // string: range of utf-8 code point
+    // string: count of utf-8 code point
     int32 min = 53101; // min value
     int32 max = 53102; // max value
     string range = 53103; // format like set description: [1,10], (1,10], [1,10), [1,~]
