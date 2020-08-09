@@ -240,11 +240,25 @@ func parseItem() {
 	// row 1 - MaxRow: datarow
 	for nrow := 0; nrow < sheet.MaxRow; nrow++ {
 		if nrow >= 1 {
-			row, err := sheet.Row(nrow)
-			if err != nil {
-				panic(err)
+			// row, err := sheet.Row(nrow)
+			// if err != nil {
+			// 	panic(err)
+			// }
+			kv := make(map[string]string)
+			for i := 0; i < sheet.MaxCol; i++ {
+				metaCell, err := sheet.Cell(0, i)
+				if err != nil {
+					panic(err)
+				}
+				key := metaCell.Value
+				dataCell, err := sheet.Cell(nrow, i)
+				if err != nil {
+					panic(err)
+				}
+				value := dataCell.Value
+				kv[key] = value
 			}
-			testParseFieldOptions(msg, row, 0)
+			testParseFieldOptions(msg, kv, 0)
 		}
 		fmt.Println()
 	}
@@ -282,7 +296,7 @@ func testParseMessageOptions(md protoreflect.MessageDescriptor) (string, string,
 }
 
 // ParseFieldOptions is aimed to parse the options of all the fields of a protobuf message.
-func testParseFieldOptions(msg protoreflect.Message, row *xlsx.Row, level int) {
+func testParseFieldOptions(msg protoreflect.Message, row map[string]string, level int) {
 	md := msg.Descriptor()
 	opts := md.Options().(*descriptorpb.MessageOptions)
 	worksheet := proto.GetExtension(opts, testpb.E_Worksheet).(string)
@@ -322,12 +336,19 @@ func testParseFieldOptions(msg protoreflect.Message, row *xlsx.Row, level int) {
 			// newKey := protoreflect.ValueOf(int32(1)).MapKey()
 			// newKey := keyFd.Default().MapKey()
 			newKey := getScalarFieldValue(keyFd, "1111001").MapKey()
+			cellValue, ok := row[key]
+			if ok {
+				newKey = getScalarFieldValue(keyFd, cellValue).MapKey()
+			}
 			// check if newValue is message type
 			if valueFd.Kind() == protoreflect.MessageKind {
 				newMsg := newValue.Message()
 				testParseFieldOptions(newMsg, row, level+1)
 			} else {
-				newValue = getScalarFieldValue(fd, "1111001")
+				cellValue, ok := row[col]
+				if ok {
+					newValue = getScalarFieldValue(fd, cellValue)
+				}
 			}
 			reflectMap.Set(newKey, newValue)
 		} else if fd.IsList() {
@@ -346,8 +367,11 @@ func testParseFieldOptions(msg protoreflect.Message, row *xlsx.Row, level int) {
 				subMsg := msg.Mutable(fd).Message()
 				testParseFieldOptions(subMsg, row, level+1)
 			} else {
-				value := getScalarFieldValue(fd, "1111001")
-				msg.Set(fd, value)
+				cellValue, ok := row[col]
+				if ok {
+					value := getScalarFieldValue(fd, cellValue)
+					msg.Set(fd, value)
+				}
 			}
 		}
 	}
