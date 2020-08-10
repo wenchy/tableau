@@ -375,16 +375,6 @@ func testParseFieldOptions(msg protoreflect.Message, row map[string]string, leve
 			}
 		}
 	}
-
-	// m.Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
-	// 	opts := fd.Options().(*descriptorpb.FieldOptions)
-	// 	col := proto.GetExtension(opts, testpb.E_Col).(string)
-	// 	if col != "" {
-	// 		fmt.Println(fd.FullName().Name(), col)
-	// 		// fmt.Println(fd.ContainingMessage().FullName())
-	// 	}
-	// 	return true
-	// })
 }
 
 func getScalarFieldValue(fd protoreflect.FieldDescriptor, cellVal string) protoreflect.Value {
