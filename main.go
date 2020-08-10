@@ -17,7 +17,7 @@ import (
 
 func main() {
 	// parseActivity()
-	parseItem()
+	// parseItem()
 	numFiles := protoregistry.GlobalFiles.NumFiles()
 	fmt.Println("numFiles", numFiles)
 	// protoregistry.GlobalFiles.RangeFiles(func(fd protoreflect.FileDescriptor) bool {
