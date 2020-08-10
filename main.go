@@ -51,19 +51,6 @@ func main() {
 }
 
 func export(conf proto.Message) {
-	output, err := protojson.Marshal(conf.ProtoReflect().Interface())
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("json: ", string(output))
-	var out bytes.Buffer
-	json.Indent(&out, output, "", "    ")
-	out.WriteTo(os.Stdout)
-	fmt.Println()
-
-	// desc := conf.Activities[1].Chapters[2].Sections[3].Desc
-	// fmt.Printf("desc: %s\n", desc)
-
 	md := conf.ProtoReflect().Descriptor()
 	msg := conf.ProtoReflect()
 	_, workbook := testParseFileOptions(md.ParentFile())
@@ -93,17 +80,18 @@ func export(conf proto.Message) {
 				value := dataCell.Value
 				kv[key] = value
 			}
-			testParseFieldOptions(msg, kv, 0)
+			testParseFieldOptions(msg, kv, 0, "")
 		}
 		fmt.Println()
 	}
 	fmt.Println("==================")
 
-	output, err = protojson.Marshal(conf.ProtoReflect().Interface())
+	output, err := protojson.Marshal(conf.ProtoReflect().Interface())
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println("json: ", string(output))
+	var out bytes.Buffer
 	json.Indent(&out, output, "", "    ")
 	out.WriteTo(os.Stdout)
 	fmt.Println()

@@ -11,7 +11,7 @@ option (workbook) = "Test.xlsx";
 
 message ItemConf {
   option (worksheet) = "Item";
-  map<int32, Row> items = 1 [ (key) = "道具ID" ];
+  map<int32, Row> item_map = 1 [ (key) = "道具ID" ];
 
   message Row {
     int32 id = 1 [ (col) = "道具ID" ];
@@ -31,13 +31,13 @@ message ItemConf {
 
 message ActivityConf {
   option (worksheet) = "Activity";
-  map<int32, Activity> activities = 1 [ (key) = "活动ID" ];
+  map<int32, Activity> activity_map = 1 [ (key) = "活动ID" ];
 
   message Activity {
-    map<int32, Chapter> chapters = 1 [ (key) = "章ID" ];
+    map<int32, Chapter> chapter_map = 1 [ (key) = "章ID" ];
   }
 
-  message Chapter { map<int32, Row> sections = 1 [ (key) = "节ID" ]; }
+  message Chapter { map<int32, Row> section_map = 1 [ (key) = "节ID" ]; }
 
   message Row {
     int32 activity_id = 1 [ (col) = "活动ID" ];

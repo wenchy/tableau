@@ -17,4 +17,14 @@ A powerful configuration convertion tool based on protobuf.
 ## TODO
 - [ ] Battle-tested of different languages: Golang, C#, Javascript/Typescript, C++ and so on.
 - [ ] Bidirectional conversion: **xlsx <-> json**.
+- [ ] Merge of multilevel nested map
+- [ ] Merge of multiple workbooks or worksheets
+
+## Types
+- Scalar
+- Timestamp
+- Duration
+- List
+- Simple Map(unordered)
+- Multilevel Nested Map
 

@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/Wenchy/tableau/testpb"
 	"github.com/golang/protobuf/ptypes/duration"
@@ -27,11 +29,11 @@ func parseActivity() {
 	// Redact(item.ProtoReflect().Interface())
 
 	conf := testpb.ActivityConf{
-		Activities: map[int32]*testpb.ActivityConf_Activity{
+		ActivityMap: map[int32]*testpb.ActivityConf_Activity{
 			1: &testpb.ActivityConf_Activity{
-				Chapters: map[int32]*testpb.ActivityConf_Chapter{
+				ChapterMap: map[int32]*testpb.ActivityConf_Chapter{
 					2: &testpb.ActivityConf_Chapter{
-						Sections: map[int32]*testpb.ActivityConf_Row{
+						SectionMap: map[int32]*testpb.ActivityConf_Row{
 							3: &testpb.ActivityConf_Row{
 								ActivityId: 1,
 								ChapterId:  2,
@@ -77,7 +79,7 @@ func parseActivity() {
 	out.WriteTo(os.Stdout)
 	fmt.Println()
 
-	desc := conf.Activities[1].Chapters[2].Sections[3].Desc
+	desc := conf.ActivityMap[1].ChapterMap[2].SectionMap[3].Desc
 	fmt.Printf("desc: %s\n", desc)
 
 	md := conf.ProtoReflect().Descriptor()
@@ -192,7 +194,7 @@ func exportSheet(sheet *xlsx.Sheet) {
 
 func parseItem() {
 	conf := testpb.ItemConf{
-		Items: map[int32]*testpb.ItemConf_Row{
+		ItemMap: map[int32]*testpb.ItemConf_Row{
 			1: &testpb.ItemConf_Row{
 				Id:     1,
 				Name:   "金币",
@@ -259,7 +261,7 @@ func parseItem() {
 				value := dataCell.Value
 				kv[key] = value
 			}
-			testParseFieldOptions(msg, kv, 0)
+			testParseFieldOptions(msg, kv, 0, "")
 		}
 		fmt.Println()
 	}
@@ -297,11 +299,11 @@ func testParseMessageOptions(md protoreflect.MessageDescriptor) (string, string,
 }
 
 // ParseFieldOptions is aimed to parse the options of all the fields of a protobuf message.
-func testParseFieldOptions(msg protoreflect.Message, row map[string]string, depth int) {
+func testParseFieldOptions(msg protoreflect.Message, row map[string]string, depth int, colPrefix string) {
 	md := msg.Descriptor()
 	opts := md.Options().(*descriptorpb.MessageOptions)
 	worksheet := proto.GetExtension(opts, testpb.E_Worksheet).(string)
-	fmt.Printf("%s// %s, '%s', %v\n", getTabStr(depth), md.FullName(), worksheet, md.IsMapEntry())
+	fmt.Printf("%s// %s, '%s', %v, %v\n", getTabStr(depth), md.FullName(), worksheet, md.IsMapEntry(), colPrefix)
 	for i := 0; i < md.Fields().Len(); i++ {
 		fd := md.Fields().Get(i)
 		if fd.ParentFile().Package() != tableauPackageName {
@@ -327,7 +329,7 @@ func testParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 			separator = ","
 		}
 		fmt.Printf("%s%s(%v) %s(%s) %s = %d [(col) = \"%s\", (type) = %s, (key) = \"%s\", (separator) = \"%s\"];\n",
-			getTabStr(depth), fd.Cardinality().String(), fd.IsMap(), fd.Kind().String(), msgName, fd.FullName().Name(), fd.Number(), col, etype.String(), key, separator)
+			getTabStr(depth), fd.Cardinality().String(), fd.IsMap(), fd.Kind().String(), msgName, fd.FullName().Name(), fd.Number(), colPrefix+col, etype.String(), key, separator)
 		// fmt.Println(fd.ContainingMessage().FullName())
 
 		// if fd.Cardinality() == protoreflect.Repeated && fd.Kind() == protoreflect.MessageKind {
@@ -342,6 +344,7 @@ func testParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 			// newKey := protoreflect.ValueOf(int32(1)).MapKey()
 			// newKey := getScalarFieldValue(keyFd, "1111001").MapKey()
 			newKey := keyFd.Default().MapKey()
+			// TODO(wenchyzhu): need to add col prefix for recursion?
 			cellValue, ok := row[key]
 			if ok {
 				newKey = getScalarFieldValue(keyFd, cellValue).MapKey()
@@ -351,9 +354,9 @@ func testParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 			// check if newValue is message type
 			if valueFd.Kind() == protoreflect.MessageKind {
 				newMsg := newValue.Message()
-				testParseFieldOptions(newMsg, row, depth+1)
+				testParseFieldOptions(newMsg, row, depth+1, colPrefix+col)
 			} else {
-				cellValue, ok := row[col]
+				cellValue, ok := row[colPrefix+col]
 				if ok {
 					newValue = getScalarFieldValue(fd, cellValue)
 				}
@@ -363,12 +366,17 @@ func testParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 			// TODO(wenchyzhu): add new empty item
 			reflectList := msg.Mutable(fd).List()
 			if fd.Kind() == protoreflect.MessageKind {
-				newElement := reflectList.NewElement()
-				subMsg := newElement.Message()
-				testParseFieldOptions(subMsg, row, depth+1)
+				listSize := getListSize(row, colPrefix+col)
+				fmt.Println("list size", listSize)
+				for i := 1; i <= listSize; i++ {
+					newElement := reflectList.NewElement()
+					subMsg := newElement.Message()
+					testParseFieldOptions(subMsg, row, depth+1, colPrefix+col+strconv.Itoa(i))
+					reflectList.Append(newElement)
+				}
 			} else {
 				if etype == testpb.FieldType_FIELD_TYPE_CELL_ARRAY {
-					cellValue, ok := row[col]
+					cellValue, ok := row[colPrefix+col]
 					if ok {
 						splits := strings.Split(cellValue, separator)
 						for _, v := range splits {
@@ -387,7 +395,7 @@ func testParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 		} else {
 			if fd.Kind() == protoreflect.MessageKind {
 				subMsg := msg.Mutable(fd).Message()
-				testParseFieldOptions(subMsg, row, depth+1)
+				testParseFieldOptions(subMsg, row, depth+1, colPrefix+col)
 			} else {
 				// pfd := fd.Parent()
 				// switch v := pfd.(type) {
@@ -406,7 +414,7 @@ func testParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 				// 	fmt.Printf("I don't know about type %T!\n", v)
 				// }
 
-				cellValue, ok := row[col]
+				cellValue, ok := row[colPrefix+col]
 				if ok {
 					value := getScalarFieldValue(fd, cellValue)
 					msg.Set(fd, value)
@@ -414,6 +422,28 @@ func testParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 			}
 		}
 	}
+}
+
+func getListSize(row map[string]string, colPrefix string) int {
+	// fmt.Println("col prefix: ", colPrefix)
+	size := 0
+	for col := range row {
+		if strings.HasPrefix(col, colPrefix) {
+			num := 0
+			// fmt.Println("col: ", col)
+			colSuffix := col[len(colPrefix):]
+			// fmt.Println("col: suffix ", colSuffix)
+			for _, r := range colSuffix {
+				if unicode.IsDigit(r) {
+					num = num*10 + int(r-'0')
+				} else {
+					break
+				}
+			}
+			size = int(math.Max(float64(size), float64(num)))
+		}
+	}
+	return size
 }
 
 func getScalarFieldValue(fd protoreflect.FieldDescriptor, cellVal string) protoreflect.Value {
