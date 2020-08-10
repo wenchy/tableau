@@ -35,18 +35,23 @@ message ActivityConf {
 
   message Activity {
     map<int32, Chapter> chapter_map = 1 [ (key) = "章ID" ];
+    string chapter_desc = 2 [ (col) = "章描述" ];
   }
 
-  message Chapter { map<int32, Row> section_map = 1 [ (key) = "节ID" ]; }
+  message Chapter {
+    map<int32, Row> section_map = 1 [ (key) = "节ID" ];
+    string section_desc = 2 [ (col) = "节描述" ];
+  }
 
   message Row {
     int32 activity_id = 1 [ (col) = "活动ID" ];
     int32 chapter_id = 2 [ (col) = "章ID" ];
-    int32 section_id = 3 [ (col) = "节ID" ];
-    string desc = 4 [ (col) = "描述" ];
-    repeated Item items = 5 [ (col) = "奖励" ];
-    google.protobuf.Timestamp begin_time = 6 [ (col) = "开始时间" ];
-    google.protobuf.Timestamp end_time = 7 [ (col) = "结束时间" ];
-    google.protobuf.Duration duration = 8 [ (col) = "持续多久" ];
+    string chapter_desc = 3 [ (col) = "章描述" ];
+    int32 section_id = 4 [ (col) = "节ID" ];
+    string section_desc = 5 [ (col) = "节描述" ];
+    repeated Item items = 6 [ (col) = "奖励" ];
+    google.protobuf.Timestamp begin_time = 7 [ (col) = "开始时间" ];
+    google.protobuf.Timestamp end_time = 8 [ (col) = "结束时间" ];
+    google.protobuf.Duration duration = 9 [ (col) = "持续多久" ];
   }
 }

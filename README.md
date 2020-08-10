@@ -24,7 +24,8 @@ A powerful configuration convertion tool based on protobuf.
 - Scalar
 - Timestamp
 - Duration
-- List
-- Simple Map(unordered)
-- Multilevel Nested Map
+- One-level List
+- Multi-level List
+- One-level Map(unordered)
+- Multi-level Nested Map
 

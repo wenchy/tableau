@@ -35,10 +35,11 @@ func parseActivity() {
 					2: &testpb.ActivityConf_Chapter{
 						SectionMap: map[int32]*testpb.ActivityConf_Row{
 							3: &testpb.ActivityConf_Row{
-								ActivityId: 1,
-								ChapterId:  2,
-								SectionId:  3,
-								Desc:       "aha",
+								ActivityId:  1,
+								ChapterId:   2,
+								ChapterDesc: "aha",
+								SectionId:   3,
+								SectionDesc: "aha",
 								Items: []*testpb.Item{
 									&testpb.Item{
 										Id:  1,
@@ -79,7 +80,7 @@ func parseActivity() {
 	out.WriteTo(os.Stdout)
 	fmt.Println()
 
-	desc := conf.ActivityMap[1].ChapterMap[2].SectionMap[3].Desc
+	desc := conf.ActivityMap[1].ChapterMap[2].SectionMap[3].ChapterDesc
 	fmt.Printf("desc: %s\n", desc)
 
 	md := conf.ProtoReflect().Descriptor()
