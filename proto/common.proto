@@ -4,6 +4,6 @@ package test;
 option go_package = "github.com/Wenchy/tableau/testpb;testpb";
 
 message Item {
-  int32 id = 1 [ (col) = "ID" ];
-  int32 num = 2 [ (col) = "NUM" ];
+  int32 id = 1 [ (caption) = "ID" ];
+  int32 num = 2 [ (caption) = "NUM" ];
 }

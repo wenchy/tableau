@@ -538,7 +538,7 @@ type ActivityConf_Row struct {
 
 	ActivityId int32 `protobuf:"varint,1,opt,name=activity_id,json=activityId,proto3" json:"activity_id,omitempty"`
 	ChapterId  int32 `protobuf:"varint,2,opt,name=chapter_id,json=chapterId,proto3" json:"chapter_id,omitempty"`
-	// string chapter_desc = 3 [ (col) = "章描述" ];
+	// string chapter_desc = 3 [ (caption) = "章描述" ];
 	SectionId   int32                `protobuf:"varint,4,opt,name=section_id,json=sectionId,proto3" json:"section_id,omitempty"`
 	SectionDesc string               `protobuf:"bytes,5,opt,name=section_desc,json=sectionDesc,proto3" json:"section_desc,omitempty"`
 	Items       []*Item              `protobuf:"bytes,6,rep,name=items,proto3" json:"items,omitempty"`

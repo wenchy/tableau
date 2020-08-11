@@ -139,10 +139,10 @@ func ParseFieldOptions(md protoreflect.MessageDescriptor, depth int) {
 		// 	// Redact(fd.Options().ProtoReflect().Interface())
 		// }
 		opts := fd.Options().(*descriptorpb.FieldOptions)
-		col := proto.GetExtension(opts, testpb.E_Col).(string)
+		caption := proto.GetExtension(opts, testpb.E_Caption).(string)
 		etype := proto.GetExtension(opts, testpb.E_Type).(testpb.FieldType)
 		key := proto.GetExtension(opts, testpb.E_Key).(string)
-		fmt.Printf("%s%s %s(%s) %s = %d [(col) = \"%s\", (type) = %s, (key) = \"%s\"];\n", getTabStr(depth), fd.Cardinality().String(), fd.Kind().String(), msgName, fd.FullName().Name(), fd.Number(), col, etype.String(), key)
+		fmt.Printf("%s%s %s(%s) %s = %d [(caption) = \"%s\", (type) = %s, (key) = \"%s\"];\n", getTabStr(depth), fd.Cardinality().String(), fd.Kind().String(), msgName, fd.FullName().Name(), fd.Number(), caption, etype.String(), key)
 		// fmt.Println(fd.ContainingMessage().FullName())
 
 		if fd.Kind() == protoreflect.MessageKind {
@@ -152,9 +152,9 @@ func ParseFieldOptions(md protoreflect.MessageDescriptor, depth int) {
 
 	// m.Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
 	// 	opts := fd.Options().(*descriptorpb.FieldOptions)
-	// 	col := proto.GetExtension(opts, testpb.E_Col).(string)
-	// 	if col != "" {
-	// 		fmt.Println(fd.FullName().Name(), col)
+	// 	caption := proto.GetExtension(opts, testpb.E_Col).(string)
+	// 	if caption != "" {
+	// 		fmt.Println(fd.FullName().Name(), caption)
 	// 		// fmt.Println(fd.ContainingMessage().FullName())
 	// 	}
 	// 	return true
@@ -183,7 +183,7 @@ func exportSheet(sheet *xlsx.Sheet) {
 	// row 1 - MaxRow: datarow
 	for nrow := 0; nrow < sheet.MaxRow; nrow++ {
 		for ncol := 0; ncol < sheet.MaxCol; ncol++ {
-			// get the Cell in D1, which is row 0, col 3
+			// get the Cell in D1, which is row 0, column 3
 			cell, err := sheet.Cell(nrow, ncol)
 			if err != nil {
 				panic(err)
@@ -301,12 +301,12 @@ func testParseMessageOptions(md protoreflect.MessageDescriptor) (string, string,
 }
 
 // ParseFieldOptions is aimed to parse the options of all the fields of a protobuf message.
-func testParseFieldOptions(msg protoreflect.Message, row map[string]string, depth int, colPrefix string) {
+func testParseFieldOptions(msg protoreflect.Message, row map[string]string, depth int, prefix string) {
 	md := msg.Descriptor()
 	opts := md.Options().(*descriptorpb.MessageOptions)
 	worksheet := proto.GetExtension(opts, testpb.E_Worksheet).(string)
 	pkg := md.ParentFile().Package()
-	fmt.Printf("%s// %s, '%s', %v, %v, %v\n", getTabStr(depth), md.FullName(), worksheet, md.IsMapEntry(), colPrefix, pkg)
+	fmt.Printf("%s// %s, '%s', %v, %v, %v\n", getTabStr(depth), md.FullName(), worksheet, md.IsMapEntry(), prefix, pkg)
 	for i := 0; i < md.Fields().Len(); i++ {
 		fd := md.Fields().Get(i)
 		if pkg != tableauPackageName && pkg != "google.protobuf" {
@@ -325,7 +325,7 @@ func testParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 		// 	// Redact(fd.Options().ProtoReflect().Interface())
 		// }
 		opts := fd.Options().(*descriptorpb.FieldOptions)
-		col := proto.GetExtension(opts, testpb.E_Col).(string)
+		caption := proto.GetExtension(opts, testpb.E_Caption).(string)
 		etype := proto.GetExtension(opts, testpb.E_Type).(testpb.FieldType)
 		key := proto.GetExtension(opts, testpb.E_Key).(string)
 		sep := proto.GetExtension(opts, testpb.E_Sep).(string)
@@ -336,8 +336,8 @@ func testParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 		if subsep == "" {
 			subsep = ":"
 		}
-		fmt.Printf("%s%s(%v) %s(%s) %s = %d [(col) = \"%s\", (type) = %s, (key) = \"%s\", (sep) = \"%s\"];\n",
-			getTabStr(depth), fd.Cardinality().String(), fd.IsMap(), fd.Kind().String(), msgName, fd.FullName().Name(), fd.Number(), colPrefix+col, etype.String(), key, sep)
+		fmt.Printf("%s%s(%v) %s(%s) %s = %d [(caption) = \"%s\", (type) = %s, (key) = \"%s\", (sep) = \"%s\"];\n",
+			getTabStr(depth), fd.Cardinality().String(), fd.IsMap(), fd.Kind().String(), msgName, fd.FullName().Name(), fd.Number(), prefix+caption, etype.String(), key, sep)
 		// fmt.Println(fd.ContainingMessage().FullName())
 
 		// if fd.Cardinality() == protoreflect.Repeated && fd.Kind() == protoreflect.MessageKind {
@@ -353,15 +353,15 @@ func testParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 				if valueFd.Kind() == protoreflect.MessageKind {
 					panic("in-cell map do not support value as message type")
 				}
-				cellValue, ok := row[colPrefix+col]
+				cellValue, ok := row[prefix+caption]
 				if !ok {
-					panic(fmt.Sprintf("col not found: %s\n", colPrefix+col))
+					panic(fmt.Sprintf("column caption not found: %s\n", prefix+caption))
 				}
 				splits := strings.Split(cellValue, sep)
 				for _, pair := range splits {
 					kv := strings.Split(pair, subsep)
 					if len(kv) != 2 {
-						panic(fmt.Sprintf("illegal key-value pair: %v, %v\n", colPrefix+col, pair))
+						panic(fmt.Sprintf("illegal key-value pair: %v, %v\n", prefix+caption, pair))
 					}
 					newKey := getScalarFieldValue(keyFd, kv[0]).MapKey()
 					newValue := reflectMap.NewValue()
@@ -370,11 +370,11 @@ func testParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 				}
 			} else {
 				newKey := keyFd.Default().MapKey()
-				cellValue, ok := row[colPrefix+col+key]
+				cellValue, ok := row[prefix+caption+key]
 				if ok {
 					newKey = getScalarFieldValue(keyFd, cellValue).MapKey()
 				} else {
-					panic(fmt.Sprintf("key not found: %s\n", colPrefix+col+key))
+					panic(fmt.Sprintf("key not found: %s\n", prefix+caption+key))
 				}
 				var newValue protoreflect.Value
 				if reflectMap.Has(newKey) {
@@ -386,9 +386,9 @@ func testParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 				// check if newValue is message type
 				if valueFd.Kind() == protoreflect.MessageKind {
 					newMsg := newValue.Message()
-					testParseFieldOptions(newMsg, row, depth+1, colPrefix+col)
+					testParseFieldOptions(newMsg, row, depth+1, prefix+caption)
 				} else {
-					cellValue, ok := row[colPrefix+col]
+					cellValue, ok := row[prefix+caption]
 					if ok {
 						newValue = getScalarFieldValue(fd, cellValue)
 					}
@@ -398,17 +398,17 @@ func testParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 		} else if fd.IsList() {
 			reflectList := msg.Mutable(fd).List()
 			if fd.Kind() == protoreflect.MessageKind {
-				listSize := getListSize(row, colPrefix+col)
+				listSize := getListSize(row, prefix+caption)
 				// fmt.Println("list size", listSize)
 				for i := 1; i <= listSize; i++ {
 					newElement := reflectList.NewElement()
 					subMsg := newElement.Message()
-					testParseFieldOptions(subMsg, row, depth+1, colPrefix+col+strconv.Itoa(i))
+					testParseFieldOptions(subMsg, row, depth+1, prefix+caption+strconv.Itoa(i))
 					reflectList.Append(newElement)
 				}
 			} else {
 				if etype == testpb.FieldType_FIELD_TYPE_CELL_LIST {
-					cellValue, ok := row[colPrefix+col]
+					cellValue, ok := row[prefix+caption]
 					if ok {
 						splits := strings.Split(cellValue, sep)
 						for _, v := range splits {
@@ -431,9 +431,9 @@ func testParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 				subMsgName := subMd.FullName()
 				switch subMsgName {
 				case "google.protobuf.Timestamp":
-					cellValue, ok := row[colPrefix+col]
+					cellValue, ok := row[prefix+caption]
 					if !ok {
-						panic(fmt.Sprintf("not found col: %v\n", colPrefix+col))
+						panic(fmt.Sprintf("not found column caption: %v\n", prefix+caption))
 					}
 					// layout := "2006-01-02T15:04:05.000Z"
 					layout := "2006-01-02 15:04:05"
@@ -451,9 +451,9 @@ func testParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 						}
 					}
 				case "google.protobuf.Duration":
-					cellValue, ok := row[colPrefix+col]
+					cellValue, ok := row[prefix+caption]
 					if !ok {
-						panic(fmt.Sprintf("not found col: %v\n", colPrefix+col))
+						panic(fmt.Sprintf("not found column: %v\n", prefix+caption))
 					}
 					for i := 0; i < subMd.Fields().Len(); i++ {
 						fd := subMd.Fields().Get(i)
@@ -470,30 +470,30 @@ func testParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 						panic(fmt.Sprintf("unknown message %v in package %v", subMsgName, subPkg))
 					}
 					subMsg := msg.Mutable(fd).Message()
-					testParseFieldOptions(subMsg, row, depth+1, colPrefix+col)
+					testParseFieldOptions(subMsg, row, depth+1, prefix+caption)
 				}
 			} else {
-				cellValue, ok := row[colPrefix+col]
+				cellValue, ok := row[prefix+caption]
 				if ok {
 					value := getScalarFieldValue(fd, cellValue)
 					msg.Set(fd, value)
 				} else {
-					panic(fmt.Sprintf("not found col: %v\n", colPrefix+col))
+					panic(fmt.Sprintf("not found column caption: %v\n", prefix+caption))
 				}
 			}
 		}
 	}
 }
 
-func getListSize(row map[string]string, colPrefix string) int {
-	// fmt.Println("col prefix: ", colPrefix)
+func getListSize(row map[string]string, prefix string) int {
+	// fmt.Println("caption prefix: ", prefix)
 	size := 0
-	for col := range row {
-		if strings.HasPrefix(col, colPrefix) {
+	for caption := range row {
+		if strings.HasPrefix(caption, prefix) {
 			num := 0
-			// fmt.Println("col: ", col)
-			colSuffix := col[len(colPrefix):]
-			// fmt.Println("col: suffix ", colSuffix)
+			// fmt.Println("caption: ", caption)
+			colSuffix := caption[len(prefix):]
+			// fmt.Println("caption: suffix ", colSuffix)
 			for _, r := range colSuffix {
 				if unicode.IsDigit(r) {
 					num = num*10 + int(r-'0')
