@@ -13,6 +13,6 @@ require (
 
 replace github.com/Wenchy/tableau/converter => ../../internal/converter
 
-replace github.com/Wenchy/tableau/testpb => ./github.com/Wenchy/tableau/testpb
+replace github.com/Wenchy/tableau/testpb => ./testpb
 
-replace github.com/Wenchy/tableau/tableaupb => ./github.com/Wenchy/tableau/tableaupb
+replace github.com/Wenchy/tableau/tableaupb => ../../pkg/tableaupb

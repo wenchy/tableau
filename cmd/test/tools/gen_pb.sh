@@ -17,3 +17,14 @@ for item in "$test_dir"/* ; do
         protoc -I"$test_dir" -I"$tableau_dir" --go_out="$output_dir" "$item"
     fi
 done
+
+tableaupb_dir="../github.com/Wenchy/tableau/tableaupb"
+testpb_dir="../github.com/Wenchy/tableau/testpb"
+
+# update tableaupb
+rsync -avz "$tableaupb_dir" ../../../pkg/tableaupb
+# update testpb
+rsync -avz "$testpb_dir" ../testpb
+
+# remove
+rm -rf "../github.com"
