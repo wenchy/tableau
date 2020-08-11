@@ -7,6 +7,7 @@
 package testpb
 
 import (
+	_ "github.com/Wenchy/tableau/tableaupb"
 	proto "github.com/golang/protobuf/proto"
 	duration "github.com/golang/protobuf/ptypes/duration"
 	timestamp "github.com/golang/protobuf/ptypes/timestamp"
@@ -860,7 +861,6 @@ func file_test_conf_proto_init() {
 	if File_test_conf_proto != nil {
 		return
 	}
-	file_options_proto_init()
 	file_common_proto_init()
 	if !protoimpl.UnsafeEnabled {
 		file_test_conf_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {

@@ -7,6 +7,7 @@
 package testpb
 
 import (
+	_ "github.com/Wenchy/tableau/tableaupb"
 	proto "github.com/golang/protobuf/proto"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -124,7 +125,6 @@ func file_common_proto_init() {
 	if File_common_proto != nil {
 		return
 	}
-	file_options_proto_init()
 	if !protoimpl.UnsafeEnabled {
 		file_common_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Item); i {

@@ -1,9 +1,19 @@
 #!/bin/bash
-input_dir="../protobuf"
+
 output_dir="../"
-for item in "$input_dir"/* ; do
+
+tableau_dir="../../../pkg/protobuf/"
+for item in "$tableau_dir"/* ; do
     echo "$item"
     if [ -f "$item" ]; then
-        protoc -I"$input_dir" --go_out="$output_dir" "$item"
+        protoc -I"$tableau_dir" --go_out="$output_dir" "$item"
+    fi
+done
+
+test_dir="../protobuf"
+for item in "$test_dir"/* ; do
+    echo "$item"
+    if [ -f "$item" ]; then
+        protoc -I"$test_dir" -I"$tableau_dir" --go_out="$output_dir" "$item"
     fi
 done

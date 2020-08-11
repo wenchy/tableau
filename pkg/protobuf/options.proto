@@ -1,5 +1,6 @@
 syntax = "proto3";
-package tableau;
+// For easy use, comment the package delaration.
+// package tableau;
 option go_package = "github.com/Wenchy/tableau/tableaupb;tableaupb";
 
 import "google/protobuf/descriptor.proto";
