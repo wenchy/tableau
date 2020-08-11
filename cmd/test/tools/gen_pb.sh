@@ -22,9 +22,9 @@ tableaupb_dir="../github.com/Wenchy/tableau/tableaupb"
 testpb_dir="../github.com/Wenchy/tableau/testpb"
 
 # update tableaupb
-rsync -avz "$tableaupb_dir" ../../../pkg/tableaupb
+rsync -avz "$tableaupb_dir" ../../../pkg/
 # update testpb
-rsync -avz "$testpb_dir" ../testpb
+rsync -avz "$testpb_dir" ../
 
 # remove
 rm -rf "../github.com"
