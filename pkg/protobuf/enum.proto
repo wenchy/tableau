@@ -1,0 +1,11 @@
+syntax = "proto3";
+package tableau;
+option go_package = "github.com/Wenchy/tableau/tableaupb;tableaupb";
+
+// Cardinality of field
+enum FieldCard
+{
+    FIELD_CARD_REQUIRED = 0; // appears exactly one time
+    FIELD_CARD_OPTIONAL = 1; // appears zero or one times
+    FIELD_CARD_REPEATED = 2; // appears zero or more times
+}
