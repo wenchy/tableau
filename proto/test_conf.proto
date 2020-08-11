@@ -27,7 +27,7 @@ message ItemConf {
     int32 id = 1 [ (col) = "ID" ];
     int32 value = 2 [ (col) = "Value" ];
     repeated Enhance enhance = 3 [ (col) = "强化" ];
-    map<int32, Cost> activity_map = 4 [ (key) = "类型" ];
+    map<int32, Cost> cost_map = 4 [ (key) = "类型" ];
   }
   message Enhance {
     int32 id = 1 [ (col) = "ID" ];
@@ -46,13 +46,14 @@ message ActivityConf {
   map<int32, Activity> activity_map = 1 [ (key) = "活动ID" ];
 
   message Activity {
-    map<int32, Chapter> chapter_map = 1 [ (key) = "章ID" ];
-    string chapter_desc = 2 [ (col) = "章描述" ];
+    int32 activity_id = 1 [ (col) = "活动ID" ];
+    map<int32, Chapter> chapter_map = 2 [ (key) = "章ID" ];
   }
 
   message Chapter {
-    map<int32, Row> section_map = 1 [ (key) = "节ID" ];
-    string section_desc = 2 [ (col) = "节描述" ];
+    int32 chapter_id = 1 [ (col) = "章ID" ];
+    map<int32, Row> section_map = 2 [ (key) = "节ID" ];
+    string chapter_desc = 3 [ (col) = "章描述" ];
   }
 
   message Row {
@@ -60,7 +61,7 @@ message ActivityConf {
     int32 chapter_id = 2 [ (col) = "章ID" ];
     // string chapter_desc = 3 [ (col) = "章描述" ];
     int32 section_id = 4 [ (col) = "节ID" ];
-    // string section_desc = 5 [ (col) = "节描述" ];
+    string section_desc = 5 [ (col) = "节描述" ];
     repeated Item items = 6 [ (col) = "奖励" ];
     google.protobuf.Timestamp begin_time = 7 [ (col) = "开始时间" ];
     google.protobuf.Timestamp end_time = 8 [ (col) = "结束时间" ];
