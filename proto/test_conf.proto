@@ -19,9 +19,10 @@ message ItemConf {
     string desc = 3 [ (col) = "描述" ];
     int32 icon_id = 4 [ (col) = "IconID" ];
     repeated Attribute attributes = 5 [ (col) = "属性" ];
-    repeated int32 effects = 6
-        [ (col) = "效果列表", (type) = FIELD_TYPE_CELL_ARRAY ];
-    google.protobuf.Timestamp expiry_time = 7 [ (col) = "过期时间" ];
+    map<int32, int32> sale_map = 6 [ (col) = "售卖选项", (type) = FIELD_TYPE_CELL_MAP ];
+    repeated int32 effects = 7
+        [ (col) = "效果列表", (type) = FIELD_TYPE_CELL_LIST ];
+    google.protobuf.Timestamp expiry_time = 8 [ (col) = "过期时间" ];
   }
   message Attribute {
     int32 id = 1 [ (col) = "ID" ];
@@ -33,7 +34,7 @@ message ItemConf {
     int32 id = 1 [ (col) = "ID" ];
     string desc = 2 [ (col) = "描述" ];
     repeated string tips = 3
-        [ (col) = "提示列表", (type) = FIELD_TYPE_CELL_ARRAY ];
+        [ (col) = "提示列表", (type) = FIELD_TYPE_CELL_LIST ];
   }
   message Cost {
     int32 type = 1 [ (col) = "类型" ];

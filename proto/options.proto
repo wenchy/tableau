@@ -52,10 +52,10 @@ enum FieldType
     FIELD_TYPE_DATE = 21; // format: "yyyy-MM-dd"
     FIELD_TYPE_TIME = 22; // format: "HH:mm:ss"
     FIELD_TYPE_DATETIME = 23; // format: "yyyy-MM-dd HH:mm:ss"
-    // array in a cell:
-    // - the array **item** must be **built-in** type
+    // list in a cell:
+    // - the list **item** must be **built-in** type
     // - format: ',' separated items
-    FIELD_TYPE_CELL_ARRAY = 24;
+    FIELD_TYPE_CELL_LIST = 24;
     // map in a cell:
     // - both the **key** and **value** must be **built-in** type
     // - format: key-value pairs is separated by ',', and

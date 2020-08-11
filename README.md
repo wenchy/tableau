@@ -24,8 +24,8 @@ A powerful configuration convertion tool based on protobuf.
 - [ ] Merge of multiple workbooks or worksheets
 - [ ] Timezone of type Timestamp
 - [ ] Simple key-value configuration: flip worksheet 90° (degrees) to exchange row and column 
-- [x] In cell array
-- [] In cell map
+- [x] Simple in-cell List
+- [x] Simple in-cell Map
 
 ## Types
 - Scalar

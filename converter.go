@@ -332,6 +332,10 @@ func testParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 		if sep == "" {
 			sep = ","
 		}
+		subsep := proto.GetExtension(opts, testpb.E_Subsep).(string)
+		if subsep == "" {
+			subsep = ":"
+		}
 		fmt.Printf("%s%s(%v) %s(%s) %s = %d [(col) = \"%s\", (type) = %s, (key) = \"%s\", (sep) = \"%s\"];\n",
 			getTabStr(depth), fd.Cardinality().String(), fd.IsMap(), fd.Kind().String(), msgName, fd.FullName().Name(), fd.Number(), colPrefix+col, etype.String(), key, sep)
 		// fmt.Println(fd.ContainingMessage().FullName())
@@ -340,39 +344,58 @@ func testParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 		// 	msg := fd.Message().New()
 		// }
 		if fd.IsMap() {
-			// TODO(wenchyzhu): add new empty item
 			keyFd := fd.MapKey()
 			valueFd := fd.MapValue()
 			reflectMap := msg.Mutable(fd).Map()
 			// newKey := protoreflect.ValueOf(int32(1)).MapKey()
 			// newKey := getScalarFieldValue(keyFd, "1111001").MapKey()
-			newKey := keyFd.Default().MapKey()
-			// TODO(wenchyzhu): need to add col prefix for recursion?
-			cellValue, ok := row[colPrefix+key]
-			if ok {
-				newKey = getScalarFieldValue(keyFd, cellValue).MapKey()
-			} else {
-				panic(fmt.Sprintf("key not found: %s\n", colPrefix+key))
-			}
-			var newValue protoreflect.Value
-			if reflectMap.Has(newKey) {
-				newValue = reflectMap.Mutable(newKey)
-			} else {
-				newValue = reflectMap.NewValue()
-				reflectMap.Set(newKey, newValue)
-			}
-			// check if newValue is message type
-			if valueFd.Kind() == protoreflect.MessageKind {
-				newMsg := newValue.Message()
-				testParseFieldOptions(newMsg, row, depth+1, colPrefix+col)
-			} else {
+			if etype == testpb.FieldType_FIELD_TYPE_CELL_MAP {
+				if valueFd.Kind() == protoreflect.MessageKind {
+					panic("in-cell map do not support value as message type")
+				}
 				cellValue, ok := row[colPrefix+col]
+				if !ok {
+					panic(fmt.Sprintf("col not found: %s\n", colPrefix+col))
+				}
+				splits := strings.Split(cellValue, sep)
+				for _, pair := range splits {
+					kv := strings.Split(pair, subsep)
+					if len(kv) != 2 {
+						panic(fmt.Sprintf("illegal key-value pair: %v, %v\n", colPrefix+col, pair))
+					}
+					newKey := getScalarFieldValue(keyFd, kv[0]).MapKey()
+					newValue := reflectMap.NewValue()
+					newValue = getScalarFieldValue(valueFd, kv[1])
+					reflectMap.Set(newKey, newValue)
+				}
+			} else {
+				newKey := keyFd.Default().MapKey()
+				cellValue, ok := row[colPrefix+col+key]
 				if ok {
-					newValue = getScalarFieldValue(fd, cellValue)
+					newKey = getScalarFieldValue(keyFd, cellValue).MapKey()
+				} else {
+					panic(fmt.Sprintf("key not found: %s\n", colPrefix+col+key))
+				}
+				var newValue protoreflect.Value
+				if reflectMap.Has(newKey) {
+					newValue = reflectMap.Mutable(newKey)
+				} else {
+					newValue = reflectMap.NewValue()
+					reflectMap.Set(newKey, newValue)
+				}
+				// check if newValue is message type
+				if valueFd.Kind() == protoreflect.MessageKind {
+					newMsg := newValue.Message()
+					testParseFieldOptions(newMsg, row, depth+1, colPrefix+col)
+				} else {
+					cellValue, ok := row[colPrefix+col]
+					if ok {
+						newValue = getScalarFieldValue(fd, cellValue)
+					}
 				}
 			}
+
 		} else if fd.IsList() {
-			// TODO(wenchyzhu): add new empty item
 			reflectList := msg.Mutable(fd).List()
 			if fd.Kind() == protoreflect.MessageKind {
 				listSize := getListSize(row, colPrefix+col)
@@ -384,7 +407,7 @@ func testParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 					reflectList.Append(newElement)
 				}
 			} else {
-				if etype == testpb.FieldType_FIELD_TYPE_CELL_ARRAY {
+				if etype == testpb.FieldType_FIELD_TYPE_CELL_LIST {
 					cellValue, ok := row[colPrefix+col]
 					if ok {
 						splits := strings.Split(cellValue, sep)
@@ -397,8 +420,7 @@ func testParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 					}
 
 				} else {
-					value := getScalarFieldValue(fd, "1111001")
-					reflectList.Append(value)
+					panic(fmt.Sprintf("unknown list type: %v\n", etype))
 				}
 			}
 		} else {
@@ -409,71 +431,48 @@ func testParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 				subMsgName := subMd.FullName()
 				switch subMsgName {
 				case "google.protobuf.Timestamp":
-					{
-						cellValue, ok := row[colPrefix+col]
-						if !ok {
-							panic(fmt.Sprintf("not found col: %v\n", colPrefix+col))
-						}
-						// layout := "2006-01-02T15:04:05.000Z"
-						layout := "2006-01-02 15:04:05"
-						t, err := time.Parse(layout, cellValue)
-						if err != nil {
-							panic(fmt.Sprintf("illegal timestamp string format: %v, err: %v\n", cellValue, err))
-						}
-						for i := 0; i < subMd.Fields().Len(); i++ {
-							fd := subMd.Fields().Get(i)
-							// fmt.Println("fd.FullName().Name(): ", fd.FullName().Name())
-							if fd.FullName().Name() == "seconds" {
-								value := getScalarFieldValue(fd, strconv.FormatInt(t.Unix(), 10))
-								subMsg.Set(fd, value)
-								break
-							}
+					cellValue, ok := row[colPrefix+col]
+					if !ok {
+						panic(fmt.Sprintf("not found col: %v\n", colPrefix+col))
+					}
+					// layout := "2006-01-02T15:04:05.000Z"
+					layout := "2006-01-02 15:04:05"
+					t, err := time.Parse(layout, cellValue)
+					if err != nil {
+						panic(fmt.Sprintf("illegal timestamp string format: %v, err: %v\n", cellValue, err))
+					}
+					for i := 0; i < subMd.Fields().Len(); i++ {
+						fd := subMd.Fields().Get(i)
+						// fmt.Println("fd.FullName().Name(): ", fd.FullName().Name())
+						if fd.FullName().Name() == "seconds" {
+							value := getScalarFieldValue(fd, strconv.FormatInt(t.Unix(), 10))
+							subMsg.Set(fd, value)
+							break
 						}
 					}
 				case "google.protobuf.Duration":
-					{
-						cellValue, ok := row[colPrefix+col]
-						if !ok {
-							panic(fmt.Sprintf("not found col: %v\n", colPrefix+col))
-						}
-						for i := 0; i < subMd.Fields().Len(); i++ {
-							fd := subMd.Fields().Get(i)
-							// fmt.Println("fd.FullName().Name(): ", fd.FullName().Name())
-							if fd.FullName().Name() == "seconds" {
-								value := getScalarFieldValue(fd, cellValue)
-								subMsg.Set(fd, value)
-								break
-							}
+					cellValue, ok := row[colPrefix+col]
+					if !ok {
+						panic(fmt.Sprintf("not found col: %v\n", colPrefix+col))
+					}
+					for i := 0; i < subMd.Fields().Len(); i++ {
+						fd := subMd.Fields().Get(i)
+						// fmt.Println("fd.FullName().Name(): ", fd.FullName().Name())
+						if fd.FullName().Name() == "seconds" {
+							value := getScalarFieldValue(fd, cellValue)
+							subMsg.Set(fd, value)
+							break
 						}
 					}
 				default:
-					{
-						subPkg := subMd.ParentFile().Package()
-						if subPkg != tableauPackageName {
-							panic(fmt.Sprintf("unknown message %v in package %v", subMsgName, subPkg))
-						}
-						subMsg := msg.Mutable(fd).Message()
-						testParseFieldOptions(subMsg, row, depth+1, colPrefix+col)
+					subPkg := subMd.ParentFile().Package()
+					if subPkg != tableauPackageName {
+						panic(fmt.Sprintf("unknown message %v in package %v", subMsgName, subPkg))
 					}
+					subMsg := msg.Mutable(fd).Message()
+					testParseFieldOptions(subMsg, row, depth+1, colPrefix+col)
 				}
 			} else {
-				// pfd := fd.Parent()
-				// switch v := pfd.(type) {
-				// case protoreflect.FileDescriptor:
-				// 	fmt.Printf("FileDescriptor: %s\n", v.FullName())
-				// case protoreflect.MessageDescriptor:
-				// 	fmt.Printf("MessageDescriptor: %s\n", v.FullName())
-				// 	// pcol := proto.GetExtension(popts, testpb.E_Col).(string)
-				// 	// opts := v.Options().(*descriptorpb.MessageOptions)
-				// 	// worksheet := proto.GetExtension(opts, testpb.E_Worksheet).(string)
-				// 	// if workbookRootDir == "" {
-				// 	// 	pfd := v.(protoreflect.FieldDescriptor)
-				// 	// }
-
-				// default:
-				// 	fmt.Printf("I don't know about type %T!\n", v)
-				// }
-
 				cellValue, ok := row[colPrefix+col]
 				if ok {
 					value := getScalarFieldValue(fd, cellValue)
