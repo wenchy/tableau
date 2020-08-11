@@ -47,7 +47,7 @@ func ReadSheet(workbook string, worksheet string) *xlsx.Sheet {
 
 func exportSheet(sheet *xlsx.Sheet) {
 	fmt.Printf("MaxCol: %d, MaxRow: %d\n", sheet.MaxCol, sheet.MaxRow)
-	// row 0: metarow
+	// row 0: captrow
 	// row 1 - MaxRow: datarow
 	for nrow := 0; nrow < sheet.MaxRow; nrow++ {
 		for ncol := 0; ncol < sheet.MaxCol; ncol++ {
@@ -76,11 +76,20 @@ func TestParseMessageOptions(md protoreflect.MessageDescriptor) (string, string,
 	opts := md.Options().(*descriptorpb.MessageOptions)
 	msgFullName := string(md.FullName())
 	worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(string)
-	metarow := proto.GetExtension(opts, tableaupb.E_Metarow).(int32)
+	captrow := proto.GetExtension(opts, tableaupb.E_Captrow).(int32)
+	if captrow == 0 {
+		captrow = 1 // default
+	}
 	descrow := proto.GetExtension(opts, tableaupb.E_Descrow).(int32)
+	if descrow == 0 {
+		descrow = 1 // default
+	}
 	datarow := proto.GetExtension(opts, tableaupb.E_Datarow).(int32)
-	fmt.Printf("message:%s, worksheet:%s, metarow:%d, descrow:%d, datarow:%d\n", msgFullName, worksheet, metarow, descrow, datarow)
-	return msgFullName, worksheet, metarow, descrow, datarow
+	if datarow == 0 {
+		datarow = 2 // default
+	}
+	fmt.Printf("message:%s, worksheet:%s, captrow:%d, descrow:%d, datarow:%d\n", msgFullName, worksheet, captrow, descrow, datarow)
+	return msgFullName, worksheet, captrow, descrow, datarow
 }
 
 // TestParseFieldOptions is aimed to parse the options of all the fields of a protobuf message.

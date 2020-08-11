@@ -15,8 +15,8 @@ extend google.protobuf.FileOptions
 extend google.protobuf.MessageOptions
 {
     string worksheet = 52001;
-    int32 metarow = 52002; // [default = 1]; // exact row number of meta info of this tableau
-    int32 descrow = 52003; // [default = 1]; // exact row number of description of this tableau
+    int32 captrow = 52002; // [default = 1]; // exact row number of caption of the worksheet
+    int32 descrow = 52003; // [default = 1]; // exact row number of description of the wooksheet
     int32 datarow = 52004; // [default = 2]; // start row number of data
 
 	// string x_workbook = 52005;

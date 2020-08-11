@@ -62,7 +62,7 @@ func export(conf proto.Message) {
 	_, worksheet, _, _, _ := converter.TestParseMessageOptions(md)
 	fmt.Println("==================")
 	sheet := converter.ReadSheet(converter.WorkbookRootDir+workbook, worksheet)
-	// row 0: metarow
+	// row 0: captrow
 	// row 1 - MaxRow: datarow
 	for nrow := 0; nrow < sheet.MaxRow; nrow++ {
 		if nrow >= 1 {
@@ -182,10 +182,10 @@ func ParseFileOptions(fd protoreflect.FileDescriptor) {
 func ParseMessageOptions(md protoreflect.MessageDescriptor) {
 	opts := md.Options().(*descriptorpb.MessageOptions)
 	worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(string)
-	metarow := proto.GetExtension(opts, tableaupb.E_Metarow).(int32)
+	captrow := proto.GetExtension(opts, tableaupb.E_Captrow).(int32)
 	descrow := proto.GetExtension(opts, tableaupb.E_Descrow).(int32)
 	datarow := proto.GetExtension(opts, tableaupb.E_Datarow).(int32)
-	fmt.Printf("message:%s, worksheet:%s, metarow:%d, descrow:%d, datarow:%d\n", md.FullName(), worksheet, metarow, descrow, datarow)
+	fmt.Printf("message:%s, worksheet:%s, captrow:%d, descrow:%d, datarow:%d\n", md.FullName(), worksheet, captrow, descrow, datarow)
 }
 
 func getTabStr(depth int) string {
@@ -285,7 +285,7 @@ func parseItem() {
 	_, worksheet, _, _, _ := converter.TestParseMessageOptions(md)
 	fmt.Println("==================")
 	sheet := converter.ReadSheet(converter.WorkbookRootDir+workbook, worksheet)
-	// row 0: metarow
+	// row 0: captrow
 	// row 1 - MaxRow: datarow
 	for nrow := 0; nrow < sheet.MaxRow; nrow++ {
 		if nrow >= 1 {
