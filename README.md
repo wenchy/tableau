@@ -16,7 +16,10 @@ A powerful configuration convertion tool based on protobuf.
 
 ## TODO
 - [ ] Battle-tested of different languages: Golang, C#, Javascript/Typescript, C++ and so on.
-- [ ] Bidirectional conversion: **xlsx <-> json**.
+- [ ] Generate xlsx template by proto: **proto -> xlsx template**.
+- [ ] Generate proto by xlsx template: **proto -> xlsx template**.
+- [x] Convert xlsx to json: **xlsx <-> json**.
+- [ ] Convert json to xlsx: **json <-> xlsx**.
 - [ ] Merge of multi-level nested list, row direction
 - [ ] Merge of multi-level nested list, column direction
 - [x] Merge of multi-level nested map
