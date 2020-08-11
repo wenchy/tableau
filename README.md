@@ -17,8 +17,15 @@ A powerful configuration convertion tool based on protobuf.
 ## TODO
 - [ ] Battle-tested of different languages: Golang, C#, Javascript/Typescript, C++ and so on.
 - [ ] Bidirectional conversion: **xlsx <-> json**.
-- [ ] Merge of multilevel nested map
+- [ ] Merge of multi-level nested list, row direction
+- [ ] Merge of multi-level nested list, column direction
+- [x] Merge of multi-level nested map
+- [ ] Ordered Map
 - [ ] Merge of multiple workbooks or worksheets
+- [ ] Timezone of type Timestamp
+- [ ] Simple key-value configuration: flip worksheet 90° (degrees) to exchange row and column 
+- [x] In cell array
+- [] In cell map
 
 ## Types
 - Scalar

@@ -26,6 +26,18 @@ message ItemConf {
   message Attribute {
     int32 id = 1 [ (col) = "ID" ];
     int32 value = 2 [ (col) = "Value" ];
+    repeated Enhance enhance = 3 [ (col) = "强化" ];
+    map<int32, Cost> activity_map = 4 [ (key) = "类型" ];
+  }
+  message Enhance {
+    int32 id = 1 [ (col) = "ID" ];
+    string desc = 2 [ (col) = "描述" ];
+    repeated string tips = 3
+        [ (col) = "提示列表", (type) = FIELD_TYPE_CELL_ARRAY ];
+  }
+  message Cost {
+    int32 type = 1 [ (col) = "类型" ];
+    int32 count = 2 [ (col) = "数量" ];
   }
 }
 
@@ -46,9 +58,9 @@ message ActivityConf {
   message Row {
     int32 activity_id = 1 [ (col) = "活动ID" ];
     int32 chapter_id = 2 [ (col) = "章ID" ];
-    string chapter_desc = 3 [ (col) = "章描述" ];
+    // string chapter_desc = 3 [ (col) = "章描述" ];
     int32 section_id = 4 [ (col) = "节ID" ];
-    string section_desc = 5 [ (col) = "节描述" ];
+    // string section_desc = 5 [ (col) = "节描述" ];
     repeated Item items = 6 [ (col) = "奖励" ];
     google.protobuf.Timestamp begin_time = 7 [ (col) = "开始时间" ];
     google.protobuf.Timestamp end_time = 8 [ (col) = "结束时间" ];

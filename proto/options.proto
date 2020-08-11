@@ -53,13 +53,13 @@ enum FieldType
     FIELD_TYPE_TIME = 22; // format: "HH:mm:ss"
     FIELD_TYPE_DATETIME = 23; // format: "yyyy-MM-dd HH:mm:ss"
     // array in a cell:
-    // - the **item** must be **built-in** type
+    // - the array **item** must be **built-in** type
     // - format: ',' separated items
     FIELD_TYPE_CELL_ARRAY = 24;
     // map in a cell:
     // - both the **key** and **value** must be **built-in** type
     // - format: key-value pairs is separated by ',', and
-    //           key and value is separated by `:`
+    //           key and value is separated by ':'
     FIELD_TYPE_CELL_MAP = 25;
 
     // FIELD_TYPE_RICH_TEXT = 31;
@@ -74,8 +74,8 @@ extend google.protobuf.FieldOptions
     FieldType type = 53002; // [default = FIELD_TYPE_DEFAULT];
     string key = 53003;
     bool required = 53004; // [default = true];
-    string separator = 53005; // [default = ','];
-    string subseparator = 53006; // [default = ':'];
+    string sep = 53005; // [default = ',']; separator
+    string subsep = 53006; // [default = ':']; sub separator
 
     ////////////////////////////////////////////////////////////////////////
     // Simple validators below

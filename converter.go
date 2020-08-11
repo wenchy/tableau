@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/Wenchy/tableau/testpb"
@@ -35,11 +36,11 @@ func parseActivity() {
 					2: &testpb.ActivityConf_Chapter{
 						SectionMap: map[int32]*testpb.ActivityConf_Row{
 							3: &testpb.ActivityConf_Row{
-								ActivityId:  1,
-								ChapterId:   2,
-								ChapterDesc: "aha",
-								SectionId:   3,
-								SectionDesc: "aha",
+								ActivityId: 1,
+								ChapterId:  2,
+								// ChapterDesc: "aha",
+								SectionId: 3,
+								// SectionDesc: "aha",
 								Items: []*testpb.Item{
 									&testpb.Item{
 										Id:  1,
@@ -80,8 +81,8 @@ func parseActivity() {
 	out.WriteTo(os.Stdout)
 	fmt.Println()
 
-	desc := conf.ActivityMap[1].ChapterMap[2].SectionMap[3].ChapterDesc
-	fmt.Printf("desc: %s\n", desc)
+	desc := conf.ActivityMap[1].ChapterMap[2].SectionMap[3].ActivityId
+	fmt.Printf("desc: %v\n", desc)
 
 	md := conf.ProtoReflect().Descriptor()
 
@@ -304,10 +305,12 @@ func testParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 	md := msg.Descriptor()
 	opts := md.Options().(*descriptorpb.MessageOptions)
 	worksheet := proto.GetExtension(opts, testpb.E_Worksheet).(string)
-	fmt.Printf("%s// %s, '%s', %v, %v\n", getTabStr(depth), md.FullName(), worksheet, md.IsMapEntry(), colPrefix)
+	pkg := md.ParentFile().Package()
+	fmt.Printf("%s// %s, '%s', %v, %v, %v\n", getTabStr(depth), md.FullName(), worksheet, md.IsMapEntry(), colPrefix, pkg)
 	for i := 0; i < md.Fields().Len(); i++ {
 		fd := md.Fields().Get(i)
-		if fd.ParentFile().Package() != tableauPackageName {
+		if pkg != tableauPackageName && pkg != "google.protobuf" {
+			fmt.Printf("%s// no need to proces package: %v\n", getTabStr(depth), pkg)
 			return
 		}
 		msgName := ""
@@ -325,12 +328,12 @@ func testParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 		col := proto.GetExtension(opts, testpb.E_Col).(string)
 		etype := proto.GetExtension(opts, testpb.E_Type).(testpb.FieldType)
 		key := proto.GetExtension(opts, testpb.E_Key).(string)
-		separator := proto.GetExtension(opts, testpb.E_Separator).(string)
-		if separator == "" {
-			separator = ","
+		sep := proto.GetExtension(opts, testpb.E_Sep).(string)
+		if sep == "" {
+			sep = ","
 		}
-		fmt.Printf("%s%s(%v) %s(%s) %s = %d [(col) = \"%s\", (type) = %s, (key) = \"%s\", (separator) = \"%s\"];\n",
-			getTabStr(depth), fd.Cardinality().String(), fd.IsMap(), fd.Kind().String(), msgName, fd.FullName().Name(), fd.Number(), colPrefix+col, etype.String(), key, separator)
+		fmt.Printf("%s%s(%v) %s(%s) %s = %d [(col) = \"%s\", (type) = %s, (key) = \"%s\", (sep) = \"%s\"];\n",
+			getTabStr(depth), fd.Cardinality().String(), fd.IsMap(), fd.Kind().String(), msgName, fd.FullName().Name(), fd.Number(), colPrefix+col, etype.String(), key, sep)
 		// fmt.Println(fd.ContainingMessage().FullName())
 
 		// if fd.Cardinality() == protoreflect.Repeated && fd.Kind() == protoreflect.MessageKind {
@@ -341,16 +344,22 @@ func testParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 			keyFd := fd.MapKey()
 			valueFd := fd.MapValue()
 			reflectMap := msg.Mutable(fd).Map()
-			newValue := reflectMap.NewValue()
 			// newKey := protoreflect.ValueOf(int32(1)).MapKey()
 			// newKey := getScalarFieldValue(keyFd, "1111001").MapKey()
 			newKey := keyFd.Default().MapKey()
 			// TODO(wenchyzhu): need to add col prefix for recursion?
-			cellValue, ok := row[key]
+			cellValue, ok := row[colPrefix+key]
 			if ok {
 				newKey = getScalarFieldValue(keyFd, cellValue).MapKey()
 			} else {
-				panic(fmt.Sprintf("key not found: %s\n", key))
+				panic(fmt.Sprintf("key not found: %s\n", colPrefix+key))
+			}
+			var newValue protoreflect.Value
+			if reflectMap.Has(newKey) {
+				newValue = reflectMap.Mutable(newKey)
+			} else {
+				newValue = reflectMap.NewValue()
+				reflectMap.Set(newKey, newValue)
 			}
 			// check if newValue is message type
 			if valueFd.Kind() == protoreflect.MessageKind {
@@ -362,13 +371,12 @@ func testParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 					newValue = getScalarFieldValue(fd, cellValue)
 				}
 			}
-			reflectMap.Set(newKey, newValue)
 		} else if fd.IsList() {
 			// TODO(wenchyzhu): add new empty item
 			reflectList := msg.Mutable(fd).List()
 			if fd.Kind() == protoreflect.MessageKind {
 				listSize := getListSize(row, colPrefix+col)
-				fmt.Println("list size", listSize)
+				// fmt.Println("list size", listSize)
 				for i := 1; i <= listSize; i++ {
 					newElement := reflectList.NewElement()
 					subMsg := newElement.Message()
@@ -379,7 +387,7 @@ func testParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 				if etype == testpb.FieldType_FIELD_TYPE_CELL_ARRAY {
 					cellValue, ok := row[colPrefix+col]
 					if ok {
-						splits := strings.Split(cellValue, separator)
+						splits := strings.Split(cellValue, sep)
 						for _, v := range splits {
 							value := getScalarFieldValue(fd, v)
 							reflectList.Append(value)
@@ -396,7 +404,58 @@ func testParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 		} else {
 			if fd.Kind() == protoreflect.MessageKind {
 				subMsg := msg.Mutable(fd).Message()
-				testParseFieldOptions(subMsg, row, depth+1, colPrefix+col)
+				subMd := subMsg.Descriptor()
+				// fmt.Println("subMsg FullName: ", subMd.FullName())
+				subMsgName := subMd.FullName()
+				switch subMsgName {
+				case "google.protobuf.Timestamp":
+					{
+						cellValue, ok := row[colPrefix+col]
+						if !ok {
+							panic(fmt.Sprintf("not found col: %v\n", colPrefix+col))
+						}
+						// layout := "2006-01-02T15:04:05.000Z"
+						layout := "2006-01-02 15:04:05"
+						t, err := time.Parse(layout, cellValue)
+						if err != nil {
+							panic(fmt.Sprintf("illegal timestamp string format: %v, err: %v\n", cellValue, err))
+						}
+						for i := 0; i < subMd.Fields().Len(); i++ {
+							fd := subMd.Fields().Get(i)
+							// fmt.Println("fd.FullName().Name(): ", fd.FullName().Name())
+							if fd.FullName().Name() == "seconds" {
+								value := getScalarFieldValue(fd, strconv.FormatInt(t.Unix(), 10))
+								subMsg.Set(fd, value)
+								break
+							}
+						}
+					}
+				case "google.protobuf.Duration":
+					{
+						cellValue, ok := row[colPrefix+col]
+						if !ok {
+							panic(fmt.Sprintf("not found col: %v\n", colPrefix+col))
+						}
+						for i := 0; i < subMd.Fields().Len(); i++ {
+							fd := subMd.Fields().Get(i)
+							// fmt.Println("fd.FullName().Name(): ", fd.FullName().Name())
+							if fd.FullName().Name() == "seconds" {
+								value := getScalarFieldValue(fd, cellValue)
+								subMsg.Set(fd, value)
+								break
+							}
+						}
+					}
+				default:
+					{
+						subPkg := subMd.ParentFile().Package()
+						if subPkg != tableauPackageName {
+							panic(fmt.Sprintf("unknown message %v in package %v", subMsgName, subPkg))
+						}
+						subMsg := msg.Mutable(fd).Message()
+						testParseFieldOptions(subMsg, row, depth+1, colPrefix+col)
+					}
+				}
 			} else {
 				// pfd := fd.Parent()
 				// switch v := pfd.(type) {
@@ -419,6 +478,8 @@ func testParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 				if ok {
 					value := getScalarFieldValue(fd, cellValue)
 					msg.Set(fd, value)
+				} else {
+					panic(fmt.Sprintf("not found col: %v\n", colPrefix+col))
 				}
 			}
 		}
@@ -513,22 +574,23 @@ func getScalarFieldValue(fd protoreflect.FieldDescriptor, cellVal string) protor
 		return protoreflect.ValueOf(string(cellVal))
 	case protoreflect.BytesKind:
 		return protoreflect.ValueOf([]byte(cellVal))
-
-	case protoreflect.BoolKind:
-		panic(fmt.Sprintf("not supported key type: %s", fd.Kind().String()))
-		return protoreflect.Value{}
-	case protoreflect.EnumKind:
-		panic(fmt.Sprintf("not supported key type: %s", fd.Kind().String()))
-		return protoreflect.Value{}
-	case protoreflect.DoubleKind:
-		panic(fmt.Sprintf("not supported key type: %s", fd.Kind().String()))
-		return protoreflect.Value{}
-	case protoreflect.MessageKind:
-		panic(fmt.Sprintf("not supported key type: %s", fd.Kind().String()))
-		return protoreflect.Value{}
-	case protoreflect.GroupKind:
-		panic(fmt.Sprintf("not supported key type: %s", fd.Kind().String()))
-		return protoreflect.Value{}
+	default:
+		panic(fmt.Sprintf("not supported scalar type: %s", fd.Kind().String()))
+		// case protoreflect.BoolKind:
+		// 	panic(fmt.Sprintf("not supported key type: %s", fd.Kind().String()))
+		// 	return protoreflect.Value{}
+		// case protoreflect.EnumKind:
+		// 	panic(fmt.Sprintf("not supported key type: %s", fd.Kind().String()))
+		// 	return protoreflect.Value{}
+		// case protoreflect.DoubleKind:
+		// 	panic(fmt.Sprintf("not supported key type: %s", fd.Kind().String()))
+		// 	return protoreflect.Value{}
+		// case protoreflect.MessageKind:
+		// 	panic(fmt.Sprintf("not supported key type: %s", fd.Kind().String()))
+		// 	return protoreflect.Value{}
+		// case protoreflect.GroupKind:
+		// 	panic(fmt.Sprintf("not supported key type: %s", fd.Kind().String()))
+		// 	return protoreflect.Value{}
 	}
-	return protoreflect.Value{}
+	// return protoreflect.Value{}
 }

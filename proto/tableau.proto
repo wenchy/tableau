@@ -23,8 +23,8 @@ message MetaField
     string name = 3;
     string col = 4;
     bool required = 5; // [default = true];
-    string separator = 6; // [default = ','];
-    string subseparator = 7; // [default = ':'];
+    string sep = 6; // [default = ',']; separator
+    string subsep = 7; // [default = ':']; sub separator
 
     // valid if type is FIELD_TYPE_MESSSAGE
     repeated MetaField fields = 10;
