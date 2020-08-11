@@ -69,10 +69,10 @@ enum FieldType
 extend google.protobuf.FieldOptions
 {
     // NOTE(wenchyzhu): It's pity that something goes wrong with protoc.
-    //  - we cannot define an option's name as `name` when extend FieldOptions.
-    //  - protoc error: `Option field "(name)" is not a field or extension of message "FieldOptions".``
+    //  We cannot define an option's name as `name` when extend FieldOptions. Because protoc reports
+    //  an error: `Option field "(name)" is not a field or extension of message "FieldOptions".``
     
-    // column caption:
+    // column caption: the word `caption` is self-explanatory to denote the metarow.
     // It means `caption` if field's type is scalar,
     // or `caption prefix` if field's type is composite such as List and Map.
     string caption = 53001;

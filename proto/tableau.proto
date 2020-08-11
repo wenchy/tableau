@@ -33,7 +33,7 @@ message MetaField
     // Simple validators below
     ////////////////////////////////////////////////////////////////////////
     // Different meanings:
-    // repeated: size range of array
+    // repeated: size range of list or map
     // integer: value range
     // string: count of utf-8 code point
     int32 min = 20; // min value
