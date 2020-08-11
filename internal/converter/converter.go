@@ -22,7 +22,9 @@ import (
 )
 
 const tableauPackageName = "test"
-const workbookRootDir = "./testdata/"
+
+// WorkbookRootDir is root dir of workbooks.
+const WorkbookRootDir = "./testdata/"
 
 func parseActivity() {
 	// fmt.Println("Hello, world.")
@@ -161,7 +163,8 @@ func ParseFieldOptions(md protoreflect.MessageDescriptor, depth int) {
 	// })
 }
 
-func readSheet(workbook string, worksheet string) *xlsx.Sheet {
+// ReadSheet read a sheet from specified workbook.
+func ReadSheet(workbook string, worksheet string) *xlsx.Sheet {
 	// open an existing file
 	wb, err := xlsx.OpenFile(workbook)
 	if err != nil {
@@ -240,7 +243,7 @@ func parseItem() {
 	fmt.Println("==================")
 	_, worksheet, _, _, _ := TestParseMessageOptions(md)
 	fmt.Println("==================")
-	sheet := readSheet(workbookRootDir+workbook, worksheet)
+	sheet := ReadSheet(WorkbookRootDir+workbook, worksheet)
 	// row 0: metarow
 	// row 1 - MaxRow: datarow
 	for nrow := 0; nrow < sheet.MaxRow; nrow++ {

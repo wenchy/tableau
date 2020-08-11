@@ -58,7 +58,7 @@ func export(conf proto.Message) {
 	fmt.Println("==================")
 	_, worksheet, _, _, _ := converter.TestParseMessageOptions(md)
 	fmt.Println("==================")
-	sheet := readSheet(converter.workbookRootDir+workbook, worksheet)
+	sheet := converter.ReadSheet(converter.WorkbookRootDir+workbook, worksheet)
 	// row 0: metarow
 	// row 1 - MaxRow: datarow
 	for nrow := 0; nrow < sheet.MaxRow; nrow++ {
