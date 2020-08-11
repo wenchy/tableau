@@ -16,3 +16,4 @@
 .DS_Store
 tableau
 !github.com/Wenchy/tableau/ 
+vendor/*
