@@ -48,57 +48,10 @@ func main() {
 				fmt.Printf("message: %s, worksheet: %s\n", md.FullName(), worksheet)
 			}
 			newMsg := dynamicpb.NewMessage(md)
-			export(newMsg)
+			converter.Export(newMsg)
 		}
 		return true
 	})
-}
-
-func export(conf proto.Message) {
-	md := conf.ProtoReflect().Descriptor()
-	msg := conf.ProtoReflect()
-	_, workbook := converter.TestParseFileOptions(md.ParentFile())
-	fmt.Println("==================")
-	_, worksheet, _, _, _ := converter.TestParseMessageOptions(md)
-	fmt.Println("==================")
-	sheet := converter.ReadSheet(converter.WorkbookRootDir+workbook, worksheet)
-	// row 0: captrow
-	// row 1 - MaxRow: datarow
-	for nrow := 0; nrow < sheet.MaxRow; nrow++ {
-		if nrow >= 1 {
-			// row, err := sheet.Row(nrow)
-			// if err != nil {
-			// 	panic(err)
-			// }
-			kv := make(map[string]string)
-			for i := 0; i < sheet.MaxCol; i++ {
-				metaCell, err := sheet.Cell(0, i)
-				if err != nil {
-					panic(err)
-				}
-				key := metaCell.Value
-				dataCell, err := sheet.Cell(nrow, i)
-				if err != nil {
-					panic(err)
-				}
-				value := dataCell.Value
-				kv[key] = value
-			}
-			converter.TestParseFieldOptions(msg, kv, 0, "")
-		}
-		fmt.Println()
-	}
-	fmt.Println("==================")
-
-	output, err := protojson.Marshal(conf.ProtoReflect().Interface())
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("json: ", string(output))
-	var out bytes.Buffer
-	json.Indent(&out, output, "", "    ")
-	out.WriteTo(os.Stdout)
-	fmt.Println()
 }
 
 func parseActivity() {

@@ -1,8 +1,11 @@
 package converter
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"math"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -10,6 +13,7 @@ import (
 
 	"github.com/Wenchy/tableau/tableaupb"
 	"github.com/tealeg/xlsx/v3"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
@@ -19,6 +23,54 @@ const TableauPackageName = "test"
 
 // WorkbookRootDir is root dir of workbooks.
 const WorkbookRootDir = "./testdata/"
+
+// Export the conf message.
+func Export(conf proto.Message) {
+	md := conf.ProtoReflect().Descriptor()
+	msg := conf.ProtoReflect()
+	_, workbook := TestParseFileOptions(md.ParentFile())
+	fmt.Println("==================")
+	_, worksheet, _, _, _ := TestParseMessageOptions(md)
+	fmt.Println("==================")
+	sheet := ReadSheet(WorkbookRootDir+workbook, worksheet)
+	// row 0: captrow
+	// row 1 - MaxRow: datarow
+	for nrow := 0; nrow < sheet.MaxRow; nrow++ {
+		if nrow >= 1 {
+			// row, err := sheet.Row(nrow)
+			// if err != nil {
+			// 	panic(err)
+			// }
+			kv := make(map[string]string)
+			for i := 0; i < sheet.MaxCol; i++ {
+				metaCell, err := sheet.Cell(0, i)
+				if err != nil {
+					panic(err)
+				}
+				key := metaCell.Value
+				dataCell, err := sheet.Cell(nrow, i)
+				if err != nil {
+					panic(err)
+				}
+				value := dataCell.Value
+				kv[key] = value
+			}
+			TestParseFieldOptions(msg, kv, 0, "")
+		}
+		fmt.Println()
+	}
+	fmt.Println("==================")
+
+	output, err := protojson.Marshal(conf.ProtoReflect().Interface())
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("json: ", string(output))
+	var out bytes.Buffer
+	json.Indent(&out, output, "", "    ")
+	out.WriteTo(os.Stdout)
+	fmt.Println()
+}
 
 func getTabStr(depth int) string {
 	tab := ""
