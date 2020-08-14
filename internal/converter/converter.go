@@ -172,6 +172,7 @@ func TestParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 		caption := proto.GetExtension(opts, tableaupb.E_Caption).(string)
 		etype := proto.GetExtension(opts, tableaupb.E_Type).(tableaupb.FieldType)
 		key := proto.GetExtension(opts, tableaupb.E_Key).(string)
+		layout := proto.GetExtension(opts, tableaupb.E_Layout).(tableaupb.CompositeLayout)
 		sep := proto.GetExtension(opts, tableaupb.E_Sep).(string)
 		if sep == "" {
 			sep = ","
@@ -180,8 +181,8 @@ func TestParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 		if subsep == "" {
 			subsep = ":"
 		}
-		fmt.Printf("%s%s(%v) %s(%s) %s = %d [(caption) = \"%s\", (type) = %s, (key) = \"%s\", (sep) = \"%s\"];\n",
-			getTabStr(depth), fd.Cardinality().String(), fd.IsMap(), fd.Kind().String(), msgName, fd.FullName().Name(), fd.Number(), prefix+caption, etype.String(), key, sep)
+		fmt.Printf("%s%s(%v) %s(%s) %s = %d [(caption) = \"%s\", (type) = %s, (key) = \"%s\", (layout) = \"%s\", (sep) = \"%s\"];\n",
+			getTabStr(depth), fd.Cardinality().String(), fd.IsMap(), fd.Kind().String(), msgName, fd.FullName().Name(), fd.Number(), prefix+caption, etype.String(), layout.String(), key, sep)
 		// fmt.Println(fd.ContainingMessage().FullName())
 
 		// if fd.Cardinality() == protoreflect.Repeated && fd.Kind() == protoreflect.MessageKind {
@@ -242,13 +243,20 @@ func TestParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 		} else if fd.IsList() {
 			reflectList := msg.Mutable(fd).List()
 			if fd.Kind() == protoreflect.MessageKind {
-				listSize := getListSize(row, prefix+caption)
-				// fmt.Println("list size", listSize)
-				for i := 1; i <= listSize; i++ {
+				if layout == tableaupb.CompositeLayout_COMPOSITE_LAYOUT_VERTICAL {
 					newElement := reflectList.NewElement()
 					subMsg := newElement.Message()
-					TestParseFieldOptions(subMsg, row, depth+1, prefix+caption+strconv.Itoa(i))
+					TestParseFieldOptions(subMsg, row, depth+1, prefix+caption)
 					reflectList.Append(newElement)
+				} else {
+					listSize := getListSize(row, prefix+caption)
+					// fmt.Println("list size", listSize)
+					for i := 1; i <= listSize; i++ {
+						newElement := reflectList.NewElement()
+						subMsg := newElement.Message()
+						TestParseFieldOptions(subMsg, row, depth+1, prefix+caption+strconv.Itoa(i))
+						reflectList.Append(newElement)
+					}
 				}
 			} else {
 				if etype == tableaupb.FieldType_FIELD_TYPE_CELL_LIST {
@@ -279,9 +287,9 @@ func TestParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 					if !ok {
 						panic(fmt.Sprintf("not found column caption: %v\n", prefix+caption))
 					}
-					// layout := "2006-01-02T15:04:05.000Z"
-					layout := "2006-01-02 15:04:05"
-					t, err := time.Parse(layout, cellValue)
+					// format := "2006-01-02T15:04:05.000Z"
+					format := "2006-01-02 15:04:05"
+					t, err := time.Parse(format, cellValue)
 					if err != nil {
 						panic(fmt.Sprintf("illegal timestamp string format: %v, err: %v\n", cellValue, err))
 					}

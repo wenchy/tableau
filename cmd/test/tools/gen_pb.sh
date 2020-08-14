@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# set -eux
+set -e
+set -o pipefail
+
 output_dir="../"
 
 tableau_dir="../../../pkg/protobuf/"

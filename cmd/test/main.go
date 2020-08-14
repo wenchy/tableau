@@ -9,7 +9,6 @@ import (
 	"github.com/Wenchy/tableau/converter"
 	"github.com/Wenchy/tableau/tableaupb"
 	"github.com/Wenchy/tableau/testpb"
-	"github.com/golang/protobuf/ptypes/duration"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -54,6 +53,7 @@ func main() {
 	})
 }
 
+/*
 func parseActivity() {
 	// fmt.Println("Hello, world.")
 	// item := testpb.Item{}
@@ -123,7 +123,7 @@ func parseActivity() {
 	ParseFieldOptions(md, 0)
 	fmt.Println("==================")
 }
-
+*/
 // ParseFileOptions is aimed to parse the options of a protobuf definition file.
 func ParseFileOptions(fd protoreflect.FileDescriptor) {
 	opts := fd.Options().(*descriptorpb.FileOptions)

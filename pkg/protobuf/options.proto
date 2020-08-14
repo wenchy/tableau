@@ -22,6 +22,7 @@ extend google.protobuf.MessageOptions
 	// string x_workbook = 52005;
 }
 
+// type of the message field.
 enum FieldType
 {
     // auto deduced protobuf types
@@ -69,11 +70,19 @@ enum FieldType
     // FIELD_TYPE_JSON = 32;
 }
 
+// layout of composite types, such as list and map.
+enum CompositeLayout
+{
+    COMPOSITE_LAYOUT_DEFAULT = 0; // default direction: vertical for map, horizontal for list
+    COMPOSITE_LAYOUT_VERTICAL = 1; // vertical direction
+    COMPOSITE_LAYOUT_HORIZONTAL = 2; // horizontal direction
+}
+
 extend google.protobuf.FieldOptions
 {
     // NOTE(wenchyzhu): It's pity that something goes wrong with protoc.
-    //  We cannot define an option's name as `name` when extend FieldOptions. Because protoc reports
-    //  an error: `Option field "(name)" is not a field or extension of message "FieldOptions".``
+    // We cannot define an option's name as `name` when extend FieldOptions. Because protoc reports
+    // an error: `Option field "(name)" is not a field or extension of message "FieldOptions".``
     
     // column caption: the word `caption` is self-explanatory to denote the metarow.
     // It means `caption` if field's type is scalar,
@@ -82,13 +91,13 @@ extend google.protobuf.FieldOptions
     // tableau field type
     FieldType type = 53002; // [default = FIELD_TYPE_DEFAULT];
     string key = 53003;
-    bool required = 53004; // [default = true];
+    CompositeLayout layout = 53004; // [default = COMPOSITE_LAYOUT_DEFAULT];
     string sep = 53005; // [default = ',']; separator
     string subsep = 53006; // [default = ':']; sub separator
 
-    ////////////////////////////////////////////////////////////////////////
-    // Simple validators below
-    ////////////////////////////////////////////////////////////////////////
+    /////////////////////////////
+    // Simple Validators Below //
+    /////////////////////////////
     // Different meanings:
     // repeated: size range of array
     // integer: value range
