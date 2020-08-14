@@ -1,16 +1,11 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/Wenchy/tableau/converter"
 	"github.com/Wenchy/tableau/tableaupb"
-	"github.com/Wenchy/tableau/testpb"
-	"github.com/golang/protobuf/ptypes/timestamp"
-	"google.golang.org/protobuf/encoding/protojson"
+	_ "github.com/Wenchy/tableau/testpb"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
@@ -29,7 +24,7 @@ func main() {
 	// })
 	fmt.Println("====================")
 	protoregistry.GlobalFiles.RangeFilesByPackage(protoreflect.FullName("test"), func(fd protoreflect.FileDescriptor) bool {
-		// fmt.Printf("filepath: %s\n", fd.Path())
+		fmt.Printf("filepath: %s\n", fd.Path())
 		opts := fd.Options().(*descriptorpb.FileOptions)
 		workbook := proto.GetExtension(opts, tableaupb.E_Workbook).(string)
 		if workbook == "" {
@@ -123,7 +118,6 @@ func parseActivity() {
 	ParseFieldOptions(md, 0)
 	fmt.Println("==================")
 }
-*/
 // ParseFileOptions is aimed to parse the options of a protobuf definition file.
 func ParseFileOptions(fd protoreflect.FileDescriptor) {
 	opts := fd.Options().(*descriptorpb.FileOptions)
@@ -275,3 +269,4 @@ func parseItem() {
 	out.WriteTo(os.Stdout)
 	fmt.Println()
 }
+*/

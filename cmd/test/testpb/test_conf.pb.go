@@ -122,6 +122,109 @@ func (x *ActivityConf) GetActivityMap() map[int32]*ActivityConf_Activity {
 	return nil
 }
 
+type EnvConf struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	WorldId       int32           `protobuf:"varint,1,opt,name=world_id,json=worldId,proto3" json:"world_id,omitempty"`
+	ZoneId        int32           `protobuf:"varint,2,opt,name=zone_id,json=zoneId,proto3" json:"zone_id,omitempty"`
+	PlatformType  int32           `protobuf:"varint,3,opt,name=platform_type,json=platformType,proto3" json:"platform_type,omitempty"`
+	Name          string          `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	NewbieItemMap map[int32]int32 `protobuf:"bytes,5,rep,name=newbie_item_map,json=newbieItemMap,proto3" json:"newbie_item_map,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3"`
+	Basic         *EnvConf_Basic  `protobuf:"bytes,6,opt,name=basic,proto3" json:"basic,omitempty"`
+	Ratio         float32         `protobuf:"fixed32,7,opt,name=ratio,proto3" json:"ratio,omitempty"`
+	Coefficent    float64         `protobuf:"fixed64,8,opt,name=coefficent,proto3" json:"coefficent,omitempty"`
+}
+
+func (x *EnvConf) Reset() {
+	*x = EnvConf{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_test_conf_proto_msgTypes[2]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *EnvConf) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EnvConf) ProtoMessage() {}
+
+func (x *EnvConf) ProtoReflect() protoreflect.Message {
+	mi := &file_test_conf_proto_msgTypes[2]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EnvConf.ProtoReflect.Descriptor instead.
+func (*EnvConf) Descriptor() ([]byte, []int) {
+	return file_test_conf_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *EnvConf) GetWorldId() int32 {
+	if x != nil {
+		return x.WorldId
+	}
+	return 0
+}
+
+func (x *EnvConf) GetZoneId() int32 {
+	if x != nil {
+		return x.ZoneId
+	}
+	return 0
+}
+
+func (x *EnvConf) GetPlatformType() int32 {
+	if x != nil {
+		return x.PlatformType
+	}
+	return 0
+}
+
+func (x *EnvConf) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *EnvConf) GetNewbieItemMap() map[int32]int32 {
+	if x != nil {
+		return x.NewbieItemMap
+	}
+	return nil
+}
+
+func (x *EnvConf) GetBasic() *EnvConf_Basic {
+	if x != nil {
+		return x.Basic
+	}
+	return nil
+}
+
+func (x *EnvConf) GetRatio() float32 {
+	if x != nil {
+		return x.Ratio
+	}
+	return 0
+}
+
+func (x *EnvConf) GetCoefficent() float64 {
+	if x != nil {
+		return x.Coefficent
+	}
+	return 0
+}
+
 type ItemConf_Row struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -140,7 +243,7 @@ type ItemConf_Row struct {
 func (x *ItemConf_Row) Reset() {
 	*x = ItemConf_Row{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_test_conf_proto_msgTypes[3]
+		mi := &file_test_conf_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -153,7 +256,7 @@ func (x *ItemConf_Row) String() string {
 func (*ItemConf_Row) ProtoMessage() {}
 
 func (x *ItemConf_Row) ProtoReflect() protoreflect.Message {
-	mi := &file_test_conf_proto_msgTypes[3]
+	mi := &file_test_conf_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -239,7 +342,7 @@ type ItemConf_Attribute struct {
 func (x *ItemConf_Attribute) Reset() {
 	*x = ItemConf_Attribute{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_test_conf_proto_msgTypes[4]
+		mi := &file_test_conf_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -252,7 +355,7 @@ func (x *ItemConf_Attribute) String() string {
 func (*ItemConf_Attribute) ProtoMessage() {}
 
 func (x *ItemConf_Attribute) ProtoReflect() protoreflect.Message {
-	mi := &file_test_conf_proto_msgTypes[4]
+	mi := &file_test_conf_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -309,7 +412,7 @@ type ItemConf_Enhancement struct {
 func (x *ItemConf_Enhancement) Reset() {
 	*x = ItemConf_Enhancement{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_test_conf_proto_msgTypes[5]
+		mi := &file_test_conf_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -322,7 +425,7 @@ func (x *ItemConf_Enhancement) String() string {
 func (*ItemConf_Enhancement) ProtoMessage() {}
 
 func (x *ItemConf_Enhancement) ProtoReflect() protoreflect.Message {
-	mi := &file_test_conf_proto_msgTypes[5]
+	mi := &file_test_conf_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -371,7 +474,7 @@ type ItemConf_Cost struct {
 func (x *ItemConf_Cost) Reset() {
 	*x = ItemConf_Cost{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_test_conf_proto_msgTypes[6]
+		mi := &file_test_conf_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -384,7 +487,7 @@ func (x *ItemConf_Cost) String() string {
 func (*ItemConf_Cost) ProtoMessage() {}
 
 func (x *ItemConf_Cost) ProtoReflect() protoreflect.Message {
-	mi := &file_test_conf_proto_msgTypes[6]
+	mi := &file_test_conf_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -426,7 +529,7 @@ type ActivityConf_Activity struct {
 func (x *ActivityConf_Activity) Reset() {
 	*x = ActivityConf_Activity{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_test_conf_proto_msgTypes[10]
+		mi := &file_test_conf_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -439,7 +542,7 @@ func (x *ActivityConf_Activity) String() string {
 func (*ActivityConf_Activity) ProtoMessage() {}
 
 func (x *ActivityConf_Activity) ProtoReflect() protoreflect.Message {
-	mi := &file_test_conf_proto_msgTypes[10]
+	mi := &file_test_conf_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -482,7 +585,7 @@ type ActivityConf_Chapter struct {
 func (x *ActivityConf_Chapter) Reset() {
 	*x = ActivityConf_Chapter{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_test_conf_proto_msgTypes[11]
+		mi := &file_test_conf_proto_msgTypes[12]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -495,7 +598,7 @@ func (x *ActivityConf_Chapter) String() string {
 func (*ActivityConf_Chapter) ProtoMessage() {}
 
 func (x *ActivityConf_Chapter) ProtoReflect() protoreflect.Message {
-	mi := &file_test_conf_proto_msgTypes[11]
+	mi := &file_test_conf_proto_msgTypes[12]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -548,7 +651,7 @@ type ActivityConf_Section struct {
 func (x *ActivityConf_Section) Reset() {
 	*x = ActivityConf_Section{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_test_conf_proto_msgTypes[12]
+		mi := &file_test_conf_proto_msgTypes[13]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -561,7 +664,7 @@ func (x *ActivityConf_Section) String() string {
 func (*ActivityConf_Section) ProtoMessage() {}
 
 func (x *ActivityConf_Section) ProtoReflect() protoreflect.Message {
-	mi := &file_test_conf_proto_msgTypes[12]
+	mi := &file_test_conf_proto_msgTypes[13]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -617,6 +720,77 @@ func (x *ActivityConf_Section) GetDuration() *duration.Duration {
 		return x.Duration
 	}
 	return nil
+}
+
+type EnvConf_Basic struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Count    int32  `protobuf:"varint,1,opt,name=count,proto3" json:"count,omitempty"`
+	Title    string `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	Content  string `protobuf:"bytes,3,opt,name=content,proto3" json:"content,omitempty"`
+	Valuable bool   `protobuf:"varint,4,opt,name=valuable,proto3" json:"valuable,omitempty"`
+}
+
+func (x *EnvConf_Basic) Reset() {
+	*x = EnvConf_Basic{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_test_conf_proto_msgTypes[16]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *EnvConf_Basic) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EnvConf_Basic) ProtoMessage() {}
+
+func (x *EnvConf_Basic) ProtoReflect() protoreflect.Message {
+	mi := &file_test_conf_proto_msgTypes[16]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EnvConf_Basic.ProtoReflect.Descriptor instead.
+func (*EnvConf_Basic) Descriptor() ([]byte, []int) {
+	return file_test_conf_proto_rawDescGZIP(), []int{2, 1}
+}
+
+func (x *EnvConf_Basic) GetCount() int32 {
+	if x != nil {
+		return x.Count
+	}
+	return 0
+}
+
+func (x *EnvConf_Basic) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *EnvConf_Basic) GetContent() string {
+	if x != nil {
+		return x.Content
+	}
+	return ""
+}
+
+func (x *EnvConf_Basic) GetValuable() bool {
+	if x != nil {
+		return x.Valuable
+	}
+	return false
 }
 
 var File_test_conf_proto protoreflect.FileDescriptor
@@ -757,11 +931,49 @@ var file_test_conf_proto_rawDesc = []byte{
 	0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x44, 0x75, 0x72, 0x61, 0x74,
 	0x69, 0x6f, 0x6e, 0x42, 0x10, 0xca, 0xf0, 0x19, 0x0c, 0xe6, 0x8c, 0x81, 0xe7, 0xbb, 0xad, 0xe5,
 	0xa4, 0x9a, 0xe4, 0xb9, 0x85, 0x52, 0x08, 0x64, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x3a,
-	0x0c, 0x8a, 0xb2, 0x19, 0x08, 0x41, 0x63, 0x74, 0x69, 0x76, 0x69, 0x74, 0x79, 0x42, 0x36, 0x5a,
-	0x27, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x57, 0x65, 0x6e, 0x63,
-	0x68, 0x79, 0x2f, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x61, 0x75, 0x2f, 0x74, 0x65, 0x73, 0x74, 0x70,
-	0x62, 0x3b, 0x74, 0x65, 0x73, 0x74, 0x70, 0x62, 0xca, 0xf3, 0x18, 0x09, 0x54, 0x65, 0x73, 0x74,
-	0x2e, 0x78, 0x6c, 0x73, 0x78, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x0c, 0x8a, 0xb2, 0x19, 0x08, 0x41, 0x63, 0x74, 0x69, 0x76, 0x69, 0x74, 0x79, 0x22, 0xd9, 0x04,
+	0x0a, 0x07, 0x45, 0x6e, 0x76, 0x43, 0x6f, 0x6e, 0x66, 0x12, 0x26, 0x0a, 0x08, 0x77, 0x6f, 0x72,
+	0x6c, 0x64, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x05, 0x42, 0x0b, 0xca, 0xf0, 0x19,
+	0x07, 0x57, 0x6f, 0x72, 0x6c, 0x64, 0x49, 0x44, 0x52, 0x07, 0x77, 0x6f, 0x72, 0x6c, 0x64, 0x49,
+	0x64, 0x12, 0x23, 0x0a, 0x07, 0x7a, 0x6f, 0x6e, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01,
+	0x28, 0x05, 0x42, 0x0a, 0xca, 0xf0, 0x19, 0x06, 0x5a, 0x6f, 0x6e, 0x65, 0x49, 0x44, 0x52, 0x06,
+	0x7a, 0x6f, 0x6e, 0x65, 0x49, 0x64, 0x12, 0x35, 0x0a, 0x0d, 0x70, 0x6c, 0x61, 0x74, 0x66, 0x6f,
+	0x72, 0x6d, 0x5f, 0x74, 0x79, 0x70, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x05, 0x42, 0x10, 0xca,
+	0xf0, 0x19, 0x0c, 0x50, 0x6c, 0x61, 0x74, 0x66, 0x6f, 0x72, 0x6d, 0x54, 0x79, 0x70, 0x65, 0x52,
+	0x0c, 0x70, 0x6c, 0x61, 0x74, 0x66, 0x6f, 0x72, 0x6d, 0x54, 0x79, 0x70, 0x65, 0x12, 0x1e, 0x0a,
+	0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x42, 0x0a, 0xca, 0xf0, 0x19,
+	0x06, 0xe5, 0x90, 0x8d, 0xe5, 0xad, 0x97, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x61, 0x0a,
+	0x0f, 0x6e, 0x65, 0x77, 0x62, 0x69, 0x65, 0x5f, 0x69, 0x74, 0x65, 0x6d, 0x5f, 0x6d, 0x61, 0x70,
+	0x18, 0x05, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x20, 0x2e, 0x74, 0x65, 0x73, 0x74, 0x2e, 0x45, 0x6e,
+	0x76, 0x43, 0x6f, 0x6e, 0x66, 0x2e, 0x4e, 0x65, 0x77, 0x62, 0x69, 0x65, 0x49, 0x74, 0x65, 0x6d,
+	0x4d, 0x61, 0x70, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x42, 0x17, 0xca, 0xf0, 0x19, 0x0f, 0xe8, 0xb5,
+	0xa0, 0xe9, 0x80, 0x81, 0xe7, 0x9a, 0x84, 0xe9, 0x81, 0x93, 0xe5, 0x85, 0xb7, 0xd0, 0xf0, 0x19,
+	0x19, 0x52, 0x0d, 0x6e, 0x65, 0x77, 0x62, 0x69, 0x65, 0x49, 0x74, 0x65, 0x6d, 0x4d, 0x61, 0x70,
+	0x12, 0x3f, 0x0a, 0x05, 0x62, 0x61, 0x73, 0x69, 0x63, 0x18, 0x06, 0x20, 0x01, 0x28, 0x0b, 0x32,
+	0x13, 0x2e, 0x74, 0x65, 0x73, 0x74, 0x2e, 0x45, 0x6e, 0x76, 0x43, 0x6f, 0x6e, 0x66, 0x2e, 0x42,
+	0x61, 0x73, 0x69, 0x63, 0x42, 0x14, 0xca, 0xf0, 0x19, 0x0c, 0xe5, 0x9f, 0xba, 0xe6, 0x9c, 0xac,
+	0xe4, 0xbf, 0xa1, 0xe6, 0x81, 0xaf, 0xd0, 0xf0, 0x19, 0x1a, 0x52, 0x05, 0x62, 0x61, 0x73, 0x69,
+	0x63, 0x12, 0x20, 0x0a, 0x05, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x18, 0x07, 0x20, 0x01, 0x28, 0x02,
+	0x42, 0x0a, 0xca, 0xf0, 0x19, 0x06, 0xe6, 0xaf, 0x94, 0xe4, 0xbe, 0x8b, 0x52, 0x05, 0x72, 0x61,
+	0x74, 0x69, 0x6f, 0x12, 0x2a, 0x0a, 0x0a, 0x63, 0x6f, 0x65, 0x66, 0x66, 0x69, 0x63, 0x65, 0x6e,
+	0x74, 0x18, 0x08, 0x20, 0x01, 0x28, 0x01, 0x42, 0x0a, 0xca, 0xf0, 0x19, 0x06, 0xe7, 0xb3, 0xbb,
+	0xe6, 0x95, 0xb0, 0x52, 0x0a, 0x63, 0x6f, 0x65, 0x66, 0x66, 0x69, 0x63, 0x65, 0x6e, 0x74, 0x1a,
+	0x40, 0x0a, 0x12, 0x4e, 0x65, 0x77, 0x62, 0x69, 0x65, 0x49, 0x74, 0x65, 0x6d, 0x4d, 0x61, 0x70,
+	0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x05, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65,
+	0x18, 0x02, 0x20, 0x01, 0x28, 0x05, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38,
+	0x01, 0x1a, 0x69, 0x0a, 0x05, 0x42, 0x61, 0x73, 0x69, 0x63, 0x12, 0x14, 0x0a, 0x05, 0x63, 0x6f,
+	0x75, 0x6e, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x05, 0x52, 0x05, 0x63, 0x6f, 0x75, 0x6e, 0x74,
+	0x12, 0x14, 0x0a, 0x05, 0x74, 0x69, 0x74, 0x6c, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x05, 0x74, 0x69, 0x74, 0x6c, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e,
+	0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74,
+	0x12, 0x1a, 0x0a, 0x08, 0x76, 0x61, 0x6c, 0x75, 0x61, 0x62, 0x6c, 0x65, 0x18, 0x04, 0x20, 0x01,
+	0x28, 0x08, 0x52, 0x08, 0x76, 0x61, 0x6c, 0x75, 0x61, 0x62, 0x6c, 0x65, 0x3a, 0x0b, 0x8a, 0xb2,
+	0x19, 0x03, 0x45, 0x6e, 0x76, 0xa8, 0xb2, 0x19, 0x01, 0x42, 0x36, 0x5a, 0x27, 0x67, 0x69, 0x74,
+	0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x57, 0x65, 0x6e, 0x63, 0x68, 0x79, 0x2f, 0x74,
+	0x61, 0x62, 0x6c, 0x65, 0x61, 0x75, 0x2f, 0x74, 0x65, 0x73, 0x74, 0x70, 0x62, 0x3b, 0x74, 0x65,
+	0x73, 0x74, 0x70, 0x62, 0xca, 0xf3, 0x18, 0x09, 0x54, 0x65, 0x73, 0x74, 0x2e, 0x78, 0x6c, 0x73,
+	0x78, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -776,49 +988,54 @@ func file_test_conf_proto_rawDescGZIP() []byte {
 	return file_test_conf_proto_rawDescData
 }
 
-var file_test_conf_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_test_conf_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_test_conf_proto_goTypes = []interface{}{
 	(*ItemConf)(nil),              // 0: test.ItemConf
 	(*ActivityConf)(nil),          // 1: test.ActivityConf
-	nil,                           // 2: test.ItemConf.ItemMapEntry
-	(*ItemConf_Row)(nil),          // 3: test.ItemConf.Row
-	(*ItemConf_Attribute)(nil),    // 4: test.ItemConf.Attribute
-	(*ItemConf_Enhancement)(nil),  // 5: test.ItemConf.Enhancement
-	(*ItemConf_Cost)(nil),         // 6: test.ItemConf.Cost
-	nil,                           // 7: test.ItemConf.Row.SaleMapEntry
-	nil,                           // 8: test.ItemConf.Attribute.CostMapEntry
-	nil,                           // 9: test.ActivityConf.ActivityMapEntry
-	(*ActivityConf_Activity)(nil), // 10: test.ActivityConf.Activity
-	(*ActivityConf_Chapter)(nil),  // 11: test.ActivityConf.Chapter
-	(*ActivityConf_Section)(nil),  // 12: test.ActivityConf.Section
-	nil,                           // 13: test.ActivityConf.Activity.ChapterMapEntry
-	(*timestamp.Timestamp)(nil),   // 14: google.protobuf.Timestamp
-	(*Item)(nil),                  // 15: test.Item
-	(*duration.Duration)(nil),     // 16: google.protobuf.Duration
+	(*EnvConf)(nil),               // 2: test.EnvConf
+	nil,                           // 3: test.ItemConf.ItemMapEntry
+	(*ItemConf_Row)(nil),          // 4: test.ItemConf.Row
+	(*ItemConf_Attribute)(nil),    // 5: test.ItemConf.Attribute
+	(*ItemConf_Enhancement)(nil),  // 6: test.ItemConf.Enhancement
+	(*ItemConf_Cost)(nil),         // 7: test.ItemConf.Cost
+	nil,                           // 8: test.ItemConf.Row.SaleMapEntry
+	nil,                           // 9: test.ItemConf.Attribute.CostMapEntry
+	nil,                           // 10: test.ActivityConf.ActivityMapEntry
+	(*ActivityConf_Activity)(nil), // 11: test.ActivityConf.Activity
+	(*ActivityConf_Chapter)(nil),  // 12: test.ActivityConf.Chapter
+	(*ActivityConf_Section)(nil),  // 13: test.ActivityConf.Section
+	nil,                           // 14: test.ActivityConf.Activity.ChapterMapEntry
+	nil,                           // 15: test.EnvConf.NewbieItemMapEntry
+	(*EnvConf_Basic)(nil),         // 16: test.EnvConf.Basic
+	(*timestamp.Timestamp)(nil),   // 17: google.protobuf.Timestamp
+	(*Item)(nil),                  // 18: test.Item
+	(*duration.Duration)(nil),     // 19: google.protobuf.Duration
 }
 var file_test_conf_proto_depIdxs = []int32{
-	2,  // 0: test.ItemConf.item_map:type_name -> test.ItemConf.ItemMapEntry
-	9,  // 1: test.ActivityConf.activity_map:type_name -> test.ActivityConf.ActivityMapEntry
-	3,  // 2: test.ItemConf.ItemMapEntry.value:type_name -> test.ItemConf.Row
-	4,  // 3: test.ItemConf.Row.attributes:type_name -> test.ItemConf.Attribute
-	7,  // 4: test.ItemConf.Row.sale_map:type_name -> test.ItemConf.Row.SaleMapEntry
-	14, // 5: test.ItemConf.Row.expiry_time:type_name -> google.protobuf.Timestamp
-	5,  // 6: test.ItemConf.Attribute.enhancements:type_name -> test.ItemConf.Enhancement
-	8,  // 7: test.ItemConf.Attribute.cost_map:type_name -> test.ItemConf.Attribute.CostMapEntry
-	6,  // 8: test.ItemConf.Attribute.CostMapEntry.value:type_name -> test.ItemConf.Cost
-	10, // 9: test.ActivityConf.ActivityMapEntry.value:type_name -> test.ActivityConf.Activity
-	13, // 10: test.ActivityConf.Activity.chapter_map:type_name -> test.ActivityConf.Activity.ChapterMapEntry
-	12, // 11: test.ActivityConf.Chapter.sections:type_name -> test.ActivityConf.Section
-	15, // 12: test.ActivityConf.Section.items:type_name -> test.Item
-	14, // 13: test.ActivityConf.Section.begin_time:type_name -> google.protobuf.Timestamp
-	14, // 14: test.ActivityConf.Section.end_time:type_name -> google.protobuf.Timestamp
-	16, // 15: test.ActivityConf.Section.duration:type_name -> google.protobuf.Duration
-	11, // 16: test.ActivityConf.Activity.ChapterMapEntry.value:type_name -> test.ActivityConf.Chapter
-	17, // [17:17] is the sub-list for method output_type
-	17, // [17:17] is the sub-list for method input_type
-	17, // [17:17] is the sub-list for extension type_name
-	17, // [17:17] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	3,  // 0: test.ItemConf.item_map:type_name -> test.ItemConf.ItemMapEntry
+	10, // 1: test.ActivityConf.activity_map:type_name -> test.ActivityConf.ActivityMapEntry
+	15, // 2: test.EnvConf.newbie_item_map:type_name -> test.EnvConf.NewbieItemMapEntry
+	16, // 3: test.EnvConf.basic:type_name -> test.EnvConf.Basic
+	4,  // 4: test.ItemConf.ItemMapEntry.value:type_name -> test.ItemConf.Row
+	5,  // 5: test.ItemConf.Row.attributes:type_name -> test.ItemConf.Attribute
+	8,  // 6: test.ItemConf.Row.sale_map:type_name -> test.ItemConf.Row.SaleMapEntry
+	17, // 7: test.ItemConf.Row.expiry_time:type_name -> google.protobuf.Timestamp
+	6,  // 8: test.ItemConf.Attribute.enhancements:type_name -> test.ItemConf.Enhancement
+	9,  // 9: test.ItemConf.Attribute.cost_map:type_name -> test.ItemConf.Attribute.CostMapEntry
+	7,  // 10: test.ItemConf.Attribute.CostMapEntry.value:type_name -> test.ItemConf.Cost
+	11, // 11: test.ActivityConf.ActivityMapEntry.value:type_name -> test.ActivityConf.Activity
+	14, // 12: test.ActivityConf.Activity.chapter_map:type_name -> test.ActivityConf.Activity.ChapterMapEntry
+	13, // 13: test.ActivityConf.Chapter.sections:type_name -> test.ActivityConf.Section
+	18, // 14: test.ActivityConf.Section.items:type_name -> test.Item
+	17, // 15: test.ActivityConf.Section.begin_time:type_name -> google.protobuf.Timestamp
+	17, // 16: test.ActivityConf.Section.end_time:type_name -> google.protobuf.Timestamp
+	19, // 17: test.ActivityConf.Section.duration:type_name -> google.protobuf.Duration
+	12, // 18: test.ActivityConf.Activity.ChapterMapEntry.value:type_name -> test.ActivityConf.Chapter
+	19, // [19:19] is the sub-list for method output_type
+	19, // [19:19] is the sub-list for method input_type
+	19, // [19:19] is the sub-list for extension type_name
+	19, // [19:19] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_test_conf_proto_init() }
@@ -852,8 +1069,8 @@ func file_test_conf_proto_init() {
 				return nil
 			}
 		}
-		file_test_conf_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ItemConf_Row); i {
+		file_test_conf_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*EnvConf); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -865,7 +1082,7 @@ func file_test_conf_proto_init() {
 			}
 		}
 		file_test_conf_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ItemConf_Attribute); i {
+			switch v := v.(*ItemConf_Row); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -877,7 +1094,7 @@ func file_test_conf_proto_init() {
 			}
 		}
 		file_test_conf_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ItemConf_Enhancement); i {
+			switch v := v.(*ItemConf_Attribute); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -889,6 +1106,18 @@ func file_test_conf_proto_init() {
 			}
 		}
 		file_test_conf_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ItemConf_Enhancement); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_test_conf_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ItemConf_Cost); i {
 			case 0:
 				return &v.state
@@ -900,7 +1129,7 @@ func file_test_conf_proto_init() {
 				return nil
 			}
 		}
-		file_test_conf_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
+		file_test_conf_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ActivityConf_Activity); i {
 			case 0:
 				return &v.state
@@ -912,7 +1141,7 @@ func file_test_conf_proto_init() {
 				return nil
 			}
 		}
-		file_test_conf_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
+		file_test_conf_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ActivityConf_Chapter); i {
 			case 0:
 				return &v.state
@@ -924,8 +1153,20 @@ func file_test_conf_proto_init() {
 				return nil
 			}
 		}
-		file_test_conf_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
+		file_test_conf_proto_msgTypes[13].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ActivityConf_Section); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_test_conf_proto_msgTypes[16].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*EnvConf_Basic); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -943,7 +1184,7 @@ func file_test_conf_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_test_conf_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   14,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

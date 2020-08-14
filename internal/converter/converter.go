@@ -30,34 +30,64 @@ func Export(conf proto.Message) {
 	msg := conf.ProtoReflect()
 	_, workbook := TestParseFileOptions(md.ParentFile())
 	fmt.Println("==================")
-	_, worksheet, _, _, _ := TestParseMessageOptions(md)
+	_, worksheet, _, _, _, transpose := TestParseMessageOptions(md)
 	fmt.Println("==================")
 	sheet := ReadSheet(WorkbookRootDir+workbook, worksheet)
-	// row 0: captrow
-	// row 1 - MaxRow: datarow
-	for nrow := 0; nrow < sheet.MaxRow; nrow++ {
-		if nrow >= 1 {
-			// row, err := sheet.Row(nrow)
-			// if err != nil {
-			// 	panic(err)
-			// }
-			kv := make(map[string]string)
-			for i := 0; i < sheet.MaxCol; i++ {
-				metaCell, err := sheet.Cell(0, i)
-				if err != nil {
-					panic(err)
+	if transpose {
+		// col 0: captrow
+		// col 1 - MaxRow: datarow
+		for ncol := 0; ncol < sheet.MaxCol; ncol++ {
+			if ncol >= 1 {
+				// row, err := sheet.Row(nrow)
+				// if err != nil {
+				// 	panic(err)
+				// }
+				kv := make(map[string]string)
+				for i := 0; i < sheet.MaxRow; i++ {
+					captionCell, err := sheet.Cell(i, 0)
+					if err != nil {
+						panic(err)
+					}
+					key := captionCell.Value
+					dataCell, err := sheet.Cell(i, ncol)
+					if err != nil {
+						panic(err)
+					}
+					value := dataCell.Value
+					kv[key] = value
 				}
-				key := metaCell.Value
-				dataCell, err := sheet.Cell(nrow, i)
-				if err != nil {
-					panic(err)
-				}
-				value := dataCell.Value
-				kv[key] = value
+				TestParseFieldOptions(msg, kv, 0, "")
 			}
-			TestParseFieldOptions(msg, kv, 0, "")
+			fmt.Println()
 		}
-		fmt.Println()
+
+	} else {
+		// row 0: captrow
+		// row 1 - MaxRow: datarow
+		for nrow := 0; nrow < sheet.MaxRow; nrow++ {
+			if nrow >= 1 {
+				// row, err := sheet.Row(nrow)
+				// if err != nil {
+				// 	panic(err)
+				// }
+				kv := make(map[string]string)
+				for i := 0; i < sheet.MaxCol; i++ {
+					captionCell, err := sheet.Cell(0, i)
+					if err != nil {
+						panic(err)
+					}
+					key := captionCell.Value
+					dataCell, err := sheet.Cell(nrow, i)
+					if err != nil {
+						panic(err)
+					}
+					value := dataCell.Value
+					kv[key] = value
+				}
+				TestParseFieldOptions(msg, kv, 0, "")
+			}
+			fmt.Println()
+		}
 	}
 	fmt.Println("==================")
 
@@ -124,7 +154,7 @@ func TestParseFileOptions(fd protoreflect.FileDescriptor) (string, string) {
 }
 
 // TestParseMessageOptions is aimed to parse the options of a protobuf message.
-func TestParseMessageOptions(md protoreflect.MessageDescriptor) (string, string, int32, int32, int32) {
+func TestParseMessageOptions(md protoreflect.MessageDescriptor) (string, string, int32, int32, int32, bool) {
 	opts := md.Options().(*descriptorpb.MessageOptions)
 	msgFullName := string(md.FullName())
 	worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(string)
@@ -140,8 +170,9 @@ func TestParseMessageOptions(md protoreflect.MessageDescriptor) (string, string,
 	if datarow == 0 {
 		datarow = 2 // default
 	}
-	fmt.Printf("message:%s, worksheet:%s, captrow:%d, descrow:%d, datarow:%d\n", msgFullName, worksheet, captrow, descrow, datarow)
-	return msgFullName, worksheet, captrow, descrow, datarow
+	transpose := proto.GetExtension(opts, tableaupb.E_Transpose).(bool)
+	fmt.Printf("message:%s, worksheet:%s, captrow:%d, descrow:%d, datarow:%d, transpose:%v\n", msgFullName, worksheet, captrow, descrow, datarow, transpose)
+	return msgFullName, worksheet, captrow, descrow, datarow, transpose
 }
 
 // TestParseFieldOptions is aimed to parse the options of all the fields of a protobuf message.
@@ -268,7 +299,7 @@ func TestParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 							reflectList.Append(value)
 						}
 					} else {
-						panic(fmt.Sprintf("key not found: %s\n", key))
+						panic(fmt.Sprintf("caption not found: %s\n", prefix+caption))
 					}
 
 				} else {
@@ -279,50 +310,71 @@ func TestParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 			if fd.Kind() == protoreflect.MessageKind {
 				subMsg := msg.Mutable(fd).Message()
 				subMd := subMsg.Descriptor()
-				// fmt.Println("subMsg FullName: ", subMd.FullName())
-				subMsgName := subMd.FullName()
-				switch subMsgName {
-				case "google.protobuf.Timestamp":
+
+				if etype == tableaupb.FieldType_FIELD_TYPE_CELL_MESSAGE {
 					cellValue, ok := row[prefix+caption]
-					if !ok {
-						panic(fmt.Sprintf("not found column caption: %v\n", prefix+caption))
-					}
-					// format := "2006-01-02T15:04:05.000Z"
-					format := "2006-01-02 15:04:05"
-					t, err := time.Parse(format, cellValue)
-					if err != nil {
-						panic(fmt.Sprintf("illegal timestamp string format: %v, err: %v\n", cellValue, err))
-					}
-					for i := 0; i < subMd.Fields().Len(); i++ {
-						fd := subMd.Fields().Get(i)
-						// fmt.Println("fd.FullName().Name(): ", fd.FullName().Name())
-						if fd.FullName().Name() == "seconds" {
-							value := getScalarFieldValue(fd, strconv.FormatInt(t.Unix(), 10))
-							subMsg.Set(fd, value)
-							break
+					if ok {
+						splits := strings.Split(cellValue, sep)
+						if len(splits) != subMd.Fields().Len() {
+							// TODO(wenchyzhu): more clear error message
+							panic("in-cell message fields len not equal to cell splits len")
 						}
-					}
-				case "google.protobuf.Duration":
-					cellValue, ok := row[prefix+caption]
-					if !ok {
-						panic(fmt.Sprintf("not found column: %v\n", prefix+caption))
-					}
-					for i := 0; i < subMd.Fields().Len(); i++ {
-						fd := subMd.Fields().Get(i)
-						// fmt.Println("fd.FullName().Name(): ", fd.FullName().Name())
-						if fd.FullName().Name() == "seconds" {
-							value := getScalarFieldValue(fd, cellValue)
+						for i := 0; i < subMd.Fields().Len(); i++ {
+							fd := subMd.Fields().Get(i)
+							// fmt.Println("fd.FullName().Name(): ", fd.FullName().Name())
+							value := getScalarFieldValue(fd, splits[i])
 							subMsg.Set(fd, value)
-							break
 						}
+					} else {
+						panic(fmt.Sprintf("caption not found: %s\n", prefix+caption))
 					}
-				default:
-					subPkg := subMd.ParentFile().Package()
-					if subPkg != TableauPackageName {
-						panic(fmt.Sprintf("unknown message %v in package %v", subMsgName, subPkg))
+
+				} else {
+					// fmt.Println("subMsg FullName: ", subMd.FullName())
+					subMsgName := subMd.FullName()
+					switch subMsgName {
+					case "google.protobuf.Timestamp":
+						cellValue, ok := row[prefix+caption]
+						if !ok {
+							panic(fmt.Sprintf("not found column caption: %v\n", prefix+caption))
+						}
+						// format := "2006-01-02T15:04:05.000Z"
+						format := "2006-01-02 15:04:05"
+						t, err := time.Parse(format, cellValue)
+						if err != nil {
+							panic(fmt.Sprintf("illegal timestamp string format: %v, err: %v\n", cellValue, err))
+						}
+						for i := 0; i < subMd.Fields().Len(); i++ {
+							fd := subMd.Fields().Get(i)
+							// fmt.Println("fd.FullName().Name(): ", fd.FullName().Name())
+							if fd.FullName().Name() == "seconds" {
+								value := getScalarFieldValue(fd, strconv.FormatInt(t.Unix(), 10))
+								subMsg.Set(fd, value)
+								break
+							}
+						}
+					case "google.protobuf.Duration":
+						cellValue, ok := row[prefix+caption]
+						if !ok {
+							panic(fmt.Sprintf("not found column: %v\n", prefix+caption))
+						}
+						for i := 0; i < subMd.Fields().Len(); i++ {
+							fd := subMd.Fields().Get(i)
+							// fmt.Println("fd.FullName().Name(): ", fd.FullName().Name())
+							if fd.FullName().Name() == "seconds" {
+								value := getScalarFieldValue(fd, cellValue)
+								subMsg.Set(fd, value)
+								break
+							}
+						}
+					default:
+						subPkg := subMd.ParentFile().Package()
+						if subPkg != TableauPackageName {
+							panic(fmt.Sprintf("unknown message %v in package %v", subMsgName, subPkg))
+						}
+						subMsg := msg.Mutable(fd).Message()
+						TestParseFieldOptions(subMsg, row, depth+1, prefix+caption)
 					}
-					subMsg := msg.Mutable(fd).Message()
-					TestParseFieldOptions(subMsg, row, depth+1, prefix+caption)
 				}
 			} else {
 				cellValue, ok := row[prefix+caption]
@@ -364,6 +416,7 @@ func getScalarFieldValue(fd protoreflect.FieldDescriptor, cellVal string) protor
 	case protoreflect.Int32Kind:
 		val, err := strconv.ParseInt(cellVal, 10, 32)
 		if err != nil {
+			fmt.Println("cellVal: ", cellVal)
 			panic(err)
 		}
 		return protoreflect.ValueOf(int32(val))
@@ -425,15 +478,28 @@ func getScalarFieldValue(fd protoreflect.FieldDescriptor, cellVal string) protor
 		return protoreflect.ValueOf(string(cellVal))
 	case protoreflect.BytesKind:
 		return protoreflect.ValueOf([]byte(cellVal))
+	case protoreflect.BoolKind:
+		val, err := strconv.ParseBool(cellVal)
+		if err != nil {
+			panic(err)
+		}
+		return protoreflect.ValueOf(val)
+	case protoreflect.FloatKind:
+		val, err := strconv.ParseFloat(cellVal, 32)
+		if err != nil {
+			panic(err)
+		}
+		return protoreflect.ValueOf(float32(val))
+	case protoreflect.DoubleKind:
+		val, err := strconv.ParseFloat(cellVal, 64)
+		if err != nil {
+			panic(err)
+		}
+		return protoreflect.ValueOf(float64(val))
 	default:
 		panic(fmt.Sprintf("not supported scalar type: %s", fd.Kind().String()))
-		// case protoreflect.BoolKind:
-		// 	panic(fmt.Sprintf("not supported key type: %s", fd.Kind().String()))
 		// 	return protoreflect.Value{}
 		// case protoreflect.EnumKind:
-		// 	panic(fmt.Sprintf("not supported key type: %s", fd.Kind().String()))
-		// 	return protoreflect.Value{}
-		// case protoreflect.DoubleKind:
 		// 	panic(fmt.Sprintf("not supported key type: %s", fd.Kind().String()))
 		// 	return protoreflect.Value{}
 		// case protoreflect.MessageKind:

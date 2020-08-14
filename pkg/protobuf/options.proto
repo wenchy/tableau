@@ -18,8 +18,9 @@ extend google.protobuf.MessageOptions
     int32 captrow = 52002; // [default = 1]; // exact row number of caption of the worksheet
     int32 descrow = 52003; // [default = 1]; // exact row number of description of the wooksheet
     int32 datarow = 52004; // [default = 2]; // start row number of data
+    bool transpose = 52005; // [default = false]; // interchange the rows and columns
 
-	// string x_workbook = 52005;
+	// string x_workbook = 52010;
 }
 
 // type of the message field.
@@ -65,6 +66,8 @@ enum FieldType
     // - format: key-value pairs is separated by ',', and
     //           key and value is separated by ':'
     FIELD_TYPE_CELL_MAP = 25;
+    // message in a cell
+    FIELD_TYPE_CELL_MESSAGE = 26;
 
     // FIELD_TYPE_RICH_TEXT = 31;
     // FIELD_TYPE_JSON = 32;

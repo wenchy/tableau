@@ -73,3 +73,24 @@ message ActivityConf {
     google.protobuf.Duration duration = 9 [ (caption) = "持续多久" ];
   }
 }
+
+message EnvConf {
+    option (worksheet) = "Env";
+    option (transpose) = true;
+
+    int32 world_id = 1 [ (caption) = "WorldID" ];
+    int32 zone_id = 2 [ (caption) = "ZoneID" ];
+    int32 platform_type = 3 [ (caption) = "PlatformType" ];
+    string name = 4 [ (caption) = "名字" ];
+    map<int32, int32> newbie_item_map = 5 [ (caption) = "赠送的道具", (type) = FIELD_TYPE_CELL_MAP ];
+    Basic basic = 6 [ (caption) = "基本信息", (type) = FIELD_TYPE_CELL_MESSAGE ];
+    float ratio = 7 [ (caption) = "比例" ];
+    double coefficent = 8 [ (caption) = "系数" ];
+
+    message Basic {
+        int32 count = 1;
+        string title = 2;
+        string content = 3;
+        bool valuable = 4;
+    }
+}

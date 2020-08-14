@@ -1,41 +1,90 @@
 # Tableau
-A powerful configuration convertion tool based on protobuf.
+A powerful configuration conversion tool based on protobuf.
 
-## Design
-- Convert **xlsx** to **json**, json is the first-class citizen of exporting targets.
-- Comments in json: add one more comment key-value pair, and the comment key is prefixed with "#".
-- Use **protobuf** as the IDL(Interface Description Language) to define the structure of **xlsx**.
-- Use **golang** to develop the conversion engine.
-- Multiple languages support, thanks to **protobuf**.
+## Features
+- Convert **xlsx** to **JSON**, JSON is the first-class citizen of exporting targets
+- Comments in JSON: add one more comment key-value pair, and the comment key is prefixed with "#"
+- Use **protobuf** as the IDL(Interface Description Language) to define the structure of **xlsx**
+- Use **golang** to develop the conversion engine
+- Multiple languages support, thanks to **protobuf**
 
 ## Concept
 - Importer: xlsx importer
 - IR: Intermediate Representation, use proto-bin.
 - Filter: filter the IR.
-- Exporter: json exporter, proto-bin exporter, proto-text exporter, xml exporter, sqlite3 exporter, and so on.
+- Exporter: JSON exporter, proto-bin exporter, proto-text exporter, xml exporter, sqlite3 exporter, and so on.
 
 ## TODO
-- [ ] Battle-tested of different languages: Golang, C#, Javascript/Typescript, C++ and so on.
-- [ ] Generate xlsx template by proto: **proto -> xlsx template**.
-- [ ] Generate proto by xlsx template: **proto -> xlsx template**.
-- [x] Convert xlsx to json: **xlsx <-> json**.
-- [ ] Convert json to xlsx: **json <-> xlsx**.
-- [x] List: multi-level nested list
-- [x] List: horizontal layout list
-- [x] List: vertical layout list
-- [x] List: simple in-cell list, element must be **scalar**.
-- [x] Map: multi-level nested map
-- [x] Map: unordered map or hash map
-- [ ] Map: ordered map
-- [x] Map: simple in-cell map, both key and value must be **scalar**.
-- [ ] Merge: multiple workbooks merge
-- [ ] Merge: multiple worksheets merge
+
+### Testing
+- [ ] Golang
+- [ ] C++
+- [ ] C#/.NET
+- [ ] Python
+- [ ] Lua
+- [ ] Java
+- [ ] Javascript/Typescript/Node
+
+### Metadata
+- [ ] Generate xlsx template by proto: **proto -> xlsx template**
+- [ ] Generate proto by xlsx template: **proto -> xlsx template**
+
+### Conversion
+- [x] Convert xlsx to JSON: **xlsx <-> JSON**
+- [ ] Convert JSON to xlsx: **JSON <-> xlsx**
+
+### Scalar Types
+- [x] interger: int32, uint32, int64 and uint64
+- [x] float: float and double
+- [x] bool
+- [x] string
+- [x] bytes
+
+### Enumerations
+- [ ] enum: The name of the enum value as specified in proto is used. Parsers accept both enum names and integer values. 
+- [ ] validate the enum value.
+
+### Composite Types
+- [x] message: multi-level nested message
+- [ ] message: simple in-cell message
+- [x] list: multi-level nested list
+- [x] list: horizontal layout list
+- [x] list: vertical layout list
+- [x] list: simple in-cell list, element must be **scalar** type.
+- [x] map: multi-level nested map
+- [x] map: unordered map or hash map
+- [ ] map: ordered map
+- [x] map: simple in-cell map, both key and value must be **scalar** type
+- [ ] nested types: unlimited nesting of message, list, and map
+
+### Default Values
+
+### Merge
+- [ ] merge multiple workbooks
+- [ ] merge multiple worksheets
+
+### Time
 - [x] Timestamp: `google.protobuf.Timestamp`
 - [x] Timestamp: timezone problem
 - [x] Datetime: format: `yyyy-MM-dd HH:mm:ss`, based on Timestamp
 - [ ] Date: format: `yyyy-MM-dd`, ignore day time based on Timestamp
 - [ ] Time: format: `HH:mm:ss`
-- [ ] Simple key-value configuration: flip worksheet 90° (degrees) to exchange row and column 
+- [x] Duration: `google.protobuf.Duration` 
+  
+### Transpose
+- [x] Interchange the rows and columns of a worksheet.
+
+### Validation
+- [ ] Min
+- [ ] Max
+- [ ] Range
+- [ ] Options: e.g. enum type
+- [ ] Foreign key
+
+### Performace
+- [ ] stress test
+- [ ] one goroutine process one row
+
 ## Types
 - Scalar
 - Timestamp
