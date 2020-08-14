@@ -20,16 +20,22 @@ A powerful configuration convertion tool based on protobuf.
 - [ ] Generate proto by xlsx template: **proto -> xlsx template**.
 - [x] Convert xlsx to json: **xlsx <-> json**.
 - [ ] Convert json to xlsx: **json <-> xlsx**.
-- [ ] Merge of multi-level nested list, row direction
-- [ ] Merge of multi-level nested list, column direction
-- [x] Merge of multi-level nested map
-- [ ] Ordered Map
-- [ ] Merge of multiple workbooks or worksheets
-- [ ] Timezone of type Timestamp
+- [x] List: multi-level nested list
+- [x] List: horizontal layout list
+- [x] List: vertical layout list
+- [x] List: simple in-cell list, element must be **scalar**.
+- [x] Map: multi-level nested map
+- [x] Map: unordered map or hash map
+- [ ] Map: ordered map
+- [x] Map: simple in-cell map, both key and value must be **scalar**.
+- [ ] Merge: multiple workbooks merge
+- [ ] Merge: multiple worksheets merge
+- [x] Timestamp: `google.protobuf.Timestamp`
+- [x] Timestamp: timezone problem
+- [x] Datetime: format: `yyyy-MM-dd HH:mm:ss`, based on Timestamp
+- [ ] Date: format: `yyyy-MM-dd`, ignore day time based on Timestamp
+- [ ] Time: format: `HH:mm:ss`
 - [ ] Simple key-value configuration: flip worksheet 90° (degrees) to exchange row and column 
-- [x] Simple in-cell List
-- [x] Simple in-cell Map
-
 ## Types
 - Scalar
 - Timestamp
