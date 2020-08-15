@@ -46,6 +46,9 @@ func main() {
 		}
 		return true
 	})
+
+	err := converter.IllegalFieldType{FieldType: "Map", Line: 10}
+	fmt.Println(err)
 }
 
 /*

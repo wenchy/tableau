@@ -50,7 +50,7 @@ A powerful configuration conversion tool based on protobuf.
 
 ### Composite Types
 - [x] message: multi-level nested message
-- [ ] message: simple in-cell message
+- [x] message: simple in-cell message
 - [x] list: multi-level nested list
 - [x] list: horizontal layout list
 - [x] list: vertical layout list
@@ -96,6 +96,8 @@ A powerful configuration conversion tool based on protobuf.
 
 ### Error Message
 - [ ] report clear and precise error messages when converter failed, please refer to the programming language compiler
+- [ ] use golang template to define error message template
+- [ ] multiple languages support, focused on English and Simplified Chinese
 
 ### Performace
 - [ ] stress test
@@ -103,10 +105,9 @@ A powerful configuration conversion tool based on protobuf.
 
 ## Types
 - Scalar
+- Message(struct)
+- List
+- Map(unordered)
 - Timestamp
 - Duration
-- One-level List
-- Multi-level List
-- One-level Map(unordered)
-- Multi-level Nested Map
 
