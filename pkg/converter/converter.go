@@ -16,23 +16,54 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/descriptorpb"
+	"google.golang.org/protobuf/types/dynamicpb"
 )
 
-const TableauPackageName = "test"
+type Tableaux struct {
+	ProtoPackageName string // protobuf package name
+	WorkbookRootDir  string // root dir of workbooks.
+}
 
-// WorkbookRootDir is root dir of workbooks.
-const WorkbookRootDir = "./testdata/"
+func (tbx *Tableaux) Convert() {
+	protoPackage := protoreflect.FullName(tbx.ProtoPackageName)
+	protoregistry.GlobalFiles.RangeFilesByPackage(protoPackage, func(fd protoreflect.FileDescriptor) bool {
+		fmt.Printf("filepath: %s\n", fd.Path())
+		opts := fd.Options().(*descriptorpb.FileOptions)
+		workbook := proto.GetExtension(opts, tableaupb.E_Workbook).(string)
+		if workbook == "" {
+			return true
+		}
+
+		fmt.Printf("proto: %s => workbook: %s\n", fd.Path(), workbook)
+		msgs := fd.Messages()
+		for i := 0; i < msgs.Len(); i++ {
+			md := msgs.Get(i)
+			// fmt.Printf("%s\n", md.FullName())
+			opts := md.Options().(*descriptorpb.MessageOptions)
+			worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(string)
+			if worksheet != "" {
+				fmt.Printf("message: %s, worksheet: %s\n", md.FullName(), worksheet)
+			}
+			newMsg := dynamicpb.NewMessage(md)
+			tbx.Export(newMsg)
+		}
+		return true
+	})
+	err := IllegalFieldType{FieldType: "Map", Line: 10}
+	fmt.Println(err)
+}
 
 // Export the conf message.
-func Export(conf proto.Message) {
+func (tbx *Tableaux) Export(conf proto.Message) {
 	md := conf.ProtoReflect().Descriptor()
 	msg := conf.ProtoReflect()
 	_, workbook := TestParseFileOptions(md.ParentFile())
 	fmt.Println("==================")
 	_, worksheet, _, _, _, transpose := TestParseMessageOptions(md)
 	fmt.Println("==================")
-	sheet := ReadSheet(WorkbookRootDir+workbook, worksheet)
+	sheet := ReadSheet(tbx.WorkbookRootDir+workbook, worksheet)
 	if transpose {
 		// col 0: captrow
 		// col 1 - MaxRow: datarow
@@ -56,7 +87,7 @@ func Export(conf proto.Message) {
 					value := dataCell.Value
 					kv[key] = value
 				}
-				TestParseFieldOptions(msg, kv, 0, "")
+				tbx.TestParseFieldOptions(msg, kv, 0, "")
 			}
 			fmt.Println()
 		}
@@ -84,7 +115,7 @@ func Export(conf proto.Message) {
 					value := dataCell.Value
 					kv[key] = value
 				}
-				TestParseFieldOptions(msg, kv, 0, "")
+				tbx.TestParseFieldOptions(msg, kv, 0, "")
 			}
 			fmt.Println()
 		}
@@ -176,7 +207,7 @@ func TestParseMessageOptions(md protoreflect.MessageDescriptor) (string, string,
 }
 
 // TestParseFieldOptions is aimed to parse the options of all the fields of a protobuf message.
-func TestParseFieldOptions(msg protoreflect.Message, row map[string]string, depth int, prefix string) {
+func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[string]string, depth int, prefix string) {
 	md := msg.Descriptor()
 	opts := md.Options().(*descriptorpb.MessageOptions)
 	worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(string)
@@ -184,7 +215,7 @@ func TestParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 	fmt.Printf("%s// %s, '%s', %v, %v, %v\n", getTabStr(depth), md.FullName(), worksheet, md.IsMapEntry(), prefix, pkg)
 	for i := 0; i < md.Fields().Len(); i++ {
 		fd := md.Fields().Get(i)
-		if pkg != TableauPackageName && pkg != "google.protobuf" {
+		if string(pkg) != tbx.ProtoPackageName && pkg != "google.protobuf" {
 			fmt.Printf("%s// no need to proces package: %v\n", getTabStr(depth), pkg)
 			return
 		}
@@ -262,7 +293,7 @@ func TestParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 				// check if newValue is message type
 				if valueFd.Kind() == protoreflect.MessageKind {
 					newMsg := newValue.Message()
-					TestParseFieldOptions(newMsg, row, depth+1, prefix+caption)
+					tbx.TestParseFieldOptions(newMsg, row, depth+1, prefix+caption)
 				} else {
 					cellValue, ok := row[prefix+caption]
 					if ok {
@@ -277,7 +308,7 @@ func TestParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 				if layout == tableaupb.CompositeLayout_COMPOSITE_LAYOUT_VERTICAL {
 					newElement := reflectList.NewElement()
 					subMsg := newElement.Message()
-					TestParseFieldOptions(subMsg, row, depth+1, prefix+caption)
+					tbx.TestParseFieldOptions(subMsg, row, depth+1, prefix+caption)
 					reflectList.Append(newElement)
 				} else {
 					listSize := getListSize(row, prefix+caption)
@@ -285,7 +316,7 @@ func TestParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 					for i := 1; i <= listSize; i++ {
 						newElement := reflectList.NewElement()
 						subMsg := newElement.Message()
-						TestParseFieldOptions(subMsg, row, depth+1, prefix+caption+strconv.Itoa(i))
+						tbx.TestParseFieldOptions(subMsg, row, depth+1, prefix+caption+strconv.Itoa(i))
 						reflectList.Append(newElement)
 					}
 				}
@@ -369,11 +400,11 @@ func TestParseFieldOptions(msg protoreflect.Message, row map[string]string, dept
 						}
 					default:
 						subPkg := subMd.ParentFile().Package()
-						if subPkg != TableauPackageName {
+						if string(subPkg) != tbx.ProtoPackageName {
 							panic(fmt.Sprintf("unknown message %v in package %v", subMsgName, subPkg))
 						}
 						subMsg := msg.Mutable(fd).Message()
-						TestParseFieldOptions(subMsg, row, depth+1, prefix+caption)
+						tbx.TestParseFieldOptions(subMsg, row, depth+1, prefix+caption)
 					}
 				}
 			} else {

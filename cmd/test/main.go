@@ -3,14 +3,9 @@ package main
 import (
 	"fmt"
 
-	"github.com/Wenchy/tableau/converter"
-	"github.com/Wenchy/tableau/tableaupb"
+	"github.com/Wenchy/tableau/pkg/converter"
 	_ "github.com/Wenchy/tableau/testpb"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
-	"google.golang.org/protobuf/types/descriptorpb"
-	"google.golang.org/protobuf/types/dynamicpb"
 )
 
 func main() {
@@ -23,32 +18,9 @@ func main() {
 	// 	return true
 	// })
 	fmt.Println("====================")
-	protoregistry.GlobalFiles.RangeFilesByPackage(protoreflect.FullName("test"), func(fd protoreflect.FileDescriptor) bool {
-		fmt.Printf("filepath: %s\n", fd.Path())
-		opts := fd.Options().(*descriptorpb.FileOptions)
-		workbook := proto.GetExtension(opts, tableaupb.E_Workbook).(string)
-		if workbook == "" {
-			return true
-		}
 
-		fmt.Printf("proto: %s => workbook: %s\n", fd.Path(), workbook)
-		msgs := fd.Messages()
-		for i := 0; i < msgs.Len(); i++ {
-			md := msgs.Get(i)
-			// fmt.Printf("%s\n", md.FullName())
-			opts := md.Options().(*descriptorpb.MessageOptions)
-			worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(string)
-			if worksheet != "" {
-				fmt.Printf("message: %s, worksheet: %s\n", md.FullName(), worksheet)
-			}
-			newMsg := dynamicpb.NewMessage(md)
-			converter.Export(newMsg)
-		}
-		return true
-	})
-
-	err := converter.IllegalFieldType{FieldType: "Map", Line: 10}
-	fmt.Println(err)
+	tableaux := converter.Tableaux{ProtoPackageName: "test", WorkbookRootDir: "./testdata/"}
+	tableaux.Convert()
 }
 
 /*
