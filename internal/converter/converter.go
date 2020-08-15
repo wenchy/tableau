@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -23,7 +25,8 @@ import (
 
 type Tableaux struct {
 	ProtoPackageName string // protobuf package name
-	WorkbookRootDir  string // root dir of workbooks.
+	WorkbookRootDir  string // root dir of workbooks
+	OutputPath       string // output path of generated files
 }
 
 func (tbx *Tableaux) Convert() {
@@ -36,6 +39,13 @@ func (tbx *Tableaux) Convert() {
 	// 	return true
 	// })
 	// fmt.Println("====================")
+
+	// create oupput dir
+	err := os.MkdirAll(tbx.OutputPath, 0700)
+	if err != nil {
+		panic(err)
+
+	}
 
 	protoPackage := protoreflect.FullName(tbx.ProtoPackageName)
 	protoregistry.GlobalFiles.RangeFilesByPackage(protoPackage, func(fd protoreflect.FileDescriptor) bool {
@@ -61,7 +71,7 @@ func (tbx *Tableaux) Convert() {
 		}
 		return true
 	})
-	err := IllegalFieldType{FieldType: "Map", Line: 10}
+	err = IllegalFieldType{FieldType: "Map", Line: 10}
 	fmt.Println(err)
 }
 
@@ -71,7 +81,7 @@ func (tbx *Tableaux) Export(conf proto.Message) {
 	msg := conf.ProtoReflect()
 	_, workbook := TestParseFileOptions(md.ParentFile())
 	fmt.Println("==================")
-	_, worksheet, _, _, _, transpose := TestParseMessageOptions(md)
+	msgName, worksheet, _, _, _, transpose := TestParseMessageOptions(md)
 	fmt.Println("==================")
 	sheet := ReadSheet(tbx.WorkbookRootDir+workbook, worksheet)
 	if transpose {
@@ -139,8 +149,21 @@ func (tbx *Tableaux) Export(conf proto.Message) {
 	fmt.Println("json: ", string(output))
 	var out bytes.Buffer
 	json.Indent(&out, output, "", "    ")
+	err = ioutil.WriteFile(tbx.OutputPath+toSnakeCase(msgName)+".json", out.Bytes(), 0644)
 	out.WriteTo(os.Stdout)
+	if err != nil {
+		panic(err)
+	}
 	fmt.Println()
+}
+
+func toSnakeCase(str string) string {
+	matchFirstCap := regexp.MustCompile("(.)([A-Z][a-z]+)")
+	matchAllCap := regexp.MustCompile("([a-z0-9])([A-Z])")
+
+	snake := matchFirstCap.ReplaceAllString(str, "${1}_${2}")
+	snake = matchAllCap.ReplaceAllString(snake, "${1}_${2}")
+	return strings.ToLower(snake)
 }
 
 func getTabStr(depth int) string {
@@ -197,7 +220,7 @@ func TestParseFileOptions(fd protoreflect.FileDescriptor) (string, string) {
 // TestParseMessageOptions is aimed to parse the options of a protobuf message.
 func TestParseMessageOptions(md protoreflect.MessageDescriptor) (string, string, int32, int32, int32, bool) {
 	opts := md.Options().(*descriptorpb.MessageOptions)
-	msgFullName := string(md.FullName())
+	msgName := string(md.Name())
 	worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(string)
 	captrow := proto.GetExtension(opts, tableaupb.E_Captrow).(int32)
 	if captrow == 0 {
@@ -212,8 +235,8 @@ func TestParseMessageOptions(md protoreflect.MessageDescriptor) (string, string,
 		datarow = 2 // default
 	}
 	transpose := proto.GetExtension(opts, tableaupb.E_Transpose).(bool)
-	fmt.Printf("message:%s, worksheet:%s, captrow:%d, descrow:%d, datarow:%d, transpose:%v\n", msgFullName, worksheet, captrow, descrow, datarow, transpose)
-	return msgFullName, worksheet, captrow, descrow, datarow, transpose
+	fmt.Printf("message:%s, worksheet:%s, captrow:%d, descrow:%d, datarow:%d, transpose:%v\n", msgName, worksheet, captrow, descrow, datarow, transpose)
+	return msgName, worksheet, captrow, descrow, datarow, transpose
 }
 
 // TestParseFieldOptions is aimed to parse the options of all the fields of a protobuf message.

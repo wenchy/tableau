@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	tableau.Convert("test", "./testdata/")
+	tableau.Convert("test", "./testdata/", "./output/")
 }
 
 /*
