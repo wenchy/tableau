@@ -10,9 +10,9 @@ A powerful configuration conversion tool based on protobuf.
 
 ## Concept
 - Importer: xlsx importer
-- IR: Intermediate Representation, use proto-bin.
+- IR: Intermediate Representation, in-memory object, JSON or protobin.
 - Filter: filter the IR.
-- Exporter: JSON exporter, proto-bin exporter, proto-text exporter, xml exporter, sqlite3 exporter, and so on.
+- Exporter: JSON exporter, protobin exporter, prototext exporter, xml exporter, sqlite3 exporter, and so on.
 
 ## TODO
 
@@ -26,12 +26,16 @@ A powerful configuration conversion tool based on protobuf.
 - [ ] Javascript/Typescript/Node
 
 ### Metadata
-- [ ] Generate xlsx template by proto: **proto -> xlsx template**
-- [ ] Generate proto by xlsx template: **proto -> xlsx template**
+- [ ] metatable: a message to describe the worksheet's metadata
+- [ ] metafield: a message to describe the caption's metadata
+
+### Generator
+- [ ] generate xlsx template by proto: **proto -> xlsx template**
+- [ ] generate proto by xlsx template: **proto -> xlsx template**
 
 ### Conversion
-- [x] Convert xlsx to JSON: **xlsx <-> JSON**
-- [ ] Convert JSON to xlsx: **JSON <-> xlsx**
+- [x] convert xlsx to JSON: **xlsx <-> JSON**
+- [ ] convert JSON to xlsx: **JSON <-> xlsx**
 
 ### Scalar Types
 - [x] interger: int32, uint32, int64 and uint64
@@ -58,6 +62,15 @@ A powerful configuration conversion tool based on protobuf.
 - [ ] nested types: unlimited nesting of message, list, and map
 
 ### Default Values
+- [ ] each scalar type's default value is same as protobuf
+- [ ] interger: 0 
+- [ ] float: 0.0 
+- [ ] bool: false 
+- [ ] string: ""
+- [ ] bytes: ""
+- [ ] in-cell message: each field's default value is same as protobuf 
+- [ ] in-cell list: element's default value is same as protobuf 
+- [ ] in-cell map: both key and value's default value is same as protobuf 
 
 ### Merge
 - [ ] merge multiple workbooks
@@ -80,6 +93,9 @@ A powerful configuration conversion tool based on protobuf.
 - [ ] Range
 - [ ] Options: e.g. enum type
 - [ ] Foreign key
+
+### Error Message
+- [ ] report clear and precise error messages when converter failed, please refer to the programming language compiler
 
 ### Performace
 - [ ] stress test
