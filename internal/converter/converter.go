@@ -11,7 +11,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/Wenchy/tableau/tableaupb"
+	"github.com/Wenchy/tableau/pkg/tableaupb"
 	"github.com/tealeg/xlsx/v3"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"

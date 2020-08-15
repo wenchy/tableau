@@ -22,8 +22,8 @@ for item in "$test_dir"/* ; do
     fi
 done
 
-tableaupb_dir="../github.com/Wenchy/tableau/tableaupb"
-testpb_dir="../github.com/Wenchy/tableau/testpb"
+tableaupb_dir="../github.com/Wenchy/tableau/pkg/tableaupb"
+testpb_dir="../github.com/Wenchy/tableau/cmd/test/testpb"
 
 # update tableaupb
 rsync -avz "$tableaupb_dir" ../../../pkg/
