@@ -1,4 +1,4 @@
-module github.com/Wenchy/tableau/testpb
+module github.com/Wenchy/tableau/cmd/test/testpb
 
 go 1.14
 

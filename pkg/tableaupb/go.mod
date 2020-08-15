@@ -1,4 +1,4 @@
-module github.com/Wenchy/tableau/tableaupb
+module github.com/Wenchy/tableau/pkg/tableaupb
 
 go 1.14
 
