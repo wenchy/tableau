@@ -1,4 +1,4 @@
-module github.com/Wenchy/tableau/pkg/converter
+module github.com/Wenchy/tableau/internal/converter
 
 go 1.14
 

@@ -1,26 +1,12 @@
 package main
 
 import (
-	"fmt"
-
-	"github.com/Wenchy/tableau/pkg/converter"
+	"github.com/Wenchy/tableau/pkg/tableau"
 	_ "github.com/Wenchy/tableau/testpb"
-	"google.golang.org/protobuf/reflect/protoregistry"
 )
 
 func main() {
-	// parseActivity()
-	// parseItem()
-	numFiles := protoregistry.GlobalFiles.NumFiles()
-	fmt.Println("numFiles", numFiles)
-	// protoregistry.GlobalFiles.RangeFiles(func(fd protoreflect.FileDescriptor) bool {
-	// 	fmt.Printf("filepath: %s\n", fd.Path())
-	// 	return true
-	// })
-	fmt.Println("====================")
-
-	tableaux := converter.Tableaux{ProtoPackageName: "test", WorkbookRootDir: "./testdata/"}
-	tableaux.Convert()
+	tableau.Convert("test", "./testdata/")
 }
 
 /*

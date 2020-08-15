@@ -27,6 +27,16 @@ type Tableaux struct {
 }
 
 func (tbx *Tableaux) Convert() {
+	// parseActivity()
+	// parseItem()
+	// numFiles := protoregistry.GlobalFiles.NumFiles()
+	// fmt.Println("numFiles", numFiles)
+	// protoregistry.GlobalFiles.RangeFiles(func(fd protoreflect.FileDescriptor) bool {
+	// 	fmt.Printf("filepath: %s\n", fd.Path())
+	// 	return true
+	// })
+	// fmt.Println("====================")
+
 	protoPackage := protoreflect.FullName(tbx.ProtoPackageName)
 	protoregistry.GlobalFiles.RangeFilesByPackage(protoPackage, func(fd protoreflect.FileDescriptor) bool {
 		fmt.Printf("filepath: %s\n", fd.Path())
