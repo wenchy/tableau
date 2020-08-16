@@ -7,13 +7,13 @@ import (
 	"io/ioutil"
 	"math"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
 	"unicode"
 
 	"github.com/Wenchy/tableau/pkg/tableaupb"
+	"github.com/iancoleman/strcase"
 	"github.com/tealeg/xlsx/v3"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -24,9 +24,10 @@ import (
 )
 
 type Tableaux struct {
-	ProtoPackageName string // protobuf package name
-	WorkbookRootDir  string // root dir of workbooks
-	OutputPath       string // output path of generated files
+	ProtoPackageName    string // protobuf package name
+	InputPath           string // root dir of workbooks
+	OutputPath          string // output path of generated files
+	FilenameAsSnakeCase bool   // filename as snake case, default is camel case same as the protobuf message name
 }
 
 func (tbx *Tableaux) Convert() {
@@ -83,7 +84,7 @@ func (tbx *Tableaux) Export(conf proto.Message) {
 	fmt.Println("==================")
 	msgName, worksheet, _, _, _, transpose := TestParseMessageOptions(md)
 	fmt.Println("==================")
-	sheet := ReadSheet(tbx.WorkbookRootDir+workbook, worksheet)
+	sheet := ReadSheet(tbx.InputPath+workbook, worksheet)
 	if transpose {
 		// col 0: captrow
 		// col 1 - MaxRow: datarow
@@ -149,21 +150,17 @@ func (tbx *Tableaux) Export(conf proto.Message) {
 	fmt.Println("json: ", string(output))
 	var out bytes.Buffer
 	json.Indent(&out, output, "", "    ")
-	err = ioutil.WriteFile(tbx.OutputPath+toSnakeCase(msgName)+".json", out.Bytes(), 0644)
+
+	filename := msgName + ".json"
+	if tbx.FilenameAsSnakeCase {
+		filename = strcase.ToSnake(msgName) + ".json"
+	}
+	err = ioutil.WriteFile(tbx.OutputPath+filename, out.Bytes(), 0644)
 	out.WriteTo(os.Stdout)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println()
-}
-
-func toSnakeCase(str string) string {
-	matchFirstCap := regexp.MustCompile("(.)([A-Z][a-z]+)")
-	matchAllCap := regexp.MustCompile("([a-z0-9])([A-Z])")
-
-	snake := matchFirstCap.ReplaceAllString(str, "${1}_${2}")
-	snake = matchAllCap.ReplaceAllString(snake, "${1}_${2}")
-	return strings.ToLower(snake)
 }
 
 func getTabStr(depth int) string {

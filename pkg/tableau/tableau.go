@@ -4,7 +4,7 @@ import (
 	"github.com/Wenchy/tableau/internal/converter"
 )
 
-func Convert(ProtoPackageName, WorkbookRootDir, OutputPath string) {
-	tableaux := converter.Tableaux{ProtoPackageName: ProtoPackageName, WorkbookRootDir: WorkbookRootDir, OutputPath: OutputPath}
+func Convert(protoPackageName, inputPath, outputPath string, filenameAsSnakeCase bool) {
+	tableaux := converter.Tableaux{ProtoPackageName: protoPackageName, InputPath: inputPath, OutputPath: outputPath, FilenameAsSnakeCase: filenameAsSnakeCase}
 	tableaux.Convert()
 }
