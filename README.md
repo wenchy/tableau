@@ -34,8 +34,16 @@ A powerful configuration conversion tool based on protobuf.
 - [ ] generate proto by xlsx template: **proto -> xlsx template**
 
 ### Conversion
-- [x] convert xlsx to JSON: **xlsx <-> JSON**
-- [ ] convert JSON to xlsx: **JSON <-> xlsx**
+- [x] xlsx -> JSON
+- [x] xlsx -> protobin
+- [x] xlsx -> prototext
+- [ ] JSON -> xlsx
+- [ ] protobin -> xlsx
+- [ ] prototext -> xlsx
+
+### Pretty Print
+- [x] JSON
+- [x] prototext
 
 ### Scalar Types
 - [x] interger: int32, uint32, int64 and uint64

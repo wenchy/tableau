@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math"
 	"os"
 	"strconv"
@@ -16,6 +17,7 @@ import (
 	"github.com/iancoleman/strcase"
 	"github.com/tealeg/xlsx/v3"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
@@ -23,11 +25,23 @@ import (
 	"google.golang.org/protobuf/types/dynamicpb"
 )
 
+type Format int
+
+// file format
+const (
+	JSON      Format = 0
+	Protobin         = 1
+	Prototext        = 2
+	// Xlsx             = 3
+)
+
 type Tableaux struct {
-	ProtoPackageName    string // protobuf package name
-	InputPath           string // root dir of workbooks
-	OutputPath          string // output path of generated files
-	FilenameAsSnakeCase bool   // filename as snake case, default is camel case same as the protobuf message name
+	ProtoPackageName          string // protobuf package name.
+	InputPath                 string // root dir of workbooks.
+	OutputPath                string // output path of generated files.
+	OutputFilenameAsSnakeCase bool   // output filename as snake case, default is camel case same as the protobuf message name.
+	OutputFormat              Format // output format: json, protobin, or prototext, and default is json.
+	OutputPretty              bool   // output pretty format, with mulitline and indent.
 }
 
 func (tbx *Tableaux) Convert() {
@@ -76,10 +90,10 @@ func (tbx *Tableaux) Convert() {
 	fmt.Println(err)
 }
 
-// Export the conf message.
-func (tbx *Tableaux) Export(conf proto.Message) {
-	md := conf.ProtoReflect().Descriptor()
-	msg := conf.ProtoReflect()
+// Export the protomsg message.
+func (tbx *Tableaux) Export(protomsg proto.Message) {
+	md := protomsg.ProtoReflect().Descriptor()
+	msg := protomsg.ProtoReflect()
 	_, workbook := TestParseFileOptions(md.ParentFile())
 	fmt.Println("==================")
 	msgName, worksheet, _, _, _, transpose := TestParseMessageOptions(md)
@@ -142,24 +156,84 @@ func (tbx *Tableaux) Export(conf proto.Message) {
 		}
 	}
 	fmt.Println("==================")
+	filename := msgName
+	if tbx.OutputFilenameAsSnakeCase {
+		filename = strcase.ToSnake(msgName)
+	}
+	filePath := tbx.OutputPath + filename
+	switch tbx.OutputFormat {
+	case JSON:
+		exportJSON(protomsg, filePath, tbx.OutputPretty)
+	case Protobin:
+		exportProtobin(protomsg, filePath)
+	case Prototext:
+		exportPrototext(protomsg, filePath, tbx.OutputPretty)
+	default:
+		fmt.Println("unknown format, default to JSON")
+		exportJSON(protomsg, filePath, tbx.OutputPretty)
+	}
+}
 
-	output, err := protojson.Marshal(conf.ProtoReflect().Interface())
+func exportJSON(protomsg proto.Message, filePath string, pretty bool) {
+	var out []byte
+	var err error
+	if pretty {
+		o, err := protojson.Marshal(protomsg)
+		if err != nil {
+			panic(err)
+		}
+		// fmt.Println("json: ", string(output))
+		var buf bytes.Buffer
+		json.Indent(&buf, o, "", "    ")
+		out = buf.Bytes()
+	} else {
+		out, err = protojson.Marshal(protomsg)
+		if err != nil {
+			panic(err)
+		}
+	}
+	err = ioutil.WriteFile(filePath+".json", out, 0644)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("json: ", string(output))
-	var out bytes.Buffer
-	json.Indent(&out, output, "", "    ")
+	// out.WriteTo(os.Stdout)
+	fmt.Println()
+}
 
-	filename := msgName + ".json"
-	if tbx.FilenameAsSnakeCase {
-		filename = strcase.ToSnake(msgName) + ".json"
-	}
-	err = ioutil.WriteFile(tbx.OutputPath+filename, out.Bytes(), 0644)
-	out.WriteTo(os.Stdout)
+func exportProtobin(protomsg proto.Message, filePath string) {
+	out, err := proto.Marshal(protomsg)
 	if err != nil {
-		panic(err)
+		log.Fatalln("Failed to encode protomsg:", err)
 	}
+	if err := ioutil.WriteFile(filePath+".protobin", out, 0644); err != nil {
+		log.Fatalln("Failed to write file:", err)
+	}
+	// out.WriteTo(os.Stdout)
+	fmt.Println()
+}
+
+func exportPrototext(protomsg proto.Message, filePath string, pretty bool) {
+	var out []byte
+	var err error
+	if pretty {
+		opts := prototext.MarshalOptions{
+			Multiline: true,
+			Indent:    "    ",
+		}
+		out, err = opts.Marshal(protomsg)
+		if err != nil {
+			log.Fatalln("Failed to encode protomsg:", err)
+		}
+	} else {
+		out, err = prototext.Marshal(protomsg)
+		if err != nil {
+			panic(err)
+		}
+	}
+	if err := ioutil.WriteFile(filePath+".prototext", out, 0644); err != nil {
+		log.Fatalln("Failed to write file:", err)
+	}
+	// out.WriteTo(os.Stdout)
 	fmt.Println()
 }
 
