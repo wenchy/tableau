@@ -59,10 +59,14 @@ A powerful configuration conversion tool based on protobuf.
 ### Composite Types
 - [x] message: multi-level nested message
 - [x] message: simple in-cell message
+- [x] list: horizontal(row direction) layout, and is list's default layout
+- [x] list: vertical(column direction) layout
 - [x] list: multi-level nested list
 - [x] list: horizontal layout list
 - [x] list: vertical layout list
 - [x] list: simple in-cell list, element must be **scalar** type.
+- [x] map: horizontal(row direction) layout
+- [x] map: vertical(column direction) layout, and is map's default layout
 - [x] map: multi-level nested map
 - [x] map: unordered map or hash map
 - [ ] map: ordered map
@@ -86,7 +90,7 @@ A powerful configuration conversion tool based on protobuf.
 
 ### Time
 - [x] Timestamp: `google.protobuf.Timestamp`
-- [x] Timestamp: timezone problem
+- [ ] Timestamp: timezone problem
 - [x] Datetime: format: `yyyy-MM-dd HH:mm:ss`, based on Timestamp
 - [ ] Date: format: `yyyy-MM-dd`, ignore day time based on Timestamp
 - [ ] Time: format: `HH:mm:ss`
@@ -118,4 +122,3 @@ A powerful configuration conversion tool based on protobuf.
 - Map(unordered)
 - Timestamp
 - Duration
-

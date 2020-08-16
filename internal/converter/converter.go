@@ -380,29 +380,60 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 					reflectMap.Set(newKey, newValue)
 				}
 			} else {
-				newKey := keyFd.Default().MapKey()
-				cellValue, ok := row[prefix+caption+key]
-				if ok {
-					newKey = getScalarFieldValue(keyFd, cellValue).MapKey()
-				} else {
-					panic(fmt.Sprintf("key not found: %s\n", prefix+caption+key))
-				}
-				var newValue protoreflect.Value
-				if reflectMap.Has(newKey) {
-					newValue = reflectMap.Mutable(newKey)
-				} else {
-					newValue = reflectMap.NewValue()
-					reflectMap.Set(newKey, newValue)
-				}
 				// check if newValue is message type
 				if valueFd.Kind() == protoreflect.MessageKind {
-					newMsg := newValue.Message()
-					tbx.TestParseFieldOptions(newMsg, row, depth+1, prefix+caption)
-				} else {
-					cellValue, ok := row[prefix+caption]
-					if ok {
-						newValue = getScalarFieldValue(fd, cellValue)
+					if layout == tableaupb.CompositeLayout_COMPOSITE_LAYOUT_HORIZONTAL {
+						size := getPrefixSize(row, prefix+caption)
+						// fmt.Println("prefix size: ", size)
+						for i := 1; i <= size; i++ {
+							newKey := keyFd.Default().MapKey()
+							cellValue, ok := row[prefix+caption+strconv.Itoa(i)+key]
+							if !ok {
+								panic(fmt.Sprintf("key not found: %s\n", prefix+caption+key))
+							}
+							newKey = getScalarFieldValue(keyFd, cellValue).MapKey()
+							var newValue protoreflect.Value
+							if reflectMap.Has(newKey) {
+								newValue = reflectMap.Mutable(newKey)
+							} else {
+								newValue = reflectMap.NewValue()
+								reflectMap.Set(newKey, newValue)
+							}
+							newMsg := newValue.Message()
+							tbx.TestParseFieldOptions(newMsg, row, depth+1, prefix+caption+strconv.Itoa(i))
+						}
+					} else {
+						newKey := keyFd.Default().MapKey()
+						cellValue, ok := row[prefix+caption+key]
+						if !ok {
+							panic(fmt.Sprintf("key not found: %s\n", prefix+caption+key))
+						}
+						newKey = getScalarFieldValue(keyFd, cellValue).MapKey()
+						var newValue protoreflect.Value
+						if reflectMap.Has(newKey) {
+							newValue = reflectMap.Mutable(newKey)
+						} else {
+							newValue = reflectMap.NewValue()
+							reflectMap.Set(newKey, newValue)
+						}
+						newMsg := newValue.Message()
+						tbx.TestParseFieldOptions(newMsg, row, depth+1, prefix+caption)
 					}
+				} else {
+					newKey := keyFd.Default().MapKey()
+					cellValue, ok := row[prefix+caption+key]
+					if !ok {
+						panic(fmt.Sprintf("key not found: %s\n", prefix+caption+key))
+					}
+					newKey = getScalarFieldValue(keyFd, cellValue).MapKey()
+					var newValue protoreflect.Value
+					if reflectMap.Has(newKey) {
+						newValue = reflectMap.Mutable(newKey)
+					} else {
+						newValue = reflectMap.NewValue()
+						reflectMap.Set(newKey, newValue)
+					}
+					newValue = getScalarFieldValue(fd, cellValue)
 				}
 			}
 
@@ -415,9 +446,9 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 					tbx.TestParseFieldOptions(subMsg, row, depth+1, prefix+caption)
 					reflectList.Append(newElement)
 				} else {
-					listSize := getListSize(row, prefix+caption)
-					// fmt.Println("list size", listSize)
-					for i := 1; i <= listSize; i++ {
+					size := getPrefixSize(row, prefix+caption)
+					// fmt.Println("prefix size: ", size)
+					for i := 1; i <= size; i++ {
 						newElement := reflectList.NewElement()
 						subMsg := newElement.Message()
 						tbx.TestParseFieldOptions(subMsg, row, depth+1, prefix+caption+strconv.Itoa(i))
@@ -524,7 +555,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 	}
 }
 
-func getListSize(row map[string]string, prefix string) int {
+func getPrefixSize(row map[string]string, prefix string) int {
 	// fmt.Println("caption prefix: ", prefix)
 	size := 0
 	for caption := range row {

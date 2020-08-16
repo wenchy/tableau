@@ -29,7 +29,7 @@ message ItemConf {
     int32 id = 1 [ (caption) = "ID" ];
     int32 value = 2 [ (caption) = "Value" ];
     repeated Enhancement enhancements = 3 [ (caption) = "强化" ];
-    map<int32, Cost> cost_map = 4 [ (key) = "类型" ];
+    map<int32, Cost> cost_map = 4 [ (caption) = "抑制" , (key) = "类型", (layout) = COMPOSITE_LAYOUT_HORIZONTAL ];
   }
   message Enhancement {
     int32 id = 1 [ (caption) = "ID" ];
