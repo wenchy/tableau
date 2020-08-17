@@ -595,86 +595,138 @@ func getPrefixSize(row map[string]string, prefix string) int {
 func getScalarFieldValue(fd protoreflect.FieldDescriptor, cellVal string) protoreflect.Value {
 	switch fd.Kind() {
 	case protoreflect.Int32Kind:
-		val, err := strconv.ParseInt(cellVal, 10, 32)
-		if err != nil {
-			fmt.Println("cellVal: ", cellVal)
-			panic(err)
+		var val int64
+		var err error
+		if cellVal != "" {
+			val, err = strconv.ParseInt(cellVal, 10, 32)
+			if err != nil {
+				fmt.Println("cellVal: ", cellVal)
+				panic(err)
+			}
 		}
 		return protoreflect.ValueOf(int32(val))
 	case protoreflect.Sint32Kind:
-		val, err := strconv.ParseInt(cellVal, 10, 32)
-		if err != nil {
-			panic(err)
+		var val int64
+		var err error
+		if cellVal != "" {
+			val, err = strconv.ParseInt(cellVal, 10, 32)
+			if err != nil {
+				panic(err)
+			}
 		}
 		return protoreflect.ValueOf(int32(val))
 	case protoreflect.Sfixed32Kind:
-		val, err := strconv.ParseInt(cellVal, 10, 32)
-		if err != nil {
-			panic(err)
+		var val int64
+		var err error
+		if cellVal != "" {
+			val, err = strconv.ParseInt(cellVal, 10, 32)
+			if err != nil {
+				panic(err)
+			}
 		}
 		return protoreflect.ValueOf(int32(val))
 	case protoreflect.Uint32Kind:
-		val, err := strconv.ParseUint(cellVal, 10, 32)
-		if err != nil {
-			panic(err)
+		var val uint64
+		var err error
+		if cellVal != "" {
+			val, err = strconv.ParseUint(cellVal, 10, 32)
+			if err != nil {
+				panic(err)
+			}
 		}
 		return protoreflect.ValueOf(uint32(val))
 	case protoreflect.Fixed32Kind:
-		val, err := strconv.ParseUint(cellVal, 10, 32)
-		if err != nil {
-			panic(err)
+		var val uint64
+		var err error
+		if cellVal != "" {
+			val, err = strconv.ParseUint(cellVal, 10, 32)
+			if err != nil {
+				panic(err)
+			}
 		}
 		return protoreflect.ValueOf(uint32(val))
 	case protoreflect.Int64Kind:
-		val, err := strconv.ParseInt(cellVal, 10, 64)
-		if err != nil {
-			panic(err)
+		var val int64
+		var err error
+		if cellVal != "" {
+			val, err = strconv.ParseInt(cellVal, 10, 64)
+			if err != nil {
+				panic(err)
+			}
 		}
 		return protoreflect.ValueOf(int64(val))
 	case protoreflect.Sint64Kind:
-		val, err := strconv.ParseInt(cellVal, 10, 64)
-		if err != nil {
-			panic(err)
+		var val int64
+		var err error
+		if cellVal != "" {
+			val, err = strconv.ParseInt(cellVal, 10, 64)
+			if err != nil {
+				panic(err)
+			}
 		}
 		return protoreflect.ValueOf(int64(val))
 	case protoreflect.Sfixed64Kind:
-		val, err := strconv.ParseInt(cellVal, 10, 64)
-		if err != nil {
-			panic(err)
+		var val int64
+		var err error
+		if cellVal != "" {
+			val, err = strconv.ParseInt(cellVal, 10, 64)
+			if err != nil {
+				panic(err)
+			}
 		}
 		return protoreflect.ValueOf(int64(val))
 	case protoreflect.Uint64Kind:
-		val, err := strconv.ParseUint(cellVal, 10, 64)
-		if err != nil {
-			panic(err)
+		var val uint64
+		var err error
+		if cellVal != "" {
+			val, err = strconv.ParseUint(cellVal, 10, 64)
+			if err != nil {
+				panic(err)
+			}
 		}
 		return protoreflect.ValueOf(uint64(val))
 	case protoreflect.Fixed64Kind:
-		val, err := strconv.ParseUint(cellVal, 10, 64)
-		if err != nil {
-			panic(err)
+		var val uint64
+		var err error
+		if cellVal != "" {
+			val, err = strconv.ParseUint(cellVal, 10, 64)
+			if err != nil {
+				panic(err)
+			}
 		}
 		return protoreflect.ValueOf(uint64(val))
 	case protoreflect.StringKind:
-		return protoreflect.ValueOf(string(cellVal))
+		return protoreflect.ValueOf(cellVal)
 	case protoreflect.BytesKind:
 		return protoreflect.ValueOf([]byte(cellVal))
 	case protoreflect.BoolKind:
-		val, err := strconv.ParseBool(cellVal)
-		if err != nil {
-			panic(err)
+		var val bool
+		var err error
+		if cellVal != "" {
+			val, err = strconv.ParseBool(cellVal)
+			if err != nil {
+				panic(err)
+			}
 		}
 		return protoreflect.ValueOf(val)
 	case protoreflect.FloatKind:
-		val, err := strconv.ParseFloat(cellVal, 32)
-		if err != nil {
-			panic(err)
+		var val float64
+		var err error
+		if cellVal != "" {
+			val, err = strconv.ParseFloat(cellVal, 32)
+			if err != nil {
+				panic(err)
+			}
 		}
 		return protoreflect.ValueOf(float32(val))
 	case protoreflect.DoubleKind:
-		val, err := strconv.ParseFloat(cellVal, 64)
-		if err != nil {
-			panic(err)
+		var val float64
+		var err error
+		if cellVal != "" {
+			val, err = strconv.ParseFloat(cellVal, 64)
+			if err != nil {
+				panic(err)
+			}
 		}
 		return protoreflect.ValueOf(float64(val))
 	default:

@@ -77,15 +77,16 @@ A powerful configuration conversion tool based on protobuf.
 - [ ] nested types: unlimited nesting of message, list, and map
 
 ### Default Values
-- [ ] each scalar type's default value is same as protobuf
-- [ ] interger: 0 
-- [ ] float: 0.0 
-- [ ] bool: false 
-- [ ] string: ""
-- [ ] bytes: ""
-- [ ] in-cell message: each field's default value is same as protobuf 
-- [ ] in-cell list: element's default value is same as protobuf 
-- [ ] in-cell map: both key and value's default value is same as protobuf 
+- [x] each scalar type's default value is same as protobuf
+- [x] interger: 0 
+- [x] float: 0.0 
+- [x] bool: false 
+- [x] string: ""
+- [x] bytes: ""
+- [x] in-cell message: each field's default value is same as protobuf 
+- [x] in-cell list: element's default value is same as protobuf 
+- [x] in-cell map: both key and value's default value is same as protobuf 
+- [ ] message: no empty message will be spawned if all fields of a message are empty
 
 ### Merge
 - [ ] merge multiple workbooks
