@@ -15,3 +15,4 @@
 # vendor/
 .DS_Store
 cmd/test/test
+cmd/test/output/

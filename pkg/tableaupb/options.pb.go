@@ -322,9 +322,9 @@ var (
 	// optional string worksheet = 52001;
 	E_Worksheet = &file_options_proto_extTypes[1]
 	// optional int32 captrow = 52002;
-	E_Captrow = &file_options_proto_extTypes[2] // [default = 1]; // exact row number of caption of the worksheet
+	E_Captrow = &file_options_proto_extTypes[2] // [default = 1]; // exact row number of caption at worksheet
 	// optional int32 descrow = 52003;
-	E_Descrow = &file_options_proto_extTypes[3] // [default = 1]; // exact row number of description of the wooksheet
+	E_Descrow = &file_options_proto_extTypes[3] // [default = 1]; // exact row number of description at wooksheet
 	// optional int32 datarow = 52004;
 	E_Datarow = &file_options_proto_extTypes[4] // [default = 2]; // start row number of data
 	// optional bool transpose = 52005;

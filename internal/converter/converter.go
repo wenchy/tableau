@@ -35,13 +35,22 @@ const (
 	// Xlsx             = 3
 )
 
+type metasheet struct {
+	worksheet string // worksheet name
+	captrow   int32  // exact row number of caption at worksheet
+	descrow   int32  // exact row number of description at wooksheet
+	datarow   int32  // start row number of data
+	transpose bool   // interchange the rows and columns
+}
+
 type Tableaux struct {
-	ProtoPackageName          string // protobuf package name.
-	InputPath                 string // root dir of workbooks.
-	OutputPath                string // output path of generated files.
-	OutputFilenameAsSnakeCase bool   // output filename as snake case, default is camel case same as the protobuf message name.
-	OutputFormat              Format // output format: json, protobin, or prototext, and default is json.
-	OutputPretty              bool   // output pretty format, with mulitline and indent.
+	ProtoPackageName          string    // protobuf package name.
+	InputPath                 string    // root dir of workbooks.
+	OutputPath                string    // output path of generated files.
+	OutputFilenameAsSnakeCase bool      // output filename as snake case, default is camel case same as the protobuf message name.
+	OutputFormat              Format    // output format: json, protobin, or prototext, and default is json.
+	OutputPretty              bool      // output pretty format, with mulitline and indent.
+	metasheet                 metasheet // meta info of worksheet
 }
 
 func (tbx *Tableaux) Convert() {
@@ -96,21 +105,27 @@ func (tbx *Tableaux) Export(protomsg proto.Message) {
 	msg := protomsg.ProtoReflect()
 	_, workbook := TestParseFileOptions(md.ParentFile())
 	fmt.Println("==================")
-	msgName, worksheet, _, _, _, transpose := TestParseMessageOptions(md)
+	msgName, worksheet, captrow, descrow, datarow, transpose := TestParseMessageOptions(md)
+	tbx.metasheet.worksheet = worksheet
+	tbx.metasheet.captrow = captrow
+	tbx.metasheet.descrow = descrow
+	tbx.metasheet.datarow = datarow
+	tbx.metasheet.transpose = transpose
+
 	fmt.Println("==================")
 	sheet := ReadSheet(tbx.InputPath+workbook, worksheet)
 	if transpose {
-		// col 0: captrow
-		// col 1 - MaxRow: datarow
+		// col caprow: caption row
+		// col [datarow, MaxRow]: data
 		for ncol := 0; ncol < sheet.MaxCol; ncol++ {
-			if ncol >= 1 {
+			if ncol >= int(datarow)-1 {
 				// row, err := sheet.Row(nrow)
 				// if err != nil {
 				// 	panic(err)
 				// }
 				kv := make(map[string]string)
 				for i := 0; i < sheet.MaxRow; i++ {
-					captionCell, err := sheet.Cell(i, 0)
+					captionCell, err := sheet.Cell(i, int(captrow)-1)
 					if err != nil {
 						panic(err)
 					}
@@ -128,17 +143,17 @@ func (tbx *Tableaux) Export(protomsg proto.Message) {
 		}
 
 	} else {
-		// row 0: captrow
-		// row 1 - MaxRow: datarow
+		// row captrow: caption row
+		// row [datarow, MaxRow]: data row
 		for nrow := 0; nrow < sheet.MaxRow; nrow++ {
-			if nrow >= 1 {
+			if nrow >= int(datarow)-1 {
 				// row, err := sheet.Row(nrow)
 				// if err != nil {
 				// 	panic(err)
 				// }
 				kv := make(map[string]string)
 				for i := 0; i < sheet.MaxCol; i++ {
-					captionCell, err := sheet.Cell(0, i)
+					captionCell, err := sheet.Cell(int(captrow)-1, i)
 					if err != nil {
 						panic(err)
 					}

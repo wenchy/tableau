@@ -11,6 +11,9 @@ option (workbook) = "Test.xlsx";
 
 message ItemConf {
   option (worksheet) = "Item";
+  option (captrow) = 2;
+  option (datarow) = 4;
+
   map<int32, Row> item_map = 1 [ (key) = "道具ID" ];
 
   message Row {

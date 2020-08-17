@@ -15,8 +15,8 @@ extend google.protobuf.FileOptions
 extend google.protobuf.MessageOptions
 {
     string worksheet = 52001;
-    int32 captrow = 52002; // [default = 1]; // exact row number of caption of the worksheet
-    int32 descrow = 52003; // [default = 1]; // exact row number of description of the wooksheet
+    int32 captrow = 52002; // [default = 1]; // exact row number of caption at worksheet
+    int32 descrow = 52003; // [default = 1]; // exact row number of description at wooksheet
     int32 datarow = 52004; // [default = 2]; // start row number of data
     bool transpose = 52005; // [default = false]; // interchange the rows and columns
 

@@ -28,6 +28,9 @@ A powerful configuration conversion tool based on protobuf.
 ### Metadata
 - [ ] metatable: a message to describe the worksheet's metadata
 - [ ] metafield: a message to describe the caption's metadata
+- [x] captrow: caption row, exact row number of caption at worksheet
+- [ ] descrow: exact row, number of description at wooksheet
+- [x] datarow: data row, start row number of data
 
 ### Generator
 - [ ] generate xlsx template by proto: **proto -> xlsx template**
