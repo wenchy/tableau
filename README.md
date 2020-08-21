@@ -88,7 +88,7 @@ A powerful configuration conversion tool based on protobuf.
 - [ ] merge multiple workbooks
 - [ ] merge multiple worksheets
 
-### Date/Time
+### Datetime
 > [ISO 8601](https://www.wikiwand.com/en/ISO_8601) and [RFC 3339](https://tools.ietf.org/html/rfc3339)
 > 
 > [Understanding about RFC 3339 for Datetime and Timezone Formatting in Software Engineering](https://medium.com/easyread/understanding-about-rfc-3339-for-datetime-formatting-in-software-engineering-940aa5d5f68a)
@@ -97,23 +97,17 @@ A powerful configuration conversion tool based on protobuf.
 > 2019-10-12T07:20:50.52Z
 > # This is only accepted in RFC 3339 (without T)
 > 2019-10-12 07:20:50.52Z
-> # Timezone examples
-> 2019-10-12T07:20:50.52Z      (UTC+0)
-> 2019-10-12T07:20:50.52+00:00 (UTC+0)
-> 2019-10-12T14:20:50.52+07:00 (UTC+7)
-> 2019-10-12T03:20:50.52-04:00 (UTC-4)
 > ```
-> - "Z" stands for Zero timezone or Zulu timezone as `UTC+0`, and equal to `+00:00` in the RFC 3339.
-> - RFC 3339 use/follow the ISO 8601 DateTime format. The only difference is RFC 3339 allows us to replace "T" with "space".
+> - "Z": stands for Zero timezone (UTC+0). Or equal to +00:00 in the RFC 3339.
+> - RFC 3339 is following the ISO 8601 DateTime format. The only difference is RFC allows us to replace "T" with "space".
 
-Use the **RFC 3339** as the standard for the Date/Time format. Any serious programmer should read and understand it.
-- [x] Timestamp: based on `google.protobuf.Timestamp`, JSON representation uses **RFC 3339**, see [Protbuf JSON Mapping](https://developers.google.com/protocol-buffers/docs/proto3#json)
-- [x] Datetime: excel format: `yyyy-MM-dd HH:mm:ss`, e.g.: `2020-01-01 05:10:00`
-- [x] Timezone: uses **RFC 3339**
-- [ ] Date: excel format: `yyyy-MM-dd`, e.g.: `2020-01-01`
-- [ ] Time: excel format: `HH:mm:ss`, e.g.: `05:10:00`
+- [x] Timestamp: based on `google.protobuf.Timestamp`
+- [ ] Timezone: time zones and time offsets
+- [x] Datetime: format: `yyyy-MM-dd HH:mm:ss`, e.g.: `2020-01-01 05:10:00`
+- [ ] Date: format: `yyyy-MM-dd`, e.g.: `2020-01-01`
+- [ ] Time: format: `HH:mm:ss`, e.g.: `05:10:00`
 - [x] Duration: based on`google.protobuf.Duration` 
-- [x] Duration: format: `form "72h3m0.5s"`, see [golang duration string form](https://golang.org/pkg/time/#Duration.String)
+- [x] Duration: format: `form "72h3m0.5s"`, see: [golang duration string form](https://golang.org/pkg/time/#Duration.String)
   
 ### Transpose
 - [x] Interchange the rows and columns of a worksheet.
