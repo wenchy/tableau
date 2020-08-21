@@ -26,20 +26,20 @@ A powerful configuration conversion tool based on protobuf.
 - [ ] Javascript/Typescript/Node
 
 ### Metadata
-- [ ] metatable: a message to describe the worksheet's metadata
-- [ ] metafield: a message to describe the caption's metadata
-- [x] captrow: caption row, exact row number of caption at worksheet
-- [ ] descrow: exact row, number of description at wooksheet
-- [x] datarow: data row, start row number of data
+- [ ] metatable: a message to describe the worksheet's metadata.
+- [ ] metafield: a message to describe the caption's metadata.
+- [x] captrow: caption row, the exact row number of captions at worksheet.
+- [ ] descrow: description row, the exact row number of descriptions at wooksheet.
+- [x] datarow: data row, the start row number of data.
 
 ### Generator
 - [ ] generate xlsx template by proto: **proto -> xlsx template**
 - [ ] generate proto by xlsx template: **proto -> xlsx template**
 
 ### Conversion
-- [x] xlsx -> JSON
-- [x] xlsx -> protobin
-- [x] xlsx -> prototext
+- [x] xlsx -> JSON(common format and human readable)
+- [x] xlsx -> protobin(small size)
+- [x] xlsx -> prototext(human debugging)
 - [ ] JSON -> xlsx
 - [ ] protobin -> xlsx
 - [ ] prototext -> xlsx
