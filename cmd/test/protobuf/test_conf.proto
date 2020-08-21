@@ -27,6 +27,7 @@ message ItemConf {
     repeated int32 effects = 7
         [ (caption) = "效果列表", (type) = FIELD_TYPE_CELL_LIST ];
     google.protobuf.Timestamp expiry_time = 8 [ (caption) = "过期时间" ];
+    google.protobuf.Duration duration = 9 [ (caption) = "有效多久" ];
   }
   message Attribute {
     int32 id = 1 [ (caption) = "ID" ];

@@ -23,6 +23,8 @@ import (
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/dynamicpb"
+	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type Format int
@@ -525,29 +527,33 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 						if err != nil {
 							panic(fmt.Sprintf("illegal timestamp string format: %v, err: %v\n", cellValue, err))
 						}
-						for i := 0; i < subMd.Fields().Len(); i++ {
-							fd := subMd.Fields().Get(i)
-							// fmt.Println("fd.FullName().Name(): ", fd.FullName().Name())
-							if fd.FullName().Name() == "seconds" {
-								value := getScalarFieldValue(fd, strconv.FormatInt(t.Unix(), 10))
-								subMsg.Set(fd, value)
-								break
-							}
+						ts := timestamppb.New(t)
+						// make use of t as a *timestamppb.Timestamp
+						if err = ts.CheckValid(); err != nil {
+							panic(fmt.Sprintf("invalid timestamp: %v\n", err))
 						}
+						msg.Set(fd, protoreflect.ValueOf(ts.ProtoReflect()))
 					case "google.protobuf.Duration":
 						cellValue, ok := row[prefix+caption]
 						if !ok {
 							panic(fmt.Sprintf("not found column: %v\n", prefix+caption))
 						}
-						for i := 0; i < subMd.Fields().Len(); i++ {
-							fd := subMd.Fields().Get(i)
-							// fmt.Println("fd.FullName().Name(): ", fd.FullName().Name())
-							if fd.FullName().Name() == "seconds" {
-								value := getScalarFieldValue(fd, cellValue)
-								subMsg.Set(fd, value)
-								break
-							}
+						d, err := time.ParseDuration(cellValue)
+						if err != nil {
+							panic(fmt.Sprintf("ParseDuration failed, illegal format: %v\n", cellValue))
 						}
+						dur := durationpb.New(d)
+						// make use of d as a *durationpb.Duration
+						if err = dur.CheckValid(); err != nil {
+							panic(fmt.Sprintf("duration CheckValid failed: %v\n", err))
+						}
+						msg.Set(fd, protoreflect.ValueOf(dur.ProtoReflect()))
+						// secFd := subMd.Fields().ByName("seconds")
+						// if secFd == nil {
+						// 	panic(fmt.Sprintf("field `seconds` not found"))
+						// }
+						// value := getScalarFieldValue(fd, cellValue)
+						// subMsg.Set(secFd, value)
 					default:
 						subPkg := subMd.ParentFile().Package()
 						if string(subPkg) != tbx.ProtoPackageName {

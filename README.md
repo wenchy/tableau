@@ -60,21 +60,17 @@ A powerful configuration conversion tool based on protobuf.
 - [ ] validate the enum value.
 
 ### Composite Types
-- [x] message: multi-level nested message
-- [x] message: simple in-cell message
-- [x] list: horizontal(row direction) layout, and is list's default layout
-- [x] list: vertical(column direction) layout
-- [x] list: multi-level nested list
-- [x] list: horizontal layout list
-- [x] list: vertical layout list
+- [x] message: horizontal(row direction) layout, fields located in cells.
+- [x] message: simple in-cell message, each field must be **scalar** type.
+- [x] list: horizontal(row direction) layout, and is list's default layout.
+- [x] list: vertical(column direction) layout.
 - [x] list: simple in-cell list, element must be **scalar** type.
-- [x] map: horizontal(row direction) layout
-- [x] map: vertical(column direction) layout, and is map's default layout
-- [x] map: multi-level nested map
-- [x] map: unordered map or hash map
-- [ ] map: ordered map
-- [x] map: simple in-cell map, both key and value must be **scalar** type
-- [ ] nested types: unlimited nesting of message, list, and map
+- [x] map: horizontal(row direction) layout.
+- [x] map: vertical(column direction) layout, and is map's default layout.
+- [x] map: unordered map or hash map.
+- [ ] map: ordered map.
+- [x] map: simple in-cell map, both key and value must be **scalar** type.
+- [x] nesting: unlimited nesting of message, list, and map.
 
 ### Default Values
 - [x] each scalar type's default value is same as protobuf
@@ -92,13 +88,26 @@ A powerful configuration conversion tool based on protobuf.
 - [ ] merge multiple workbooks
 - [ ] merge multiple worksheets
 
-### Time
-- [x] Timestamp: `google.protobuf.Timestamp`
-- [ ] Timestamp: timezone problem
-- [x] Datetime: format: `yyyy-MM-dd HH:mm:ss`, based on Timestamp
-- [ ] Date: format: `yyyy-MM-dd`, ignore day time based on Timestamp
-- [ ] Time: format: `HH:mm:ss`
-- [x] Duration: `google.protobuf.Duration` 
+### Datetime
+> [ISO 8601](https://www.wikiwand.com/en/ISO_8601) and [RFC 3339](https://tools.ietf.org/html/rfc3339)
+> 
+> [Understanding about RFC 3339 for Datetime and Timezone Formatting in Software Engineering](https://medium.com/easyread/understanding-about-rfc-3339-for-datetime-formatting-in-software-engineering-940aa5d5f68a)
+> ```
+> # This is acceptable in ISO 8601 and RFC 3339 (with T)
+> 2019-10-12T07:20:50.52Z
+> # This is only accepted in RFC 3339 (without T)
+> 2019-10-12 07:20:50.52Z
+> ```
+> - "Z": stands for Zero timezone (UTC+0). Or equal to +00:00 in the RFC 3339.
+> - RFC 3339 is following the ISO 8601 DateTime format. The only difference is RFC allows us to replace "T" with "space".
+
+- [x] Timestamp: based on `google.protobuf.Timestamp`
+- [ ] Timezone: time zones and time offsets
+- [x] Datetime: format: `yyyy-MM-dd HH:mm:ss`, e.g.: `2020-01-01 05:10:00`
+- [ ] Date: format: `yyyy-MM-dd`, e.g.: `2020-01-01`
+- [ ] Time: format: `HH:mm:ss`, e.g.: `05:10:00`
+- [x] Duration: based on`google.protobuf.Duration` 
+- [x] Duration: format: `form "72h3m0.5s"`, see: [golang duration string form](https://golang.org/pkg/time/#Duration.String)
   
 ### Transpose
 - [x] Interchange the rows and columns of a worksheet.
@@ -107,7 +116,7 @@ A powerful configuration conversion tool based on protobuf.
 - [ ] Min
 - [ ] Max
 - [ ] Range
-- [ ] Options: e.g. enum type
+- [ ] Options: e.g., enum type
 - [ ] Foreign key
 
 ### Error Message
