@@ -55,6 +55,11 @@ type Tableaux struct {
 	metasheet                 metasheet // meta info of worksheet
 }
 
+var specialMessageMap = map[string]int{
+	"google.protobuf.Timestamp": 1,
+	"google.protobuf.Duration":  1,
+}
+
 func (tbx *Tableaux) Convert() {
 	// parseActivity()
 	// parseItem()
@@ -376,7 +381,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 			valueFd := fd.MapValue()
 			reflectMap := msg.Mutable(fd).Map()
 			// newKey := protoreflect.ValueOf(int32(1)).MapKey()
-			// newKey := getScalarFieldValue(keyFd, "1111001").MapKey()
+			// newKey := getFieldValue(keyFd, "1111001").MapKey()
 			if etype == tableaupb.FieldType_FIELD_TYPE_CELL_MAP {
 				if valueFd.Kind() == protoreflect.MessageKind {
 					panic("in-cell map do not support value as message type")
@@ -391,9 +396,9 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 					if len(kv) != 2 {
 						panic(fmt.Sprintf("illegal key-value pair: %v, %v\n", prefix+caption, pair))
 					}
-					newKey := getScalarFieldValue(keyFd, kv[0]).MapKey()
+					newKey := getFieldValue(keyFd, kv[0]).MapKey()
 					newValue := reflectMap.NewValue()
-					newValue = getScalarFieldValue(valueFd, kv[1])
+					newValue = getFieldValue(valueFd, kv[1])
 					reflectMap.Set(newKey, newValue)
 				}
 			} else {
@@ -408,7 +413,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 							if !ok {
 								panic(fmt.Sprintf("key not found: %s\n", prefix+caption+key))
 							}
-							newKey = getScalarFieldValue(keyFd, cellValue).MapKey()
+							newKey = getFieldValue(keyFd, cellValue).MapKey()
 							var newValue protoreflect.Value
 							if reflectMap.Has(newKey) {
 								newValue = reflectMap.Mutable(newKey)
@@ -425,7 +430,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 						if !ok {
 							panic(fmt.Sprintf("key not found: %s\n", prefix+caption+key))
 						}
-						newKey = getScalarFieldValue(keyFd, cellValue).MapKey()
+						newKey = getFieldValue(keyFd, cellValue).MapKey()
 						var newValue protoreflect.Value
 						if reflectMap.Has(newKey) {
 							newValue = reflectMap.Mutable(newKey)
@@ -442,7 +447,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 					if !ok {
 						panic(fmt.Sprintf("key not found: %s\n", prefix+caption+key))
 					}
-					newKey = getScalarFieldValue(keyFd, cellValue).MapKey()
+					newKey = getFieldValue(keyFd, cellValue).MapKey()
 					var newValue protoreflect.Value
 					if reflectMap.Has(newKey) {
 						newValue = reflectMap.Mutable(newKey)
@@ -450,7 +455,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 						newValue = reflectMap.NewValue()
 						reflectMap.Set(newKey, newValue)
 					}
-					newValue = getScalarFieldValue(fd, cellValue)
+					newValue = getFieldValue(fd, cellValue)
 				}
 			}
 
@@ -478,7 +483,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 					if ok {
 						splits := strings.Split(cellValue, sep)
 						for _, v := range splits {
-							value := getScalarFieldValue(fd, v)
+							value := getFieldValue(fd, v)
 							reflectList.Append(value)
 						}
 					} else {
@@ -496,77 +501,42 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 
 				if etype == tableaupb.FieldType_FIELD_TYPE_CELL_MESSAGE {
 					cellValue, ok := row[prefix+caption]
-					if ok {
-						splits := strings.Split(cellValue, sep)
-						if len(splits) != subMd.Fields().Len() {
-							// TODO(wenchyzhu): more clear error message
-							panic("in-cell message fields len not equal to cell splits len")
-						}
-						for i := 0; i < subMd.Fields().Len(); i++ {
-							fd := subMd.Fields().Get(i)
-							// fmt.Println("fd.FullName().Name(): ", fd.FullName().Name())
-							value := getScalarFieldValue(fd, splits[i])
-							subMsg.Set(fd, value)
-						}
-					} else {
-						panic(fmt.Sprintf("caption not found: %s\n", prefix+caption))
+					if !ok {
+						panic(fmt.Sprintf("not found column caption: %v\n", prefix+caption))
 					}
-
+					splits := strings.Split(cellValue, sep)
+					if len(splits) != subMd.Fields().Len() {
+						// TODO(wenchyzhu): more clear error message
+						panic("in-cell message fields len not equal to cell splits len")
+					}
+					for i := 0; i < subMd.Fields().Len(); i++ {
+						fd := subMd.Fields().Get(i)
+						// fmt.Println("fd.FullName().Name(): ", fd.FullName().Name())
+						value := getFieldValue(fd, splits[i])
+						subMsg.Set(fd, value)
+					}
 				} else {
-					// fmt.Println("subMsg FullName: ", subMd.FullName())
-					subMsgName := subMd.FullName()
-					switch subMsgName {
-					case "google.protobuf.Timestamp":
+					subMsgName := string(fd.Message().FullName())
+					_, found := specialMessageMap[subMsgName]
+					if found {
 						cellValue, ok := row[prefix+caption]
 						if !ok {
 							panic(fmt.Sprintf("not found column caption: %v\n", prefix+caption))
 						}
-						// format := "2006-01-02T15:04:05.000Z"
-						format := "2006-01-02 15:04:05"
-						t, err := time.Parse(format, cellValue)
-						if err != nil {
-							panic(fmt.Sprintf("illegal timestamp string format: %v, err: %v\n", cellValue, err))
-						}
-						ts := timestamppb.New(t)
-						// make use of t as a *timestamppb.Timestamp
-						if err = ts.CheckValid(); err != nil {
-							panic(fmt.Sprintf("invalid timestamp: %v\n", err))
-						}
-						msg.Set(fd, protoreflect.ValueOf(ts.ProtoReflect()))
-					case "google.protobuf.Duration":
-						cellValue, ok := row[prefix+caption]
-						if !ok {
-							panic(fmt.Sprintf("not found column: %v\n", prefix+caption))
-						}
-						d, err := time.ParseDuration(cellValue)
-						if err != nil {
-							panic(fmt.Sprintf("ParseDuration failed, illegal format: %v\n", cellValue))
-						}
-						dur := durationpb.New(d)
-						// make use of d as a *durationpb.Duration
-						if err = dur.CheckValid(); err != nil {
-							panic(fmt.Sprintf("duration CheckValid failed: %v\n", err))
-						}
-						msg.Set(fd, protoreflect.ValueOf(dur.ProtoReflect()))
-						// secFd := subMd.Fields().ByName("seconds")
-						// if secFd == nil {
-						// 	panic(fmt.Sprintf("field `seconds` not found"))
-						// }
-						// value := getScalarFieldValue(fd, cellValue)
-						// subMsg.Set(secFd, value)
-					default:
+						value := getFieldValue(fd, cellValue)
+						msg.Set(fd, value)
+					} else {
 						subPkg := subMd.ParentFile().Package()
 						if string(subPkg) != tbx.ProtoPackageName {
 							panic(fmt.Sprintf("unknown message %v in package %v", subMsgName, subPkg))
 						}
-						subMsg := msg.Mutable(fd).Message()
 						tbx.TestParseFieldOptions(subMsg, row, depth+1, prefix+caption)
 					}
 				}
 			} else {
 				cellValue, ok := row[prefix+caption]
 				if ok {
-					value := getScalarFieldValue(fd, cellValue)
+					value := getFieldValue(fd, cellValue)
 					msg.Set(fd, value)
 				} else {
 					panic(fmt.Sprintf("not found column caption: %v\n", prefix+caption))
@@ -598,15 +568,15 @@ func getPrefixSize(row map[string]string, prefix string) int {
 	return size
 }
 
-func getScalarFieldValue(fd protoreflect.FieldDescriptor, cellVal string) protoreflect.Value {
+func getFieldValue(fd protoreflect.FieldDescriptor, cellValue string) protoreflect.Value {
 	switch fd.Kind() {
 	case protoreflect.Int32Kind:
 		var val int64
 		var err error
-		if cellVal != "" {
-			val, err = strconv.ParseInt(cellVal, 10, 32)
+		if cellValue != "" {
+			val, err = strconv.ParseInt(cellValue, 10, 32)
 			if err != nil {
-				fmt.Println("cellVal: ", cellVal)
+				fmt.Println("cellValue: ", cellValue)
 				panic(err)
 			}
 		}
@@ -614,8 +584,8 @@ func getScalarFieldValue(fd protoreflect.FieldDescriptor, cellVal string) protor
 	case protoreflect.Sint32Kind:
 		var val int64
 		var err error
-		if cellVal != "" {
-			val, err = strconv.ParseInt(cellVal, 10, 32)
+		if cellValue != "" {
+			val, err = strconv.ParseInt(cellValue, 10, 32)
 			if err != nil {
 				panic(err)
 			}
@@ -624,8 +594,8 @@ func getScalarFieldValue(fd protoreflect.FieldDescriptor, cellVal string) protor
 	case protoreflect.Sfixed32Kind:
 		var val int64
 		var err error
-		if cellVal != "" {
-			val, err = strconv.ParseInt(cellVal, 10, 32)
+		if cellValue != "" {
+			val, err = strconv.ParseInt(cellValue, 10, 32)
 			if err != nil {
 				panic(err)
 			}
@@ -634,8 +604,8 @@ func getScalarFieldValue(fd protoreflect.FieldDescriptor, cellVal string) protor
 	case protoreflect.Uint32Kind:
 		var val uint64
 		var err error
-		if cellVal != "" {
-			val, err = strconv.ParseUint(cellVal, 10, 32)
+		if cellValue != "" {
+			val, err = strconv.ParseUint(cellValue, 10, 32)
 			if err != nil {
 				panic(err)
 			}
@@ -644,8 +614,8 @@ func getScalarFieldValue(fd protoreflect.FieldDescriptor, cellVal string) protor
 	case protoreflect.Fixed32Kind:
 		var val uint64
 		var err error
-		if cellVal != "" {
-			val, err = strconv.ParseUint(cellVal, 10, 32)
+		if cellValue != "" {
+			val, err = strconv.ParseUint(cellValue, 10, 32)
 			if err != nil {
 				panic(err)
 			}
@@ -654,8 +624,8 @@ func getScalarFieldValue(fd protoreflect.FieldDescriptor, cellVal string) protor
 	case protoreflect.Int64Kind:
 		var val int64
 		var err error
-		if cellVal != "" {
-			val, err = strconv.ParseInt(cellVal, 10, 64)
+		if cellValue != "" {
+			val, err = strconv.ParseInt(cellValue, 10, 64)
 			if err != nil {
 				panic(err)
 			}
@@ -664,8 +634,8 @@ func getScalarFieldValue(fd protoreflect.FieldDescriptor, cellVal string) protor
 	case protoreflect.Sint64Kind:
 		var val int64
 		var err error
-		if cellVal != "" {
-			val, err = strconv.ParseInt(cellVal, 10, 64)
+		if cellValue != "" {
+			val, err = strconv.ParseInt(cellValue, 10, 64)
 			if err != nil {
 				panic(err)
 			}
@@ -674,8 +644,8 @@ func getScalarFieldValue(fd protoreflect.FieldDescriptor, cellVal string) protor
 	case protoreflect.Sfixed64Kind:
 		var val int64
 		var err error
-		if cellVal != "" {
-			val, err = strconv.ParseInt(cellVal, 10, 64)
+		if cellValue != "" {
+			val, err = strconv.ParseInt(cellValue, 10, 64)
 			if err != nil {
 				panic(err)
 			}
@@ -684,8 +654,8 @@ func getScalarFieldValue(fd protoreflect.FieldDescriptor, cellVal string) protor
 	case protoreflect.Uint64Kind:
 		var val uint64
 		var err error
-		if cellVal != "" {
-			val, err = strconv.ParseUint(cellVal, 10, 64)
+		if cellValue != "" {
+			val, err = strconv.ParseUint(cellValue, 10, 64)
 			if err != nil {
 				panic(err)
 			}
@@ -694,22 +664,22 @@ func getScalarFieldValue(fd protoreflect.FieldDescriptor, cellVal string) protor
 	case protoreflect.Fixed64Kind:
 		var val uint64
 		var err error
-		if cellVal != "" {
-			val, err = strconv.ParseUint(cellVal, 10, 64)
+		if cellValue != "" {
+			val, err = strconv.ParseUint(cellValue, 10, 64)
 			if err != nil {
 				panic(err)
 			}
 		}
 		return protoreflect.ValueOf(uint64(val))
 	case protoreflect.StringKind:
-		return protoreflect.ValueOf(cellVal)
+		return protoreflect.ValueOf(cellValue)
 	case protoreflect.BytesKind:
-		return protoreflect.ValueOf([]byte(cellVal))
+		return protoreflect.ValueOf([]byte(cellValue))
 	case protoreflect.BoolKind:
 		var val bool
 		var err error
-		if cellVal != "" {
-			val, err = strconv.ParseBool(cellVal)
+		if cellValue != "" {
+			val, err = strconv.ParseBool(cellValue)
 			if err != nil {
 				panic(err)
 			}
@@ -718,8 +688,8 @@ func getScalarFieldValue(fd protoreflect.FieldDescriptor, cellVal string) protor
 	case protoreflect.FloatKind:
 		var val float64
 		var err error
-		if cellVal != "" {
-			val, err = strconv.ParseFloat(cellVal, 32)
+		if cellValue != "" {
+			val, err = strconv.ParseFloat(cellValue, 32)
 			if err != nil {
 				panic(err)
 			}
@@ -728,25 +698,49 @@ func getScalarFieldValue(fd protoreflect.FieldDescriptor, cellVal string) protor
 	case protoreflect.DoubleKind:
 		var val float64
 		var err error
-		if cellVal != "" {
-			val, err = strconv.ParseFloat(cellVal, 64)
+		if cellValue != "" {
+			val, err = strconv.ParseFloat(cellValue, 64)
 			if err != nil {
 				panic(err)
 			}
 		}
 		return protoreflect.ValueOf(float64(val))
+	case protoreflect.MessageKind:
+		msgName := fd.Message().FullName()
+		switch msgName {
+		case "google.protobuf.Timestamp":
+			// format := "2006-01-02T15:04:05.000Z"
+			format := "2006-01-02 15:04:05"
+			t, err := time.Parse(format, cellValue)
+			if err != nil {
+				panic(fmt.Sprintf("illegal timestamp string format: %v, err: %v\n", cellValue, err))
+			}
+			ts := timestamppb.New(t)
+			// make use of t as a *timestamppb.Timestamp
+			if err = ts.CheckValid(); err != nil {
+				panic(fmt.Sprintf("invalid timestamp: %v\n", err))
+			}
+			return protoreflect.ValueOf(ts.ProtoReflect())
+		case "google.protobuf.Duration":
+			d, err := time.ParseDuration(cellValue)
+			if err != nil {
+				panic(fmt.Sprintf("ParseDuration failed, illegal format: %v\n", cellValue))
+			}
+			dur := durationpb.New(d)
+			// make use of d as a *durationpb.Duration
+			if err = dur.CheckValid(); err != nil {
+				panic(fmt.Sprintf("duration CheckValid failed: %v\n", err))
+			}
+			return protoreflect.ValueOf(dur.ProtoReflect())
+		default:
+			panic(fmt.Sprintf("not supported message type: %s", msgName))
+		}
 	default:
 		panic(fmt.Sprintf("not supported scalar type: %s", fd.Kind().String()))
-		// 	return protoreflect.Value{}
 		// case protoreflect.EnumKind:
 		// 	panic(fmt.Sprintf("not supported key type: %s", fd.Kind().String()))
-		// 	return protoreflect.Value{}
-		// case protoreflect.MessageKind:
-		// 	panic(fmt.Sprintf("not supported key type: %s", fd.Kind().String()))
-		// 	return protoreflect.Value{}
 		// case protoreflect.GroupKind:
 		// 	panic(fmt.Sprintf("not supported key type: %s", fd.Kind().String()))
 		// 	return protoreflect.Value{}
 	}
-	// return protoreflect.Value{}
 }
