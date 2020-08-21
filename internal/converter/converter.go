@@ -709,12 +709,13 @@ func getFieldValue(fd protoreflect.FieldDescriptor, cellValue string) protorefle
 		msgName := fd.Message().FullName()
 		switch msgName {
 		case "google.protobuf.Timestamp":
-			// format := "2006-01-02T15:04:05.000Z"
-			format := "2006-01-02 15:04:05"
-			t, err := time.Parse(format, cellValue)
+			// location name: "Asia/Shanghai" or "Asia/Chongqing".
+			// NOTE(wenchy): There is no "Asia/Beijing" location name. Whoa!!! Big surprize?
+			t, err := parseTimeWithLocation("Asia/Shanghai", cellValue)
 			if err != nil {
 				panic(fmt.Sprintf("illegal timestamp string format: %v, err: %v\n", cellValue, err))
 			}
+			// fmt.Printf("timeStr: %v, unix timestamp: %v\n", cellValue, t.Unix())
 			ts := timestamppb.New(t)
 			// make use of t as a *timestamppb.Timestamp
 			if err = ts.CheckValid(); err != nil {
@@ -742,5 +743,19 @@ func getFieldValue(fd protoreflect.FieldDescriptor, cellValue string) protorefle
 		// case protoreflect.GroupKind:
 		// 	panic(fmt.Sprintf("not supported key type: %s", fd.Kind().String()))
 		// 	return protoreflect.Value{}
+	}
+}
+
+func parseTimeWithLocation(locationName string, timeStr string) (time.Time, error) {
+	// see https://golang.org/pkg/time/#LoadLocation
+	if location, err := time.LoadLocation(locationName); err != nil {
+		panic(fmt.Sprintf("LoadLocation failed: %s", err))
+	} else {
+		timeLayout := "2006-01-02 15:04:05"
+		t, err := time.ParseInLocation(timeLayout, timeStr, location)
+		if err != nil {
+			panic(fmt.Sprintf("ParseInLocation failed:%v ,timeStr: %v, locationName: %v\n", err, timeStr, locationName))
+		}
+		return t, nil
 	}
 }
