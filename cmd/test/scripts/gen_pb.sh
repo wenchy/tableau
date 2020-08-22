@@ -4,9 +4,11 @@
 set -e
 set -o pipefail
 
-output_dir="../"
+cd "$(git rev-parse --show-toplevel)"
 
-tableau_dir="../../../pkg/protobuf/"
+output_dir="./cmd/test/"
+
+tableau_dir="./pkg/protobuf/"
 for item in "$tableau_dir"/* ; do
     echo "$item"
     if [ -f "$item" ]; then
@@ -14,7 +16,7 @@ for item in "$tableau_dir"/* ; do
     fi
 done
 
-test_dir="../protobuf"
+test_dir="./cmd/test/protobuf"
 for item in "$test_dir"/* ; do
     echo "$item"
     if [ -f "$item" ]; then
@@ -22,13 +24,13 @@ for item in "$test_dir"/* ; do
     fi
 done
 
-tableaupb_dir="../github.com/Wenchy/tableau/pkg/tableaupb"
-testpb_dir="../github.com/Wenchy/tableau/cmd/test/testpb"
+tableaupb_dir="./cmd/test/github.com/Wenchy/tableau/pkg/tableaupb"
+testpb_dir="./cmd/test/github.com/Wenchy/tableau/cmd/test/testpb"
 
 # update tableaupb
-rsync -avz "$tableaupb_dir" ../../../pkg/
+rsync -avz "$tableaupb_dir" "./pkg/"
 # update testpb
-rsync -avz "$testpb_dir" ../
+rsync -avz "$testpb_dir" "./cmd/test/"
 
 # remove
-rm -rf "../github.com"
+rm -rf "./cmd/test/github.com"

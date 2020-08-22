@@ -61,7 +61,7 @@ A powerful configuration conversion tool based on protobuf.
 
 ### Composite Types
 - [x] message: horizontal(row direction) layout, fields located in cells.
-- [x] message: simple in-cell message, each field must be **scalar** type.
+- [x] message: simple in-cell message, each field must be **scalar** type. Separated string sequence's size need not to be equal to fields' size, and fields will be filled in order. 
 - [x] list: horizontal(row direction) layout, and is list's default layout.
 - [x] list: vertical(column direction) layout.
 - [x] list: simple in-cell list, element must be **scalar** type.

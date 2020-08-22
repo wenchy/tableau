@@ -420,16 +420,20 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 				if !ok {
 					panic(fmt.Sprintf("column caption not found: %s\n", prefix+caption))
 				}
-				splits := strings.Split(cellValue, sep)
-				for _, pair := range splits {
-					kv := strings.Split(pair, subsep)
-					if len(kv) != 2 {
-						panic(fmt.Sprintf("illegal key-value pair: %v, %v\n", prefix+caption, pair))
+				if cellValue != "" {
+					// If s does not contain sep and sep is not empty, Split returns a
+					// slice of length 1 whose only element is s.
+					splits := strings.Split(cellValue, sep)
+					for _, pair := range splits {
+						kv := strings.Split(pair, subsep)
+						if len(kv) != 2 {
+							panic(fmt.Sprintf("illegal key-value pair: %v, %v\n", prefix+caption, pair))
+						}
+						key := tbx.getFieldValue(keyFd, kv[0]).MapKey()
+						val := reflectMap.NewValue()
+						val = tbx.getFieldValue(valueFd, kv[1])
+						reflectMap.Set(key, val)
 					}
-					key := tbx.getFieldValue(keyFd, kv[0]).MapKey()
-					val := reflectMap.NewValue()
-					val = tbx.getFieldValue(valueFd, kv[1])
-					reflectMap.Set(key, val)
 				}
 			} else {
 				emptyMapValue := reflectMap.NewValue()
@@ -526,10 +530,14 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 					if !ok {
 						panic(fmt.Sprintf("caption not found: %s\n", prefix+caption))
 					}
-					splits := strings.Split(cellValue, sep)
-					for _, v := range splits {
-						value := tbx.getFieldValue(fd, v)
-						reflectList.Append(value)
+					if cellValue != "" {
+						// If s does not contain sep and sep is not empty, Split returns a
+						// slice of length 1 whose only element is s.
+						splits := strings.Split(cellValue, sep)
+						for _, v := range splits {
+							value := tbx.getFieldValue(fd, v)
+							reflectList.Append(value)
+						}
 					}
 				} else {
 					panic(fmt.Sprintf("unknown list type: %v\n", etype))
@@ -545,17 +553,17 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 					if !ok {
 						panic(fmt.Sprintf("not found column caption: %v\n", prefix+caption))
 					}
-					splits := strings.Split(cellValue, sep)
-					subMd := newValue.Message().Descriptor()
-					if len(splits) != subMd.Fields().Len() {
-						// TODO(wenchyzhu): more clear error message
-						panic("in-cell message fields len not equal to cell splits len")
-					}
-					for i := 0; i < subMd.Fields().Len(); i++ {
-						fd := subMd.Fields().Get(i)
-						// fmt.Println("fd.FullName().Name(): ", fd.FullName().Name())
-						value := tbx.getFieldValue(fd, splits[i])
-						newValue.Message().Set(fd, value)
+					if cellValue != "" {
+						// If s does not contain sep and sep is not empty, Split returns a
+						// slice of length 1 whose only element is s.
+						splits := strings.Split(cellValue, sep)
+						subMd := newValue.Message().Descriptor()
+						for i := 0; i < subMd.Fields().Len() && i < len(splits); i++ {
+							fd := subMd.Fields().Get(i)
+							// fmt.Println("fd.FullName().Name(): ", fd.FullName().Name())
+							value := tbx.getFieldValue(fd, splits[i])
+							newValue.Message().Set(fd, value)
+						}
 					}
 				} else {
 					subMsgName := string(fd.Message().FullName())

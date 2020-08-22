@@ -87,9 +87,10 @@ message EnvConf {
     int32 platform_type = 3 [ (caption) = "PlatformType" ];
     string name = 4 [ (caption) = "名字" ];
     map<int32, int32> newbie_item_map = 5 [ (caption) = "赠送的道具", (type) = FIELD_TYPE_CELL_MAP ];
-    Basic basic = 6 [ (caption) = "基本信息", (type) = FIELD_TYPE_CELL_MESSAGE ];
-    float ratio = 7 [ (caption) = "比例" ];
-    double coefficent = 8 [ (caption) = "系数" ];
+    Basic basic1 = 6 [ (caption) = "基本信息1", (type) = FIELD_TYPE_CELL_MESSAGE ];
+    Basic basic2 = 7 [ (caption) = "基本信息2", (type) = FIELD_TYPE_CELL_MESSAGE ];
+    float ratio = 8 [ (caption) = "比例" ];
+    double coefficent = 9 [ (caption) = "系数" ];
 
     message Basic {
         int32 count = 1;
