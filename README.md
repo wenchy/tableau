@@ -53,8 +53,10 @@ A powerful configuration conversion tool based on protobuf.
 - [ ] prototext -> xlsx
 
 ### Pretty Print
-- [x] JSON
-- [x] prototext
+- [x] Multiline: every textual element on a new line
+- [x] Indent: 4 space characters
+- [x] JSON support
+- [x] prototext support
 
 ### EmitUnpopulated
 - [x] JSON: `EmitUnpopulated` specifies whether to emit unpopulated fields.
