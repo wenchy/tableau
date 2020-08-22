@@ -91,8 +91,6 @@ A powerful configuration conversion tool based on protobuf.
 - [ ] merge multiple worksheets
 
 ### Datetime
-> [ISO 8601](https://www.wikiwand.com/en/ISO_8601) and [RFC 3339](https://tools.ietf.org/html/rfc3339)
-> 
 > [Understanding about RFC 3339 for Datetime and Timezone Formatting in Software Engineering](https://medium.com/easyread/understanding-about-rfc-3339-for-datetime-formatting-in-software-engineering-940aa5d5f68a)
 > ```
 > # This is acceptable in ISO 8601 and RFC 3339 (with T)
@@ -100,16 +98,19 @@ A powerful configuration conversion tool based on protobuf.
 > # This is only accepted in RFC 3339 (without T)
 > 2019-10-12 07:20:50.52Z
 > ```
-> - "Z": stands for Zero timezone (UTC+0). Or equal to +00:00 in the RFC 3339.
-> - RFC 3339 is following the ISO 8601 DateTime format. The only difference is RFC allows us to replace "T" with "space".
+> - "Z" stands for Zero timezone or Zulu timezone `UTC+0`, and equal to `+00:00` in the RFC 3339.
+> - **RFC 3339** follows the **ISO 8601** DateTime format. The only difference is RFC allows us to replace "T" with "space".
 
-- [x] Timestamp: based on `google.protobuf.Timestamp`
-- [ ] Timezone: time zones and time offsets
-- [x] Datetime: format: `yyyy-MM-dd HH:mm:ss`, e.g.: `2020-01-01 05:10:00`
-- [ ] Date: format: `yyyy-MM-dd`, e.g.: `2020-01-01`
-- [ ] Time: format: `HH:mm:ss`, e.g.: `05:10:00`
-- [x] Duration: based on`google.protobuf.Duration` 
-- [x] Duration: format: `form "72h3m0.5s"`, see: [golang duration string form](https://golang.org/pkg/time/#Duration.String)
+Use [RFC 3339](https://tools.ietf.org/html/rfc3339) , which is following [ISO 8601](https://www.wikiwand.com/en/ISO_8601).
+
+- [x] Timestamp: based on `google.protobuf.Timestamp`, see [JSON mapping](https://developers.google.com/protocol-buffers/docs/proto3#json)
+- [x] Timezone: see [ParseInLocation](https://golang.org/pkg/time/#ParseInLocation)
+- [ ] DST: Daylight Savings Time. *no plan to handle this boring stuff*.
+- [x] Datetime: excel format: `yyyy-MM-dd HH:mm:ss`, e.g.: `2020-01-01 05:10:00`
+- [ ] Date: excel format: `yyyy-MM-dd`, e.g.: `2020-01-01`
+- [ ] Time: excel format: `HH:mm:ss`, e.g.: `05:10:00`
+- [x] Duration: based on`google.protobuf.Duration` , see [JSON mapping](https://developers.google.com/protocol-buffers/docs/proto3#json)
+- [x] Duration: excel format: `form "72h3m0.5s"`, see [golang duration string form](https://golang.org/pkg/time/#Duration.String)
   
 ### Transpose
 - [x] Interchange the rows and columns of a worksheet.
