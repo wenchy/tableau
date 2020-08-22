@@ -50,8 +50,9 @@ type Tableaux struct {
 	InputPath                 string    // root dir of workbooks.
 	OutputPath                string    // output path of generated files.
 	OutputFilenameAsSnakeCase bool      // output filename as snake case, default is camel case same as the protobuf message name.
-	OutputFormat              Format    // output format: json, protobin, or prototext, and default is json.
+	OutputFormat              Format    // output format: json, protobin, or prototext. Default is json.
 	OutputPretty              bool      // output pretty format, with mulitline and indent.
+	LocationName              string    // Location represents the collection of time offsets in use in a geographical area. Default is "Asia/Shanghai".
 	metasheet                 metasheet // meta info of worksheet
 }
 
@@ -381,7 +382,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 			valueFd := fd.MapValue()
 			reflectMap := msg.Mutable(fd).Map()
 			// newKey := protoreflect.ValueOf(int32(1)).MapKey()
-			// newKey := getFieldValue(keyFd, "1111001").MapKey()
+			// newKey := tbx.getFieldValue(keyFd, "1111001").MapKey()
 			if etype == tableaupb.FieldType_FIELD_TYPE_CELL_MAP {
 				if valueFd.Kind() == protoreflect.MessageKind {
 					panic("in-cell map do not support value as message type")
@@ -396,9 +397,9 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 					if len(kv) != 2 {
 						panic(fmt.Sprintf("illegal key-value pair: %v, %v\n", prefix+caption, pair))
 					}
-					newKey := getFieldValue(keyFd, kv[0]).MapKey()
+					newKey := tbx.getFieldValue(keyFd, kv[0]).MapKey()
 					newValue := reflectMap.NewValue()
-					newValue = getFieldValue(valueFd, kv[1])
+					newValue = tbx.getFieldValue(valueFd, kv[1])
 					reflectMap.Set(newKey, newValue)
 				}
 			} else {
@@ -414,7 +415,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 							if !ok {
 								panic(fmt.Sprintf("key not found: %s\n", prefix+caption+key))
 							}
-							newKey = getFieldValue(keyFd, cellValue).MapKey()
+							newKey = tbx.getFieldValue(keyFd, cellValue).MapKey()
 							var newValue protoreflect.Value
 							if reflectMap.Has(newKey) {
 								newValue = reflectMap.Mutable(newKey)
@@ -433,7 +434,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 						if !ok {
 							panic(fmt.Sprintf("key not found: %s\n", prefix+caption+key))
 						}
-						newKey = getFieldValue(keyFd, cellValue).MapKey()
+						newKey = tbx.getFieldValue(keyFd, cellValue).MapKey()
 						var newValue protoreflect.Value
 						if reflectMap.Has(newKey) {
 							newValue = reflectMap.Mutable(newKey)
@@ -452,7 +453,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 					if !ok {
 						panic(fmt.Sprintf("key not found: %s\n", prefix+caption+key))
 					}
-					newKey = getFieldValue(keyFd, cellValue).MapKey()
+					newKey = tbx.getFieldValue(keyFd, cellValue).MapKey()
 					var newValue protoreflect.Value
 					if reflectMap.Has(newKey) {
 						newValue = reflectMap.Mutable(newKey)
@@ -460,7 +461,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 						newValue = reflectMap.NewValue()
 						reflectMap.Set(newKey, newValue)
 					}
-					newValue = getFieldValue(fd, cellValue)
+					newValue = tbx.getFieldValue(fd, cellValue)
 				}
 			}
 
@@ -493,7 +494,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 					}
 					splits := strings.Split(cellValue, sep)
 					for _, v := range splits {
-						value := getFieldValue(fd, v)
+						value := tbx.getFieldValue(fd, v)
 						reflectList.Append(value)
 					}
 				} else {
@@ -534,7 +535,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 					for i := 0; i < subMd.Fields().Len(); i++ {
 						fd := subMd.Fields().Get(i)
 						// fmt.Println("fd.FullName().Name(): ", fd.FullName().Name())
-						value := getFieldValue(fd, splits[i])
+						value := tbx.getFieldValue(fd, splits[i])
 						newValue.Message().Set(fd, value)
 					}
 				} else {
@@ -545,7 +546,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 						if !ok {
 							panic(fmt.Sprintf("not found column caption: %v\n", prefix+caption))
 						}
-						newValue = getFieldValue(fd, cellValue)
+						newValue = tbx.getFieldValue(fd, cellValue)
 					} else {
 						pkgName := newValue.Message().Descriptor().ParentFile().Package()
 						if string(pkgName) != tbx.ProtoPackageName {
@@ -562,7 +563,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 				if !ok {
 					panic(fmt.Sprintf("not found column caption: %v\n", prefix+caption))
 				}
-				value := getFieldValue(fd, cellValue)
+				value := tbx.getFieldValue(fd, cellValue)
 				msg.Set(fd, value)
 			}
 		}
@@ -599,7 +600,7 @@ func getPrefixSize(row map[string]string, prefix string) int {
 	return size
 }
 
-func getFieldValue(fd protoreflect.FieldDescriptor, cellValue string) protoreflect.Value {
+func (tbx *Tableaux) getFieldValue(fd protoreflect.FieldDescriptor, cellValue string) protoreflect.Value {
 	switch fd.Kind() {
 	case protoreflect.Int32Kind:
 		var val int64 // default
@@ -744,7 +745,7 @@ func getFieldValue(fd protoreflect.FieldDescriptor, cellValue string) protorefle
 			if cellValue != "" {
 				// location name: "Asia/Shanghai" or "Asia/Chongqing".
 				// NOTE(wenchy): There is no "Asia/Beijing" location name. Whoa!!! Big surprize?
-				t, err := parseTimeWithLocation("Asia/Shanghai", cellValue)
+				t, err := parseTimeWithLocation(tbx.LocationName, cellValue)
 				if err != nil {
 					panic(fmt.Sprintf("illegal timestamp string format: %v, err: %v\n", cellValue, err))
 				}

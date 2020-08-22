@@ -21,8 +21,12 @@ type Options struct {
 	OutputFilenameAsSnakeCase bool   // output filename as snake case, default is camel case same as the protobuf message name.
 	OutputFormat              Format // output format: json, protobin, or prototext, and default is json.
 	OutputPretty              bool   // output pretty format, with mulitline and indent.
+	LocationName              string // Location represents the collection of time offsets in use in a geographical area. Default is "Asia/Shanghai".
 }
 
 func (opts *Options) init() {
-	fmt.Println("options inited")
+	if opts.LocationName == "" {
+		opts.LocationName = "Asia/Shanghai"
+	}
+	fmt.Printf("options inited: %+v\n", opts)
 }

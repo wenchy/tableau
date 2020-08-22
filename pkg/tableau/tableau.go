@@ -21,6 +21,7 @@ func NewTableaux(opts *Options) *Tableaux {
 		OutputFilenameAsSnakeCase: opts.OutputFilenameAsSnakeCase,
 		OutputFormat:              converter.Format(opts.OutputFormat),
 		OutputPretty:              opts.OutputPretty,
+		LocationName:              opts.LocationName,
 	}
 
 	return &tbx

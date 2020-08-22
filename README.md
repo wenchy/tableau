@@ -105,7 +105,7 @@ Use [RFC 3339](https://tools.ietf.org/html/rfc3339) , which is following [ISO 86
 
 - [x] Timestamp: based on `google.protobuf.Timestamp`, see [JSON mapping](https://developers.google.com/protocol-buffers/docs/proto3#json)
 - [x] Timezone: see [ParseInLocation](https://golang.org/pkg/time/#ParseInLocation)
-- [ ] DST: Daylight Savings Time. *no plan to handle this boring stuff*.
+- [ ] DST: Daylight Savings Time. *There is no plan to handle this boring stuff*.
 - [x] Datetime: excel format: `yyyy-MM-dd HH:mm:ss`, e.g.: `2020-01-01 05:10:00`
 - [ ] Date: excel format: `yyyy-MM-dd`, e.g.: `2020-01-01`
 - [ ] Time: excel format: `HH:mm:ss`, e.g.: `05:10:00`
