@@ -503,7 +503,8 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 			}
 		} else {
 			if fd.Kind() == protoreflect.MessageKind {
-				// NOTE(wenchyzhu): "nil" and "empty message" is not equal as of `proto.Equal`
+				// NOTE(wenchy): `proto.Equal` treat "nil" and "empty message" as different.
+				// see [Equal](https://pkg.go.dev/google.golang.org/protobuf/proto?tab=doc#Equal)
 				// ```
 				// nilMessage = (*MyMessage)(nil)
 				// emptyMessage = new(MyMessage)
@@ -512,13 +513,16 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 				// Equal(nil, nilMessage)            // false
 				// Equal(nil, emptyMessage)          // false
 				// Equal(nilMessage, nilMessage)     // true
-				// Equal(nilMessage, emptyMessage)   // ???
+				// Equal(nilMessage, emptyMessage)   // ??? false
 				// Equal(emptyMessage, emptyMessage) // true
 				// ```
-				// `Message.Mutable` will allocate new "empty message", and isn't equal to "nil"
-				// `subMsg := msg.Mutable(fd).Message()`
 				//
-				// Solution: here we new an empty field and later assign it back.
+				// Case: `subMsg := msg.Mutable(fd).Message()`
+				// `Message.Mutable` will allocate new "empty message", and is not equal to "nil"
+				//
+				// Solution:
+				// 1. spawn two values: `emptyValue` and `newValue`
+				// 2. set `newValue` back to field if `newValue` is not equal to `emptyValue`
 				emptyValue := msg.NewField(fd)
 				newValue := msg.NewField(fd)
 				if etype == tableaupb.FieldType_FIELD_TYPE_CELL_MESSAGE {
