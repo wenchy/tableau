@@ -404,6 +404,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 			} else {
 				// check if newValue is message type
 				if valueFd.Kind() == protoreflect.MessageKind {
+					emptyValue := reflectMap.NewValue()
 					if layout == tableaupb.CompositeLayout_COMPOSITE_LAYOUT_HORIZONTAL {
 						size := getPrefixSize(row, prefix+caption)
 						// fmt.Println("prefix size: ", size)
@@ -419,10 +420,12 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 								newValue = reflectMap.Mutable(newKey)
 							} else {
 								newValue = reflectMap.NewValue()
-								reflectMap.Set(newKey, newValue)
 							}
 							newMsg := newValue.Message()
 							tbx.TestParseFieldOptions(newMsg, row, depth+1, prefix+caption+strconv.Itoa(i))
+							if !Equal(emptyValue, newValue) {
+								reflectMap.Set(newKey, newValue)
+							}
 						}
 					} else {
 						newKey := keyFd.Default().MapKey()
@@ -436,10 +439,12 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 							newValue = reflectMap.Mutable(newKey)
 						} else {
 							newValue = reflectMap.NewValue()
-							reflectMap.Set(newKey, newValue)
 						}
 						newMsg := newValue.Message()
 						tbx.TestParseFieldOptions(newMsg, row, depth+1, prefix+caption)
+						if !Equal(emptyValue, newValue) {
+							reflectMap.Set(newKey, newValue)
+						}
 					}
 				} else {
 					newKey := keyFd.Default().MapKey()
@@ -462,28 +467,22 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 		} else if fd.IsList() {
 			reflectList := msg.Mutable(fd).List()
 			if fd.Kind() == protoreflect.MessageKind {
-				defaultElement := reflectList.NewElement()
+				emptyValue := reflectList.NewElement()
 				if layout == tableaupb.CompositeLayout_COMPOSITE_LAYOUT_VERTICAL {
-					newElement := reflectList.NewElement()
-					subMsg := newElement.Message()
-					tbx.TestParseFieldOptions(subMsg, row, depth+1, prefix+caption)
-					if proto.Equal(defaultElement.Message().Interface(), newElement.Message().Interface()) {
-						fmt.Println("empty message exists")
-						continue
+					newValue := reflectList.NewElement()
+					tbx.TestParseFieldOptions(newValue.Message(), row, depth+1, prefix+caption)
+					if !Equal(emptyValue, newValue) {
+						reflectList.Append(newValue)
 					}
-					reflectList.Append(newElement)
 				} else {
 					size := getPrefixSize(row, prefix+caption)
 					// fmt.Println("prefix size: ", size)
 					for i := 1; i <= size; i++ {
-						newElement := reflectList.NewElement()
-						subMsg := newElement.Message()
-						tbx.TestParseFieldOptions(subMsg, row, depth+1, prefix+caption+strconv.Itoa(i))
-						if proto.Equal(defaultElement.Message().Interface(), newElement.Message().Interface()) {
-							fmt.Println("empty message exists")
-							continue
+						newValue := reflectList.NewElement()
+						tbx.TestParseFieldOptions(newValue.Message(), row, depth+1, prefix+caption+strconv.Itoa(i))
+						if !Equal(emptyValue, newValue) {
+							reflectList.Append(newValue)
 						}
-						reflectList.Append(newElement)
 					}
 				}
 			} else {
@@ -503,15 +502,31 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 			}
 		} else {
 			if fd.Kind() == protoreflect.MessageKind {
-				subMsg := msg.Mutable(fd).Message()
-				subMd := subMsg.Descriptor()
-
+				// NOTE(wenchyzhu): "nil" and "empty message" is not equal as of `proto.Equal`
+				// ```
+				// nilMessage = (*MyMessage)(nil)
+				// emptyMessage = new(MyMessage)
+				//
+				// Equal(nil, nil)                   // true
+				// Equal(nil, nilMessage)            // false
+				// Equal(nil, emptyMessage)          // false
+				// Equal(nilMessage, nilMessage)     // true
+				// Equal(nilMessage, emptyMessage)   // ???
+				// Equal(emptyMessage, emptyMessage) // true
+				// ```
+				// `Message.Mutable` will allocate new "empty message", and isn't equal to "nil"
+				// `subMsg := msg.Mutable(fd).Message()`
+				//
+				// Solution: here we new an empty field and later assign it back.
+				emptyValue := msg.NewField(fd)
+				newValue := msg.NewField(fd)
 				if etype == tableaupb.FieldType_FIELD_TYPE_CELL_MESSAGE {
 					cellValue, ok := row[prefix+caption]
 					if !ok {
 						panic(fmt.Sprintf("not found column caption: %v\n", prefix+caption))
 					}
 					splits := strings.Split(cellValue, sep)
+					subMd := newValue.Message().Descriptor()
 					if len(splits) != subMd.Fields().Len() {
 						// TODO(wenchyzhu): more clear error message
 						panic("in-cell message fields len not equal to cell splits len")
@@ -520,7 +535,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 						fd := subMd.Fields().Get(i)
 						// fmt.Println("fd.FullName().Name(): ", fd.FullName().Name())
 						value := getFieldValue(fd, splits[i])
-						subMsg.Set(fd, value)
+						newValue.Message().Set(fd, value)
 					}
 				} else {
 					subMsgName := string(fd.Message().FullName())
@@ -530,15 +545,17 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 						if !ok {
 							panic(fmt.Sprintf("not found column caption: %v\n", prefix+caption))
 						}
-						value := getFieldValue(fd, cellValue)
-						msg.Set(fd, value)
+						newValue = getFieldValue(fd, cellValue)
 					} else {
-						subPkg := subMd.ParentFile().Package()
-						if string(subPkg) != tbx.ProtoPackageName {
-							panic(fmt.Sprintf("unknown message %v in package %v", subMsgName, subPkg))
+						pkgName := newValue.Message().Descriptor().ParentFile().Package()
+						if string(pkgName) != tbx.ProtoPackageName {
+							panic(fmt.Sprintf("unknown message %v in package %v", subMsgName, pkgName))
 						}
-						tbx.TestParseFieldOptions(subMsg, row, depth+1, prefix+caption)
+						tbx.TestParseFieldOptions(newValue.Message(), row, depth+1, prefix+caption)
 					}
+				}
+				if !Equal(emptyValue, newValue) {
+					msg.Set(fd, newValue)
 				}
 			} else {
 				cellValue, ok := row[prefix+caption]
@@ -550,6 +567,14 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 			}
 		}
 	}
+}
+
+func Equal(v1, v2 protoreflect.Value) bool {
+	if proto.Equal(v1.Message().Interface(), v2.Message().Interface()) {
+		fmt.Println("empty message exists")
+		return true
+	}
+	return false
 }
 
 func getPrefixSize(row map[string]string, prefix string) int {
