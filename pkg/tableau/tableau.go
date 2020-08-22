@@ -22,6 +22,7 @@ func NewTableaux(opts *Options) *Tableaux {
 		OutputFormat:              converter.Format(opts.OutputFormat),
 		OutputPretty:              opts.OutputPretty,
 		LocationName:              opts.LocationName,
+		EmitUnpopulated:           opts.EmitUnpopulated,
 	}
 
 	return &tbx

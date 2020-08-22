@@ -14,6 +14,14 @@ A powerful configuration conversion tool based on protobuf.
 - Filter: filter the IR.
 - Exporter: JSON exporter, protobin exporter, prototext exporter, xml exporter, sqlite3 exporter, and so on.
 
+## Types
+- Scalar
+- Message(struct)
+- List
+- Map(unordered)
+- Timestamp
+- Duration
+
 ## TODO
 
 ### Testing
@@ -48,6 +56,9 @@ A powerful configuration conversion tool based on protobuf.
 - [x] JSON
 - [x] prototext
 
+### EmitUnpopulated
+- [x] JSON: `EmitUnpopulated` specifies whether to emit unpopulated fields.
+
 ### Scalar Types
 - [x] interger: int32, uint32, int64 and uint64
 - [x] float: float and double
@@ -77,15 +88,16 @@ A powerful configuration conversion tool based on protobuf.
 - [x] nesting: unlimited nesting of message, list, and map.
 
 ### Default Values
-- [x] each scalar type's default value is same as protobuf
-- [x] interger: 0 
-- [x] float: 0.0 
-- [x] bool: false 
-- [x] string: ""
-- [x] bytes: ""
+Each scalar type's default value is same as protobuf.
+
+- [x] interger: `0` 
+- [x] float: `0.0` 
+- [x] bool: `false`
+- [x] string: `""`
+- [x] bytes: `""`
 - [x] in-cell message: each field's default value is same as protobuf 
 - [x] in-cell list: element's default value is same as protobuf 
-- [x] in-cell map: both key and value's default value is same as protobuf 
+- [x] in-cell map: both key and value's default value are same as protobuf 
 - [x] message: all fields have default values
 
 ### Empty
@@ -109,7 +121,7 @@ A powerful configuration conversion tool based on protobuf.
 > # This is only accepted in RFC 3339 (without T)
 > 2019-10-12 07:20:50.52Z
 > ```
-> - "Z" stands for Zero timezone or Zulu timezone `UTC+0`, and equal to `+00:00` in the RFC 3339.
+> - "Z" stands for **Zero timezone** or **Zulu timezone** `UTC+0`, and equal to `+00:00` in the RFC 3339.
 > - **RFC 3339** follows the **ISO 8601** DateTime format. The only difference is RFC allows us to replace "T" with "space".
 
 Use [RFC 3339](https://tools.ietf.org/html/rfc3339) , which is following [ISO 8601](https://www.wikiwand.com/en/ISO_8601).
@@ -130,22 +142,19 @@ Use [RFC 3339](https://tools.ietf.org/html/rfc3339) , which is following [ISO 86
 - [ ] Min
 - [ ] Max
 - [ ] Range
-- [ ] Options: e.g., enum type
+- [ ] Options: e.g.: enum type
 - [ ] Foreign key
 
 ### Error Message
-- [ ] report clear and precise error messages when converter failed, please refer to the programming language compiler
-- [ ] use golang template to define error message template
-- [ ] multiple languages support, focused on English and Simplified Chinese
+- [ ] Report clear and precise error messages when converter failed, please refer to the programming language compiler
+- [ ] Use golang template to define error message template
+- [ ] Multiple languages support, focused on English and Simplified Chinese
 
 ### Performace
-- [ ] stress test
-- [ ] one goroutine process one row
+- [ ] Stress test
+- [ ] Each goroutine process one worksheet
+- [ ] Mutiple process model
 
-## Types
-- Scalar
-- Message(struct)
-- List
-- Map(unordered)
-- Timestamp
-- Duration
+### Optimization
+- [ ] Error: [https://github.com/pkg/errors](https://github.com/pkg/errors)
+- [ ] Log: [https://github.com/uber-go/zap](https://github.com/uber-go/zap)

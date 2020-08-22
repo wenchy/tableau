@@ -1,8 +1,6 @@
 package converter
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -46,14 +44,29 @@ type metasheet struct {
 }
 
 type Tableaux struct {
-	ProtoPackageName          string    // protobuf package name.
-	InputPath                 string    // root dir of workbooks.
-	OutputPath                string    // output path of generated files.
-	OutputFilenameAsSnakeCase bool      // output filename as snake case, default is camel case same as the protobuf message name.
-	OutputFormat              Format    // output format: json, protobin, or prototext. Default is json.
-	OutputPretty              bool      // output pretty format, with mulitline and indent.
-	LocationName              string    // Location represents the collection of time offsets in use in a geographical area. Default is "Asia/Shanghai".
-	metasheet                 metasheet // meta info of worksheet
+	ProtoPackageName          string // protobuf package name.
+	InputPath                 string // root dir of workbooks.
+	OutputPath                string // output path of generated files.
+	OutputFilenameAsSnakeCase bool   // output filename as snake case, default is camel case same as the protobuf message name.
+	OutputFormat              Format // output format: json, protobin, or prototext. Default is json.
+	OutputPretty              bool   // output pretty format, with mulitline and indent.
+	LocationName              string // Location represents the collection of time offsets in use in a geographical area. Default is "Asia/Shanghai".
+	// EmitUnpopulated specifies whether to emit unpopulated fields. It does not
+	// emit unpopulated oneof fields or unpopulated extension fields.
+	// The JSON value emitted for unpopulated fields are as follows:
+	//  ╔═══════╤════════════════════════════╗
+	//  ║ JSON  │ Protobuf field             ║
+	//  ╠═══════╪════════════════════════════╣
+	//  ║ false │ proto3 boolean fields      ║
+	//  ║ 0     │ proto3 numeric fields      ║
+	//  ║ ""    │ proto3 string/bytes fields ║
+	//  ║ null  │ proto2 scalar fields       ║
+	//  ║ null  │ message fields             ║
+	//  ║ []    │ list fields                ║
+	//  ║ {}    │ map fields                 ║
+	//  ╚═══════╧════════════════════════════╝
+	EmitUnpopulated bool
+	metasheet       metasheet // meta info of worksheet
 }
 
 var specialMessageMap = map[string]int{
@@ -186,29 +199,30 @@ func (tbx *Tableaux) Export(protomsg proto.Message) {
 	filePath := tbx.OutputPath + filename
 	switch tbx.OutputFormat {
 	case JSON:
-		exportJSON(protomsg, filePath, tbx.OutputPretty)
+		exportJSON(protomsg, filePath, tbx.OutputPretty, tbx.EmitUnpopulated)
 	case Protobin:
 		exportProtobin(protomsg, filePath)
 	case Prototext:
 		exportPrototext(protomsg, filePath, tbx.OutputPretty)
 	default:
 		fmt.Println("unknown format, default to JSON")
-		exportJSON(protomsg, filePath, tbx.OutputPretty)
+		exportJSON(protomsg, filePath, tbx.OutputPretty, tbx.EmitUnpopulated)
 	}
 }
 
-func exportJSON(protomsg proto.Message, filePath string, pretty bool) {
+func exportJSON(protomsg proto.Message, filePath string, pretty bool, emitUnpopulated bool) {
 	var out []byte
 	var err error
 	if pretty {
-		o, err := protojson.Marshal(protomsg)
-		if err != nil {
-			panic(err)
+		opts := protojson.MarshalOptions{
+			Multiline:       true,
+			Indent:          "    ",
+			EmitUnpopulated: emitUnpopulated,
 		}
-		// fmt.Println("json: ", string(output))
-		var buf bytes.Buffer
-		json.Indent(&buf, o, "", "    ")
-		out = buf.Bytes()
+		out, err = opts.Marshal(protomsg)
+		if err != nil {
+			log.Fatalln("Failed to marshal protomsg as JSON: ", err)
+		}
 	} else {
 		out, err = protojson.Marshal(protomsg)
 		if err != nil {

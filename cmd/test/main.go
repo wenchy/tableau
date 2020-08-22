@@ -14,6 +14,7 @@ func main() {
 		OutputFilenameAsSnakeCase: false,
 		OutputFormat:              tableau.JSON,
 		OutputPretty:              true,
+		EmitUnpopulated:           true,
 	})
 	tbx.Convert()
 }
