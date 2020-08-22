@@ -65,11 +65,15 @@ A powerful configuration conversion tool based on protobuf.
 - [x] list: horizontal(row direction) layout, and is list's default layout.
 - [x] list: vertical(column direction) layout.
 - [x] list: simple in-cell list, element must be **scalar** type.
+- [x] list: scalable or dynamic list size.
+- [x] list: smart recognition of empty element at any position.
 - [x] map: horizontal(row direction) layout.
 - [x] map: vertical(column direction) layout, and is map's default layout.
 - [x] map: unordered map or hash map.
 - [ ] map: ordered map.
 - [x] map: simple in-cell map, both key and value must be **scalar** type.
+- [x] map: scalable or dynamic map size.
+- [x] map: smart recognition of empty value at any position.
 - [x] nesting: unlimited nesting of message, list, and map.
 
 ### Default Values
