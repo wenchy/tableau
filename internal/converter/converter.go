@@ -377,10 +377,39 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 		// if fd.Cardinality() == protoreflect.Repeated && fd.Kind() == protoreflect.MessageKind {
 		// 	msg := fd.Message().New()
 		// }
+
+		// NOTE(wenchy): `proto.Equal` treats a nil message as not equal to an empty one.
+		// doc: [Equal](https://pkg.go.dev/google.golang.org/protobuf/proto?tab=doc#Equal)
+		// issue: [APIv2: protoreflect: consider Message nilness test](https://github.com/golang/protobuf/issues/966)
+		// ```
+		// nilMessage = (*MyMessage)(nil)
+		// emptyMessage = new(MyMessage)
+		//
+		// Equal(nil, nil)                   // true
+		// Equal(nil, nilMessage)            // false
+		// Equal(nil, emptyMessage)          // false
+		// Equal(nilMessage, nilMessage)     // true
+		// Equal(nilMessage, emptyMessage)   // ??? false
+		// Equal(emptyMessage, emptyMessage) // true
+		// ```
+		//
+		// Case: `subMsg := msg.Mutable(fd).Message()`
+		// `Message.Mutable` will allocate new "empty message", and is not equal to "nil"
+		//
+		// Solution:
+		// 1. spawn two values: `emptyValue` and `newValue`
+		// 2. set `newValue` back to field if `newValue` is not equal to `emptyValue`
+		emptyValue := msg.NewField(fd)
+		newValue := msg.NewField(fd)
 		if fd.IsMap() {
+			// Mutable returns a mutable reference to a composite type.
+			if msg.Has(fd) {
+				newValue = msg.Mutable(fd)
+			}
+			reflectMap := newValue.Map()
+			// reflectMap := msg.Mutable(fd).Map()
 			keyFd := fd.MapKey()
 			valueFd := fd.MapValue()
-			reflectMap := msg.Mutable(fd).Map()
 			// newKey := protoreflect.ValueOf(int32(1)).MapKey()
 			// newKey := tbx.getFieldValue(keyFd, "1111001").MapKey()
 			if etype == tableaupb.FieldType_FIELD_TYPE_CELL_MAP {
@@ -397,92 +426,97 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 					if len(kv) != 2 {
 						panic(fmt.Sprintf("illegal key-value pair: %v, %v\n", prefix+caption, pair))
 					}
-					newKey := tbx.getFieldValue(keyFd, kv[0]).MapKey()
-					newValue := reflectMap.NewValue()
-					newValue = tbx.getFieldValue(valueFd, kv[1])
-					reflectMap.Set(newKey, newValue)
+					key := tbx.getFieldValue(keyFd, kv[0]).MapKey()
+					val := reflectMap.NewValue()
+					val = tbx.getFieldValue(valueFd, kv[1])
+					reflectMap.Set(key, val)
 				}
 			} else {
-				// check if newValue is message type
+				emptyMapValue := reflectMap.NewValue()
 				if valueFd.Kind() == protoreflect.MessageKind {
-					emptyValue := reflectMap.NewValue()
 					if layout == tableaupb.CompositeLayout_COMPOSITE_LAYOUT_HORIZONTAL {
 						size := getPrefixSize(row, prefix+caption)
 						// fmt.Println("prefix size: ", size)
 						for i := 1; i <= size; i++ {
-							newKey := keyFd.Default().MapKey()
+							newMapKey := keyFd.Default().MapKey()
 							cellValue, ok := row[prefix+caption+strconv.Itoa(i)+key]
 							if !ok {
 								panic(fmt.Sprintf("key not found: %s\n", prefix+caption+key))
 							}
-							newKey = tbx.getFieldValue(keyFd, cellValue).MapKey()
-							var newValue protoreflect.Value
-							if reflectMap.Has(newKey) {
-								newValue = reflectMap.Mutable(newKey)
+							newMapKey = tbx.getFieldValue(keyFd, cellValue).MapKey()
+							var newMapValue protoreflect.Value
+							if reflectMap.Has(newMapKey) {
+								newMapValue = reflectMap.Mutable(newMapKey)
 							} else {
-								newValue = reflectMap.NewValue()
+								newMapValue = reflectMap.NewValue()
 							}
-							newMsg := newValue.Message()
-							tbx.TestParseFieldOptions(newMsg, row, depth+1, prefix+caption+strconv.Itoa(i))
-							if !Equal(emptyValue, newValue) {
-								reflectMap.Set(newKey, newValue)
+							tbx.TestParseFieldOptions(newMapValue.Message(), row, depth+1, prefix+caption+strconv.Itoa(i))
+							if !MessageValueEqual(emptyMapValue, newMapValue) {
+								reflectMap.Set(newMapKey, newMapValue)
 							}
 						}
 					} else {
-						newKey := keyFd.Default().MapKey()
+						newMapKey := keyFd.Default().MapKey()
 						cellValue, ok := row[prefix+caption+key]
 						if !ok {
 							panic(fmt.Sprintf("key not found: %s\n", prefix+caption+key))
 						}
-						newKey = tbx.getFieldValue(keyFd, cellValue).MapKey()
-						var newValue protoreflect.Value
-						if reflectMap.Has(newKey) {
-							newValue = reflectMap.Mutable(newKey)
+						newMapKey = tbx.getFieldValue(keyFd, cellValue).MapKey()
+						var newMapValue protoreflect.Value
+						if reflectMap.Has(newMapKey) {
+							newMapValue = reflectMap.Mutable(newMapKey)
 						} else {
-							newValue = reflectMap.NewValue()
+							newMapValue = reflectMap.NewValue()
 						}
-						newMsg := newValue.Message()
-						tbx.TestParseFieldOptions(newMsg, row, depth+1, prefix+caption)
-						if !Equal(emptyValue, newValue) {
-							reflectMap.Set(newKey, newValue)
+						tbx.TestParseFieldOptions(newMapValue.Message(), row, depth+1, prefix+caption)
+						if !MessageValueEqual(emptyMapValue, newMapValue) {
+							reflectMap.Set(newMapKey, newMapValue)
 						}
 					}
 				} else {
-					newKey := keyFd.Default().MapKey()
+					newMapKey := keyFd.Default().MapKey()
 					cellValue, ok := row[prefix+caption+key]
 					if !ok {
 						panic(fmt.Sprintf("key not found: %s\n", prefix+caption+key))
 					}
-					newKey = tbx.getFieldValue(keyFd, cellValue).MapKey()
-					var newValue protoreflect.Value
-					if reflectMap.Has(newKey) {
-						newValue = reflectMap.Mutable(newKey)
+					newMapKey = tbx.getFieldValue(keyFd, cellValue).MapKey()
+					var newMapValue protoreflect.Value
+					if reflectMap.Has(newMapKey) {
+						newMapValue = reflectMap.Mutable(newMapKey)
 					} else {
-						newValue = reflectMap.NewValue()
-						reflectMap.Set(newKey, newValue)
+						newMapValue = reflectMap.NewValue()
 					}
-					newValue = tbx.getFieldValue(fd, cellValue)
+					newMapValue = tbx.getFieldValue(fd, cellValue)
+					if !reflectMap.Has(newMapKey) {
+						reflectMap.Set(newMapKey, newMapValue)
+					}
 				}
 			}
-
+			if !msg.Has(fd) && reflectMap.Len() != 0 {
+				msg.Set(fd, newValue)
+			}
 		} else if fd.IsList() {
-			reflectList := msg.Mutable(fd).List()
+			// Mutable returns a mutable reference to a composite type.
+			if msg.Has(fd) {
+				newValue = msg.Mutable(fd)
+			}
+			reflectList := newValue.List()
 			if fd.Kind() == protoreflect.MessageKind {
-				emptyValue := reflectList.NewElement()
+				emptyListValue := reflectList.NewElement()
 				if layout == tableaupb.CompositeLayout_COMPOSITE_LAYOUT_VERTICAL {
-					newValue := reflectList.NewElement()
-					tbx.TestParseFieldOptions(newValue.Message(), row, depth+1, prefix+caption)
-					if !Equal(emptyValue, newValue) {
-						reflectList.Append(newValue)
+					newListValue := reflectList.NewElement()
+					tbx.TestParseFieldOptions(newListValue.Message(), row, depth+1, prefix+caption)
+					if !MessageValueEqual(emptyListValue, newListValue) {
+						reflectList.Append(newListValue)
 					}
 				} else {
 					size := getPrefixSize(row, prefix+caption)
 					// fmt.Println("prefix size: ", size)
 					for i := 1; i <= size; i++ {
-						newValue := reflectList.NewElement()
-						tbx.TestParseFieldOptions(newValue.Message(), row, depth+1, prefix+caption+strconv.Itoa(i))
-						if !Equal(emptyValue, newValue) {
-							reflectList.Append(newValue)
+						newListValue := reflectList.NewElement()
+						tbx.TestParseFieldOptions(newListValue.Message(), row, depth+1, prefix+caption+strconv.Itoa(i))
+						if !MessageValueEqual(emptyListValue, newListValue) {
+							reflectList.Append(newListValue)
 						}
 					}
 				}
@@ -501,30 +535,11 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 					panic(fmt.Sprintf("unknown list type: %v\n", etype))
 				}
 			}
+			if !msg.Has(fd) && reflectList.Len() != 0 {
+				msg.Set(fd, newValue)
+			}
 		} else {
 			if fd.Kind() == protoreflect.MessageKind {
-				// NOTE(wenchy): `proto.Equal` treat "nil" and "empty message" as different.
-				// see [Equal](https://pkg.go.dev/google.golang.org/protobuf/proto?tab=doc#Equal)
-				// ```
-				// nilMessage = (*MyMessage)(nil)
-				// emptyMessage = new(MyMessage)
-				//
-				// Equal(nil, nil)                   // true
-				// Equal(nil, nilMessage)            // false
-				// Equal(nil, emptyMessage)          // false
-				// Equal(nilMessage, nilMessage)     // true
-				// Equal(nilMessage, emptyMessage)   // ??? false
-				// Equal(emptyMessage, emptyMessage) // true
-				// ```
-				//
-				// Case: `subMsg := msg.Mutable(fd).Message()`
-				// `Message.Mutable` will allocate new "empty message", and is not equal to "nil"
-				//
-				// Solution:
-				// 1. spawn two values: `emptyValue` and `newValue`
-				// 2. set `newValue` back to field if `newValue` is not equal to `emptyValue`
-				emptyValue := msg.NewField(fd)
-				newValue := msg.NewField(fd)
 				if etype == tableaupb.FieldType_FIELD_TYPE_CELL_MESSAGE {
 					cellValue, ok := row[prefix+caption]
 					if !ok {
@@ -559,7 +574,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 						tbx.TestParseFieldOptions(newValue.Message(), row, depth+1, prefix+caption)
 					}
 				}
-				if !Equal(emptyValue, newValue) {
+				if !MessageValueEqual(emptyValue, newValue) {
 					msg.Set(fd, newValue)
 				}
 			} else {
@@ -567,14 +582,14 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 				if !ok {
 					panic(fmt.Sprintf("not found column caption: %v\n", prefix+caption))
 				}
-				value := tbx.getFieldValue(fd, cellValue)
-				msg.Set(fd, value)
+				newValue = tbx.getFieldValue(fd, cellValue)
+				msg.Set(fd, newValue)
 			}
 		}
 	}
 }
 
-func Equal(v1, v2 protoreflect.Value) bool {
+func MessageValueEqual(v1, v2 protoreflect.Value) bool {
 	if proto.Equal(v1.Message().Interface(), v2.Message().Interface()) {
 		fmt.Println("empty message exists")
 		return true

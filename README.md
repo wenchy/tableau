@@ -86,9 +86,16 @@ A powerful configuration conversion tool based on protobuf.
 - [x] in-cell message: each field's default value is same as protobuf 
 - [x] in-cell list: element's default value is same as protobuf 
 - [x] in-cell map: both key and value's default value is same as protobuf 
-- [x] message: all fields of a message is empty(default values)
-- [x] list: empty message will not be appended if list's element(message type) is empty
-- [x] map: empty message will not be inserted if map's value(message type) is empty
+- [x] message: all fields have default values
+
+### Empty
+- [x] scalar: default value same as protobuf.
+- [x] message: empty message will not be spawned if all fields are empty.
+- [x] list: empty list will not be spawned if list's size is 0.
+- [x] list: empty message will not be appended if list's element(message type) is empty.
+- [x] map: empty map will not be spawned if map's size is 0.
+- [x] map: empty message will not be inserted if map's value(message type) is empty.
+- [x] nesting: recursively empty.
 
 ### Merge
 - [ ] merge multiple workbooks
