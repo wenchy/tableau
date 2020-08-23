@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"unicode"
 
 	"github.com/Wenchy/tableau/pkg/tableaupb"
+	"github.com/tealeg/xlsx/v3"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
@@ -44,14 +46,18 @@ var specialMessageMap = map[string]int{
 }
 
 type Cell struct {
-	Caption   string
-	Populated string
+	Caption string
+	Data    string
 }
 type Row []Cell
 
 func (gen *Generator) Generate() {
+	err := os.RemoveAll(gen.OutputPath)
+	if err != nil {
+		panic(err)
+	}
 	// create oupput dir
-	err := os.MkdirAll(gen.OutputPath, 0700)
+	err = os.MkdirAll(gen.OutputPath, 0700)
 	if err != nil {
 		panic(err)
 	}
@@ -94,13 +100,104 @@ func (gen *Generator) export(protomsg proto.Message) {
 	gen.metasheet.datarow = datarow
 	gen.metasheet.transpose = transpose
 
-	row := make(Row, 10)
+	row := make(Row, 0)
 	gen.TestParseFieldOptions(md, &row, 0, "")
-	for _, cell := range row {
-		fmt.Printf("%s ", cell.Caption)
-	}
-	fmt.Println()
 	fmt.Println("==================", msgName)
+
+	filename := gen.OutputPath + workbook
+	var wb *xlsx.File
+	if _, err := os.Stat(filename); os.IsNotExist(err) {
+		wb = xlsx.NewFile()
+	} else {
+		fmt.Println("exist file: ", filename)
+		wb, err = xlsx.OpenFile(filename)
+		if err != nil {
+			panic(err)
+		}
+	}
+	sh, err := wb.AddSheet(worksheet)
+	if err != nil {
+		panic(err)
+	}
+	{
+		myStyle := xlsx.NewStyle()
+		// myStyle.Alignment.Horizontal = "center"
+		// myStyle.Alignment.Vertical = "center"
+		myStyle.Fill.FgColor = "DDDDDDDD"
+		// myStyle.Fill.BgColor = "EEEEEEEE"
+		myStyle.Fill.PatternType = "solid"
+		// myStyle.Font.Name = "Georgia"
+		myStyle.Font.Size = 12
+		myStyle.Font.Bold = true
+		myStyle.ApplyAlignment = true
+		myStyle.ApplyFill = true
+		myStyle.ApplyFont = true
+
+		shrow := sh.AddRow()
+		for i, cell := range row {
+			col := xlsx.NewColForRange(i, i)
+			// col.SetWidth(float64(len([]byte(cell.Caption))) + 4.0)
+			hanWidth := 2 * float64(getHanCount(cell.Caption))
+			letterWidth := 1.2 * float64(getLetterCount(cell.Caption))
+			digitWidth := 1 * float64(getLetterCount(cell.Caption))
+			col.SetWidth(hanWidth + letterWidth + digitWidth + 2.0)
+			// col.SetWidth(float64(getStringPrintLen(cell.Caption)) + 4.0)
+			sh.SetColParameters(col)
+
+			shcell := shrow.AddCell()
+			shcell.SetString(cell.Caption)
+			shcell.SetStyle(myStyle)
+			fmt.Printf("%s ", cell.Caption)
+
+		}
+		// creating a column that relates to worksheet columns A thru E (index 0 to 4)
+		// newColumn := xlsx.NewColForRange(0, len(row))
+		// newColumn.SetWidth(1*len(row[]))
+		// b := true
+		// newColumn.Collapsed = &b
+		// newColumn.BestFit = &b
+		// we defined a style above, so let's assigm this style to all cells of the column
+		// newColumn.SetStyle(myStyle)
+		// now associate the sheet with this column
+		// sh.SetColParameters(newColumn)
+
+		fmt.Println()
+	}
+
+	err = wb.Save(filename)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func getHanCount(s string) int {
+	count := 0
+	for _, r := range []rune(s) {
+		if unicode.Is(unicode.Han, r) {
+			count += 1
+		}
+	}
+	return count
+}
+
+func getLetterCount(s string) int {
+	count := 0
+	for _, r := range []rune(s) {
+		if unicode.IsLetter(r) {
+			count += 1
+		}
+	}
+	return count
+}
+
+func getDigitCount(s string) int {
+	count := 0
+	for _, r := range []rune(s) {
+		if unicode.IsDigit(r) {
+			count += 1
+		}
+	}
+	return count
 }
 
 // TestParseFileOptions is aimed to parse the options of a protobuf definition file.

@@ -41,7 +41,8 @@ A powerful configuration conversion tool based on protobuf.
 - [x] datarow: data row, the start row number of data.
 
 ### Generator
-- [ ] generate xlsx template by proto: **proto -> xlsx** (80%)
+- [x] generate xlsx template by proto: **proto -> xlsx**
+- [x] generated xlsx template caption row with style: font bold, backgroud color and so on. See [XLSX Styles](https://github.com/tealeg/xlsx/blob/master/tutorial/tutorial.adoc#styles)
 - [ ] generate proto by xlsx template: **xlsx -> proto**
 
 ### Conversion
