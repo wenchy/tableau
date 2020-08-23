@@ -122,7 +122,7 @@ func (gen *Generator) export(protomsg proto.Message) {
 	{
 		myStyle := xlsx.NewStyle()
 		// myStyle.Alignment.Horizontal = "center"
-		myStyle.Alignment.Vertical = "center"
+		myStyle.Alignment.Vertical = "top"
 		myStyle.Fill.FgColor = "DDDDDDDD"
 		// myStyle.Fill.BgColor = "EEEEEEEE"
 		myStyle.Fill.PatternType = "solid"

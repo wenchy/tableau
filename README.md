@@ -36,7 +36,7 @@ A powerful configuration conversion tool based on protobuf.
 ### Metadata
 - [ ] metatable: a message to describe the worksheet's metadata.
 - [ ] metafield: a message to describe the caption's metadata.
-- [x] captrow: caption row, the exact row number of captions at worksheet.
+- [x] captrow: caption row, the exact row number of captions at worksheet. **newline in caption** is allowed, and will be trimmed in conversion.
 - [ ] descrow: description row, the exact row number of descriptions at wooksheet.
 - [x] datarow: data row, the start row number of data.
 

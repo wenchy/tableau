@@ -6,6 +6,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -156,6 +157,8 @@ func (tbx *Tableaux) Export(protomsg proto.Message) {
 						panic(err)
 					}
 					value := dataCell.Value
+					re := regexp.MustCompile(`\r?\n?`)
+					key = re.ReplaceAllString(key, "")
 					kv[key] = value
 				}
 				tbx.TestParseFieldOptions(msg, kv, 0, "")
@@ -184,6 +187,8 @@ func (tbx *Tableaux) Export(protomsg proto.Message) {
 						panic(err)
 					}
 					value := dataCell.Value
+					re := regexp.MustCompile(`\r?\n?`)
+					key = re.ReplaceAllString(key, "")
 					kv[key] = value
 				}
 				tbx.TestParseFieldOptions(msg, kv, 0, "")
