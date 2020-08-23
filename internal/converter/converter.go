@@ -492,7 +492,11 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 						}
 					}
 				} else {
+					// value is scalar type
+					key := "Key"     // deafult key caption
+					value := "Value" // deafult value caption
 					newMapKey := keyFd.Default().MapKey()
+					// key cell
 					cellValue, ok := row[prefix+caption+key]
 					if !ok {
 						panic(fmt.Sprintf("key not found: %s\n", prefix+caption+key))
@@ -503,6 +507,11 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 						newMapValue = reflectMap.Mutable(newMapKey)
 					} else {
 						newMapValue = reflectMap.NewValue()
+					}
+					// value cell
+					cellValue, ok = row[prefix+caption+value]
+					if !ok {
+						panic(fmt.Sprintf("value not found: %s\n", prefix+caption+value))
 					}
 					newMapValue = tbx.getFieldValue(fd, cellValue)
 					if !reflectMap.Has(newMapKey) {

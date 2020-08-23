@@ -2,6 +2,7 @@ package tableau
 
 import (
 	"github.com/Wenchy/tableau/internal/converter"
+	"github.com/Wenchy/tableau/internal/generator"
 )
 
 // Tableaux is an alias type of converter.Tableaux.
@@ -26,4 +27,12 @@ func NewTableaux(opts *Options) *Tableaux {
 	}
 
 	return &tbx
+}
+
+// Generator is an alias type of generator.Generator.
+type Generator = generator.Generator
+
+func Generate(protoPackageName, inputPath, outputPath string) {
+	generator := generator.Generator{ProtoPackageName: protoPackageName, InputPath: inputPath, OutputPath: outputPath}
+	generator.Generate()
 }

@@ -17,3 +17,4 @@
 .idea/
 cmd/test/test
 cmd/test/output/
+cmd/test/samples/

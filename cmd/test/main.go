@@ -17,6 +17,8 @@ func main() {
 		EmitUnpopulated:           true,
 	})
 	tbx.Convert()
+
+	tableau.Generate("test", "./testdata/", "./samples/")
 }
 
 /*

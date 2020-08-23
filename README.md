@@ -41,7 +41,7 @@ A powerful configuration conversion tool based on protobuf.
 - [x] datarow: data row, the start row number of data.
 
 ### Generator
-- [ ] generate xlsx template by proto: **proto -> xlsx**
+- [ ] generate xlsx template by proto: **proto -> xlsx** (80%)
 - [ ] generate proto by xlsx template: **xlsx -> proto**
 
 ### Conversion
