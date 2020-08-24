@@ -36,9 +36,21 @@ A powerful configuration conversion tool based on protobuf.
 ### Metadata
 - [ ] metatable: a message to describe the worksheet's metadata.
 - [ ] metafield: a message to describe the caption's metadata.
-- [x] captrow: caption row, the exact row number of captions at worksheet. **newline in caption** is allowed, and will be trimmed in conversion.
+- [x] captrow: caption row, the exact row number of captions at worksheet. **Newline** in caption is allowed for more readability, and will be trimmed in conversion. 
 - [ ] descrow: description row, the exact row number of descriptions at wooksheet.
 - [x] datarow: data row, the start row number of data.
+
+[Newline](https://www.wikiwand.com/en/Newline)(line break) in major operating systems:
+
+| OS                  | Abbreviation | Escape sequence |
+| ------------------- | ------------ | --------------- |
+| Unix (linux, OS X)  | LF           | `\n`            |
+| Microsoft Windows   | CRLF         | `\r\n`          |
+| classic Mac OS/OS X | CR           | `\r`            |
+
+> **LF**: Line Feed, **CR**: Carriage Return.
+>
+> [Mac OS X](https://www.oreilly.com/library/view/mac-os-x/0596004605/ch01s06.html)
 
 ### Generator
 - [x] generate xlsx template by proto: **proto -> xlsx**

@@ -2,8 +2,7 @@
 
 ## A Simple Example
 
-Workbook: "club.xlsx"
-Worksheet: "member"
+Workbook: "club.xlsx", Worksheet: "member"
 
 | ID  | Name  | Age | Description                        |
 | --- | ----- | --- | ---------------------------------- |
