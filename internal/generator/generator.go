@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 	"unicode"
 
 	"github.com/360EntSecGroup-Skylar/excelize/v2"
@@ -108,6 +109,27 @@ func (gen *Generator) export(protomsg proto.Message) {
 	var wb *excelize.File
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
 		wb = excelize.NewFile()
+		t := time.Now()
+		datetime := t.Format(time.RFC3339)
+		err := wb.SetDocProps(&excelize.DocProperties{
+			Category:       "category",
+			ContentStatus:  "Draft",
+			Created:        datetime,
+			Creator:        "Tableau",
+			Description:    "This file was created by Tableau",
+			Identifier:     "xlsx",
+			Keywords:       "Spreadsheet",
+			LastModifiedBy: "Tableau",
+			Modified:       datetime,
+			Revision:       "0",
+			Subject:        "Configuration",
+			Title:          workbook,
+			Language:       "en-US",
+			Version:        "1.0.0",
+		})
+		if err != nil {
+			panic(err)
+		}
 		// The newly created workbook will by default contain a worksheet named `Sheet1`.
 		wb.SetSheetName("Sheet1", worksheet)
 		wb.SetDefaultFont("Courier")
@@ -185,12 +207,53 @@ func (gen *Generator) export(protomsg proto.Message) {
 				panic(err)
 			}
 
+			err = wb.AddComment(worksheet, axis, `{"author":"Tableau: ","text":"`+cell.Caption+`, this is a comment."}`)
+			if err != nil {
+				panic(err)
+			}
 			// set style
 			wb.SetCellStyle(worksheet, axis, axis, style)
 			if err != nil {
 				panic(err)
 			}
 			fmt.Printf("%s(%v) ", cell.Caption, width)
+
+			// test for validation
+			// - min
+			// - max
+			// - droplist
+			dataStartAxis, err := excelize.CoordinatesToCellName(i+1, 2)
+			if err != nil {
+				panic(err)
+			}
+			dataEndAxis, err := excelize.CoordinatesToCellName(i+1, 1000)
+			if err != nil {
+				panic(err)
+			}
+			if i == 0 {
+				// TODO(wenchy): unique key validation
+				dvRange := excelize.NewDataValidation(true)
+				dvRange.Sqref = dataStartAxis + ":" + dataEndAxis
+				dvRange.AllowBlank = true
+				dvRange.Type = "custom"
+				dvRange.SetInput("Key", "Must be unique in this column")
+				dvRange.SetRange(1, 1000, excelize.DataValidationTypeCustom, excelize.DataValidationOperatorBetween)
+				//dvRange.Formula1 = "<formula1>\"=COUNTIF(A$2:A$1000,A2)<2\"</formula1>"
+				// dvRange.Formula2 = "<formula2>=COUNTIF(A$2:A$1000,A2)<2</formula2>"
+				dvRange.SetError(excelize.DataValidationErrorStyleStop, "error title", "error body")
+				wb.AddDataValidation(worksheet, dvRange)
+			} else if i == 1 {
+				dvRange := excelize.NewDataValidation(true)
+				dvRange.Sqref = dataStartAxis + ":" + dataEndAxis
+				dvRange.SetDropList([]string{"1", "2", "3"})
+				wb.AddDataValidation(worksheet, dvRange)
+			} else if i == 2 {
+				dvRange := excelize.NewDataValidation(true)
+				dvRange.Sqref = dataStartAxis + ":" + dataEndAxis
+				dvRange.SetRange(10, 20, excelize.DataValidationTypeWhole, excelize.DataValidationOperatorBetween)
+				dvRange.SetError(excelize.DataValidationErrorStyleStop, "error title", "error body")
+				wb.AddDataValidation(worksheet, dvRange)
+			}
 
 		}
 		fmt.Println()
