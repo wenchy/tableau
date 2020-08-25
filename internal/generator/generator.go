@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"unicode"
 
+	"github.com/360EntSecGroup-Skylar/excelize/v2"
 	"github.com/Wenchy/tableau/pkg/tableaupb"
-	"github.com/tealeg/xlsx/v3"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
@@ -105,64 +105,98 @@ func (gen *Generator) export(protomsg proto.Message) {
 	fmt.Println("==================", msgName)
 
 	filename := gen.OutputPath + workbook
-	var wb *xlsx.File
+	var wb *excelize.File
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
-		wb = xlsx.NewFile()
+		wb = excelize.NewFile()
+		// The newly created workbook will by default contain a worksheet named `Sheet1`.
+		wb.SetSheetName("Sheet1", worksheet)
+		wb.SetDefaultFont("Courier")
 	} else {
 		fmt.Println("exist file: ", filename)
-		wb, err = xlsx.OpenFile(filename)
+		wb, err = excelize.OpenFile(filename)
 		if err != nil {
 			panic(err)
 		}
+		wb.NewSheet(worksheet)
 	}
-	sh, err := wb.AddSheet(worksheet)
-	if err != nil {
-		panic(err)
-	}
+
 	{
-		myStyle := xlsx.NewStyle()
-		// myStyle.Alignment.Horizontal = "center"
-		myStyle.Alignment.Vertical = "top"
-		myStyle.Fill.FgColor = "DDDDDDDD"
-		// myStyle.Fill.BgColor = "EEEEEEEE"
-		myStyle.Fill.PatternType = "solid"
-		// monospaced typefaces
-		myStyle.Font.Name = "Courier"
-		myStyle.Font.Size = 12
-		myStyle.Font.Bold = true
-		myStyle.ApplyAlignment = true
-		myStyle.ApplyFill = true
-		myStyle.ApplyFont = true
+		style, err := wb.NewStyle(&excelize.Style{
+			Fill: excelize.Fill{
+				Type:  "gradient",
+				Color: []string{"#FFFFFF", "#E5E5E5"},
+			},
+			Alignment: &excelize.Alignment{
+				Horizontal: "center",
+				Vertical:   "top",
+				WrapText:   true,
+			},
+			Font: &excelize.Font{
+				Bold:   true,
+				Family: "Times New Roman",
+				// Color:  "EEEEEEEE",
+			},
+			Border: []excelize.Border{
+				{
+					Type:  "top",
+					Color: "EEEEEEEE",
+					Style: 1,
+				},
+				{
+					Type:  "bottom",
+					Color: "EEEEEEEE",
+					Style: 2,
+				},
+				{
+					Type:  "left",
+					Color: "EEEEEEEE",
+					Style: 1,
+				},
+				{
+					Type:  "right",
+					Color: "EEEEEEEE",
+					Style: 1,
+				},
+			},
+		})
+		if err != nil {
+			panic(err)
+		}
 
-		shrow := sh.AddRow()
 		for i, cell := range row {
-			// col := xlsx.NewColForRange(i, i)
-			// // col.SetWidth(float64(len([]byte(cell.Caption))) + 4.0)
-			// hanWidth := 2 * float64(getHanCount(cell.Caption))
-			// letterWidth := 1.2 * float64(getLetterCount(cell.Caption))
-			// digitWidth := 1 * float64(getLetterCount(cell.Caption))
-			// width := hanWidth + letterWidth + digitWidth + 2.0
-			// col.SetWidth(width)
-			// // col.SetWidth(float64(getStringPrintLen(cell.Caption)) + 4.0)
-			// sh.SetColParameters(col)
-
-			hanWidth := 2 * float64(getHanCount(cell.Caption))
-			letterWidth := 1.5 * float64(getLetterCount(cell.Caption))
+			hanWidth := 1 * float64(getHanCount(cell.Caption))
+			letterWidth := 1 * float64(getLetterCount(cell.Caption))
 			digitWidth := 1 * float64(getDigitCount(cell.Caption))
-			width := hanWidth + letterWidth + digitWidth + 2.0
-			// FIXME(wenchy): width bug of tealeg/xlsx/v3
-			sh.SetColWidth(i, i, width)
+			width := hanWidth + letterWidth + digitWidth + 4.0
+			// width := 2 * float64(utf8.RuneCountInString(cell.Caption))
+			colname, err := excelize.ColumnNumberToName(i + 1)
+			if err != nil {
+				panic(err)
+			}
+			wb.SetColWidth(worksheet, colname, colname, width)
+			wb.SetRowHeight(worksheet, i+1, 50)
 
-			shcell := shrow.AddCell()
-			shcell.SetString(cell.Caption)
-			shcell.SetStyle(myStyle)
+			axis, err := excelize.CoordinatesToCellName(i+1, 1)
+			if err != nil {
+				panic(err)
+			}
+			err = wb.SetCellValue(worksheet, axis, cell.Caption)
+			if err != nil {
+				panic(err)
+			}
+
+			// set style
+			wb.SetCellStyle(worksheet, axis, axis, style)
+			if err != nil {
+				panic(err)
+			}
 			fmt.Printf("%s(%v) ", cell.Caption, width)
 
 		}
 		fmt.Println()
 	}
 
-	err = wb.Save(filename)
+	err := wb.SaveAs(filename)
 	if err != nil {
 		panic(err)
 	}
