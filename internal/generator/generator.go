@@ -184,7 +184,7 @@ func (gen *Generator) export(protomsg proto.Message) {
 		if err != nil {
 			panic(err)
 		}
-
+		wb.SetRowHeight(worksheet, 1, 50)
 		for i, cell := range row {
 			hanWidth := 1 * float64(getHanCount(cell.Caption))
 			letterWidth := 1 * float64(getLetterCount(cell.Caption))
@@ -196,7 +196,6 @@ func (gen *Generator) export(protomsg proto.Message) {
 				panic(err)
 			}
 			wb.SetColWidth(worksheet, colname, colname, width)
-			wb.SetRowHeight(worksheet, i+1, 50)
 
 			axis, err := excelize.CoordinatesToCellName(i+1, 1)
 			if err != nil {
@@ -230,29 +229,53 @@ func (gen *Generator) export(protomsg proto.Message) {
 			if err != nil {
 				panic(err)
 			}
+
 			if i == 0 {
-				// TODO(wenchy): unique key validation
+				dataAxis, err := excelize.CoordinatesToCellName(i+1, 2)
+				if err != nil {
+					panic(err)
+				}
+
+				// unique key validation
 				dvRange := excelize.NewDataValidation(true)
 				dvRange.Sqref = dataStartAxis + ":" + dataEndAxis
-				dvRange.AllowBlank = true
 				dvRange.Type = "custom"
-				dvRange.SetInput("Key", "Must be unique in this column")
-				dvRange.SetRange(1, 1000, excelize.DataValidationTypeCustom, excelize.DataValidationOperatorBetween)
-				//dvRange.Formula1 = "<formula1>\"=COUNTIF(A$2:A$1000,A2)<2\"</formula1>"
-				// dvRange.Formula2 = "<formula2>=COUNTIF(A$2:A$1000,A2)<2</formula2>"
-				dvRange.SetError(excelize.DataValidationErrorStyleStop, "error title", "error body")
-				wb.AddDataValidation(worksheet, dvRange)
+				// dvRange.SetInput("Key", "Must be unique in this column")
+				// NOTE(wenchyzhu): Five XML escape characters
+				// "   &quot;
+				// '   &apos;
+				// <   &lt;
+				// >   &gt;
+				// &   &amp;
+				//
+				// `<formula1>=COUNTIF($A$2:$A$1000,A2)<2</formula1`
+				//					||
+				//					\/
+				// `<formula1>=COUNTIF($A$2:$A$1000,A2)&lt;2</formula1`
+				dvRange.Formula1 = "<formula1>=COUNTIF($A$2:$A$10000," + dataAxis + ")&lt;2</formula1>"
+				dvRange.SetError(excelize.DataValidationErrorStyleStop, "Error", "Key must be unique!")
+				err = wb.AddDataValidation(worksheet, dvRange)
+				if err != nil {
+					panic(err)
+				}
 			} else if i == 1 {
 				dvRange := excelize.NewDataValidation(true)
 				dvRange.Sqref = dataStartAxis + ":" + dataEndAxis
 				dvRange.SetDropList([]string{"1", "2", "3"})
-				wb.AddDataValidation(worksheet, dvRange)
+				dvRange.SetInput("Options", "1: coin\n2: gem\n3: coupon")
+				err := wb.AddDataValidation(worksheet, dvRange)
+				if err != nil {
+					panic(err)
+				}
 			} else if i == 2 {
 				dvRange := excelize.NewDataValidation(true)
 				dvRange.Sqref = dataStartAxis + ":" + dataEndAxis
 				dvRange.SetRange(10, 20, excelize.DataValidationTypeWhole, excelize.DataValidationOperatorBetween)
 				dvRange.SetError(excelize.DataValidationErrorStyleStop, "error title", "error body")
-				wb.AddDataValidation(worksheet, dvRange)
+				err := wb.AddDataValidation(worksheet, dvRange)
+				if err != nil {
+					panic(err)
+				}
 			}
 
 		}
