@@ -87,17 +87,17 @@ A powerful configuration conversion tool based on protobuf.
 
 ### Composite Types
 - [x] message: horizontal(row direction) layout, fields located in cells.
-- [x] message: simple in-cell message, each field must be **scalar** type. Separated string sequence's size need not to be equal to fields' size, and fields will be filled in order. 
+- [x] message: simple in-cell message, each field must be **scalar** type. It is a comma-separated list of fields. E.g.: `1,test,3.0`. List's size need not to be equal to fields' size, as fields will be filled in order. Fields not configured will be filled default values due to its scalar type.
 - [x] list: horizontal(row direction) layout, and is list's default layout.
 - [x] list: vertical(column direction) layout.
-- [x] list: simple in-cell list, element must be **scalar** type.
+- [x] list: simple in-cell list, element must be **scalar** type. It is a comma-separated list of elements. E.g.: `1,2,3`. 
 - [x] list: scalable or dynamic list size.
 - [x] list: smart recognition of empty element at any position.
 - [x] map: horizontal(row direction) layout.
 - [x] map: vertical(column direction) layout, and is map's default layout.
 - [x] map: unordered map or hash map.
 - [ ] map: ordered map.
-- [x] map: simple in-cell map, both key and value must be **scalar** type.
+- [x] map: simple in-cell map, both key and value must be **scalar** type. It is a comma-separated list of key=value pairs. E.g.: `1:10,2:20,3:30`. 
 - [x] map: scalable or dynamic map size.
 - [x] map: smart recognition of empty value at any position.
 - [x] nesting: unlimited nesting of message, list, and map.
