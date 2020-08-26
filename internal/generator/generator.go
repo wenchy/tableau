@@ -1,6 +1,8 @@
 package generator
 
 import (
+	"bytes"
+	"encoding/xml"
 	"fmt"
 	"os"
 	"strconv"
@@ -206,7 +208,7 @@ func (gen *Generator) export(protomsg proto.Message) {
 				panic(err)
 			}
 
-			err = wb.AddComment(worksheet, axis, `{"author":"Tableau: ","text":"`+cell.Caption+`, this is a comment."}`)
+			err = wb.AddComment(worksheet, axis, `{"author":"Tableau: ","text":"\n`+cell.Caption+`, \nthis is a comment."}`)
 			if err != nil {
 				panic(err)
 			}
@@ -237,10 +239,10 @@ func (gen *Generator) export(protomsg proto.Message) {
 				}
 
 				// unique key validation
-				dvRange := excelize.NewDataValidation(true)
-				dvRange.Sqref = dataStartAxis + ":" + dataEndAxis
-				dvRange.Type = "custom"
-				// dvRange.SetInput("Key", "Must be unique in this column")
+				dv := excelize.NewDataValidation(true)
+				dv.Sqref = dataStartAxis + ":" + dataEndAxis
+				dv.Type = "custom"
+				// dv.SetInput("Key", "Must be unique in this column")
 				// NOTE(wenchyzhu): Five XML escape characters
 				// "   &quot;
 				// '   &apos;
@@ -252,27 +254,29 @@ func (gen *Generator) export(protomsg proto.Message) {
 				//					||
 				//					\/
 				// `<formula1>=COUNTIF($A$2:$A$1000,A2)&lt;2</formula1`
-				dvRange.Formula1 = "<formula1>=COUNTIF($A$2:$A$10000," + dataAxis + ")&lt;2</formula1>"
-				dvRange.SetError(excelize.DataValidationErrorStyleStop, "Error", "Key must be unique!")
-				err = wb.AddDataValidation(worksheet, dvRange)
+				formula := fmt.Sprintf("=COUNTIF($A$2:$A$10000,%s)<2", dataAxis)
+				dv.Formula1 = fmt.Sprintf("<formula1>%s</formula1>", escapeXml(formula))
+
+				dv.SetError(excelize.DataValidationErrorStyleStop, "Error", "Key must be unique!")
+				err = wb.AddDataValidation(worksheet, dv)
 				if err != nil {
 					panic(err)
 				}
 			} else if i == 1 {
-				dvRange := excelize.NewDataValidation(true)
-				dvRange.Sqref = dataStartAxis + ":" + dataEndAxis
-				dvRange.SetDropList([]string{"1", "2", "3"})
-				dvRange.SetInput("Options", "1: coin\n2: gem\n3: coupon")
-				err := wb.AddDataValidation(worksheet, dvRange)
+				dv := excelize.NewDataValidation(true)
+				dv.Sqref = dataStartAxis + ":" + dataEndAxis
+				dv.SetDropList([]string{"1", "2", "3"})
+				dv.SetInput("Options", "1: coin\n2: gem\n3: coupon")
+				err := wb.AddDataValidation(worksheet, dv)
 				if err != nil {
 					panic(err)
 				}
 			} else if i == 2 {
-				dvRange := excelize.NewDataValidation(true)
-				dvRange.Sqref = dataStartAxis + ":" + dataEndAxis
-				dvRange.SetRange(10, 20, excelize.DataValidationTypeWhole, excelize.DataValidationOperatorBetween)
-				dvRange.SetError(excelize.DataValidationErrorStyleStop, "error title", "error body")
-				err := wb.AddDataValidation(worksheet, dvRange)
+				dv := excelize.NewDataValidation(true)
+				dv.Sqref = dataStartAxis + ":" + dataEndAxis
+				dv.SetRange(10, 20, excelize.DataValidationTypeWhole, excelize.DataValidationOperatorBetween)
+				dv.SetError(excelize.DataValidationErrorStyleStop, "error title", "error body")
+				err := wb.AddDataValidation(worksheet, dv)
 				if err != nil {
 					panic(err)
 				}
@@ -286,6 +290,14 @@ func (gen *Generator) export(protomsg proto.Message) {
 	if err != nil {
 		panic(err)
 	}
+}
+func escapeXml(in string) string {
+	var b bytes.Buffer
+	err := xml.EscapeText(&b, []byte(in))
+	if err != nil {
+		panic(err)
+	}
+	return b.String()
 }
 
 func getHanCount(s string) int {
