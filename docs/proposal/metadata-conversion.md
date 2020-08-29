@@ -1,7 +1,8 @@
-# Metadata Conversion of Workbook to Protoconf
-convert workbook to protoconf.
+# Metadata Conversion
 
-## Rules: basic
+## Workbook -> Protoconf
+
+### Rules: basic
 
 workbook: `DemoTest(test)`, worksheet: `DemoActivity(activity)`
 
@@ -73,7 +74,7 @@ message Activity {
 }
 ```
 
-## Rules: in-cell
+### Rules: in-cell
 
 workbook: `DemoTest(test)`, worksheet: `Environment(env)`
 
@@ -114,3 +115,6 @@ message Env {
 - in-cell map: `map[KEY]VALUE`, KEY and VALUE must be scalar types.
 - in-cell message list: `[]TYPE`, TYPE must be message type.
 - in-cell message map: `map[KEY]VALUE`, KEY is scalar, and VALUE must be message type.
+
+## Protoconf -> Workbook
+[TODO]
