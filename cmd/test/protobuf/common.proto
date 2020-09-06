@@ -1,7 +1,8 @@
 syntax = "proto3";
-import "options.proto";
 package test;
 option go_package = "github.com/Wenchy/tableau/cmd/test/testpb";
+
+import "tableau_options.proto";
 
 message Item {
   int32 id = 1 [ (caption) = "ID" ];

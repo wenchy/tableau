@@ -4,7 +4,7 @@ option go_package = "github.com/Wenchy/tableau/cmd/test/testpb";
 
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
-import "options.proto";
+import "tableau_options.proto";
 import "common.proto";
 
 option (workbook) = "Test.xlsx";

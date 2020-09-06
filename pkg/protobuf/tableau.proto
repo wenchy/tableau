@@ -2,7 +2,7 @@ syntax = "proto3";
 package tableau;
 option go_package = "github.com/Wenchy/tableau/pkg/tableaupb";
 
-import "options.proto";
+import "tableau_options.proto";
 
 // Cardinality of field
 enum FieldCard

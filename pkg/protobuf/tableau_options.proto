@@ -5,20 +5,20 @@ option go_package = "github.com/Wenchy/tableau/pkg/tableaupb";
 
 import "google/protobuf/descriptor.proto";
 
-// import "enum.proto";
-
 extend google.protobuf.FileOptions
 {
-	string workbook = 51001;
+	string workbook = 51001; // workbook name
 }
 
 extend google.protobuf.MessageOptions
 {
-    string worksheet = 52001;
+    string worksheet = 52001; // worksheet name
     int32 captrow = 52002; // [default = 1]; // exact row number of caption at worksheet
-    int32 descrow = 52003; // [default = 1]; // exact row number of description at wooksheet
-    int32 datarow = 52004; // [default = 2]; // start row number of data
-    bool transpose = 52005; // [default = false]; // interchange the rows and columns
+    int32 typerow = 52003; // [default = 2]; // TODO: exact row number of type at worksheet, for generating protos.
+    int32 descrow = 52004; // [default = 1]; // exact row number of description at wooksheet
+    int32 datarow = 52005; // [default = 2]; // start row number of data
+    bool transpose = 52006; // [default = false]; // interchange the rows and columns
+    string tags = 52007; // [default = ""]; // tags for usage, e.g.: "1,2" specifying loading servers. Speciallly, "*" means all servers.
 
 	// string x_workbook = 52010;
 }

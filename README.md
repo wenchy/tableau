@@ -1,16 +1,15 @@
 # Tableau
-A powerful configuration conversion tool based on protobuf.
+A powerful configuration conversion tool based on Protobuf(proto3).
 
 ## Features
-- Convert **xlsx** to **JSON**, JSON is the first-class citizen of exporting targets
-- Comments in JSON: add one more comment key-value pair, and the comment key is prefixed with "#"
-- Use **protobuf** as the IDL(Interface Description Language) to define the structure of **xlsx**
-- Use **golang** to develop the conversion engine
-- Multiple languages support, thanks to **protobuf**
+- Convert **xlsx** to **JSON**, JSON is the first-class citizen of exporting targets.
+- Use **protobuf** as the IDL(Interface Description Language) to define the structure of **xlsx**.
+- Use **golang** to develop the conversion engine.
+- Multiple languages support, thanks to **protobuf**.
 
 ## Concept
-- Importer: xlsx importer
-- IR: Intermediate Representation, in-memory object, JSON or protobin.
+- Importer: xlsx importer.
+- IR: Intermediate Representation.
 - Filter: filter the IR.
 - Exporter: JSON exporter, protobin exporter, prototext exporter, xml exporter, sqlite3 exporter, and so on.
 
