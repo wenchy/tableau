@@ -3,6 +3,7 @@ package tableau
 import (
 	"github.com/Wenchy/tableau/internal/converter"
 	"github.com/Wenchy/tableau/internal/generator"
+	"github.com/Wenchy/tableau/internal/log"
 )
 
 // Tableaux is an alias type of converter.Tableaux.
@@ -25,7 +26,8 @@ func NewTableaux(opts *Options) *Tableaux {
 		LocationName:              opts.LocationName,
 		EmitUnpopulated:           opts.EmitUnpopulated,
 	}
-
+	log.InitZap(opts.LogLevel)
+	log.Logger.Infof("options inited: %+v", opts)
 	return &tbx
 }
 

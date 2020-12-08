@@ -1,9 +1,5 @@
 package tableau
 
-import (
-	"fmt"
-)
-
 type Format int
 
 // file format
@@ -23,11 +19,14 @@ type Options struct {
 	OutputPretty              bool   // output pretty format, with mulitline and indent.
 	LocationName              string // Location represents the collection of time offsets in use in a geographical area. Default is "Asia/Shanghai".
 	EmitUnpopulated           bool   // EmitUnpopulated specifies whether to emit unpopulated fields.
+	LogLevel                  string // Log level: debug, info, warn, error
 }
 
 func (opts *Options) init() {
 	if opts.LocationName == "" {
 		opts.LocationName = "Asia/Shanghai"
 	}
-	fmt.Printf("options inited: %+v\n", opts)
+	if opts.LogLevel == "" {
+		opts.LogLevel = "info"
+	}
 }
