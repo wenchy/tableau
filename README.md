@@ -5,13 +5,14 @@ A powerful configuration conversion tool based on Protobuf(proto3).
 - Convert **xlsx** to **JSON**, JSON is the first-class citizen of exporting targets.
 - Use **protobuf** as the IDL(Interface Description Language) to define the structure of **xlsx**.
 - Use **golang** to develop the conversion engine.
-- Multiple languages support, thanks to **protobuf**.
+- Support multiple programming languages, thanks to **protobuf**.
 
-## Concept
+## Concepts
 - Importer: xlsx importer.
 - IR: Intermediate Representation.
 - Filter: filter the IR.
 - Exporter: JSON exporter, protobin exporter, prototext exporter, xml exporter, sqlite3 exporter, and so on.
+- ProtoConf: a configuration metadata format based on protobuf.
 
 ## Types
 - Scalar
@@ -36,7 +37,7 @@ A powerful configuration conversion tool based on Protobuf(proto3).
 - [ ] metatable: a message to describe the worksheet's metadata.
 - [ ] metafield: a message to describe the caption's metadata.
 - [x] captrow: caption row, the exact row number of captions at worksheet. **Newline** in caption is allowed for more readability, and will be trimmed in conversion. 
-- [ ] descrow: description row, the exact row number of descriptions at wooksheet.
+- [ ] descrow: description row, the exact row number of descriptions at worksheet.
 - [x] datarow: data row, the start row number of data.
 
 [Newline](https://www.wikiwand.com/en/Newline)(line break) in major operating systems:
