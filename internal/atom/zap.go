@@ -1,8 +1,10 @@
-package log
+package atom
+
 import (
 	"errors"
 	"log"
 	"os"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -14,7 +16,7 @@ var levelMap = map[string]zapcore.Level{
 	"error": zapcore.ErrorLevel,
 }
 
-var Logger *zap.SugaredLogger
+var Log *zap.SugaredLogger
 
 func InitZap(level string) error {
 	zapLevel, ok := levelMap[level]
@@ -27,7 +29,7 @@ func InitZap(level string) error {
 	core := zapcore.NewCore(encoder, writeSyncer, zapLevel)
 
 	zaplogger := zap.New(core, zap.AddCaller())
-	Logger = zaplogger.Sugar()
+	Log = zaplogger.Sugar()
 
 	// Logger.Infow("sugar log test1",
 	// 	"url", "http://example.com",

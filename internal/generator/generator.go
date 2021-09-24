@@ -28,7 +28,7 @@ import (
 
 type metasheet struct {
 	worksheet string // worksheet name
-	captrow   int32  // exact row number of caption at worksheet
+	namerow   int32  // exact row number of name at worksheet
 	descrow   int32  // exact row number of description at wooksheet
 	datarow   int32  // start row number of data
 	transpose bool   // interchange the rows and columns
@@ -96,9 +96,9 @@ func (gen *Generator) export(protomsg proto.Message) {
 	md := protomsg.ProtoReflect().Descriptor()
 	_, workbook := TestParseFileOptions(md.ParentFile())
 	fmt.Println("==================", workbook)
-	msgName, worksheet, captrow, descrow, datarow, transpose := TestParseMessageOptions(md)
+	msgName, worksheet, namerow, descrow, datarow, transpose := TestParseMessageOptions(md)
 	gen.metasheet.worksheet = worksheet
-	gen.metasheet.captrow = captrow
+	gen.metasheet.namerow = namerow
 	gen.metasheet.descrow = descrow
 	gen.metasheet.datarow = datarow
 	gen.metasheet.transpose = transpose
@@ -343,22 +343,24 @@ func TestParseFileOptions(fd protoreflect.FileDescriptor) (string, string) {
 func TestParseMessageOptions(md protoreflect.MessageDescriptor) (string, string, int32, int32, int32, bool) {
 	opts := md.Options().(*descriptorpb.MessageOptions)
 	msgName := string(md.Name())
-	worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(string)
-	captrow := proto.GetExtension(opts, tableaupb.E_Captrow).(int32)
-	if captrow == 0 {
-		captrow = 1 // default
+	worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(*tableaupb.Worksheet)
+
+	worksheetName := worksheet.Name
+	namerow := worksheet.Namerow
+	if worksheet.Namerow != 0 {
+		namerow = 1 // default
 	}
-	descrow := proto.GetExtension(opts, tableaupb.E_Descrow).(int32)
+	descrow := worksheet.Descrow
 	if descrow == 0 {
 		descrow = 1 // default
 	}
-	datarow := proto.GetExtension(opts, tableaupb.E_Datarow).(int32)
+	datarow := worksheet.Datarow
 	if datarow == 0 {
 		datarow = 2 // default
 	}
-	transpose := proto.GetExtension(opts, tableaupb.E_Transpose).(bool)
-	fmt.Printf("message:%s, worksheet:%s, captrow:%d, descrow:%d, datarow:%d, transpose:%v\n", msgName, worksheet, captrow, descrow, datarow, transpose)
-	return msgName, worksheet, captrow, descrow, datarow, transpose
+	transpose := worksheet.Transpose
+	fmt.Printf("message:%s, worksheetName:%s, namerow:%d, descrow:%d, datarow:%d, transpose:%v\n", msgName, worksheetName, namerow, descrow, datarow, transpose)
+	return msgName, worksheetName, namerow, descrow, datarow, transpose
 }
 
 func getTabStr(depth int) string {
@@ -387,91 +389,93 @@ func (gen *Generator) TestParseFieldOptions(md protoreflect.MessageDescriptor, r
 		}
 
 		opts := fd.Options().(*descriptorpb.FieldOptions)
-		caption := proto.GetExtension(opts, tableaupb.E_Caption).(string)
-		etype := proto.GetExtension(opts, tableaupb.E_Type).(tableaupb.FieldType)
-		key := proto.GetExtension(opts, tableaupb.E_Key).(string)
-		layout := proto.GetExtension(opts, tableaupb.E_Layout).(tableaupb.CompositeLayout)
-		sep := proto.GetExtension(opts, tableaupb.E_Sep).(string)
+		field := proto.GetExtension(opts, tableaupb.E_Field).(*tableaupb.Field)
+
+		name := field.Name
+		etype := field.Type
+		key := field.Key
+		layout := field.Layout
+		sep := field.Sep
 		if sep == "" {
 			sep = ","
 		}
-		subsep := proto.GetExtension(opts, tableaupb.E_Subsep).(string)
+		subsep := field.Subsep
 		if subsep == "" {
 			subsep = ":"
 		}
-		fmt.Printf("%s%s(%v) %s(%s) %s = %d [(caption) = \"%s\", (type) = %s, (key) = \"%s\", (layout) = \"%s\", (sep) = \"%s\"];\n",
-			getTabStr(depth), fd.Cardinality().String(), fd.IsMap(), fd.Kind().String(), msgName, fd.FullName().Name(), fd.Number(), prefix+caption, etype.String(), layout.String(), key, sep)
+		fmt.Printf("%s%s(%v) %s(%s) %s = %d [(name) = \"%s\", (type) = %s, (key) = \"%s\", (layout) = \"%s\", (sep) = \"%s\"];\n",
+			getTabStr(depth), fd.Cardinality().String(), fd.IsMap(), fd.Kind().String(), msgName, fd.FullName().Name(), fd.Number(), prefix+name, etype.String(), layout.String(), key, sep)
 		if fd.IsMap() {
 			valueFd := fd.MapValue()
-			if etype == tableaupb.FieldType_FIELD_TYPE_CELL_MAP {
+			if etype == tableaupb.Type_TYPE_INCELL_MAP {
 				if valueFd.Kind() == protoreflect.MessageKind {
 					panic("in-cell map do not support value as message type")
 				}
-				fmt.Println("cell(FIELD_TYPE_CELL_MAP): ", prefix+caption)
-				*row = append(*row, Cell{Caption: prefix + caption})
+				fmt.Println("cell(FIELD_TYPE_CELL_MAP): ", prefix+name)
+				*row = append(*row, Cell{Caption: prefix + name})
 			} else {
 				if valueFd.Kind() == protoreflect.MessageKind {
-					if layout == tableaupb.CompositeLayout_COMPOSITE_LAYOUT_HORIZONTAL {
+					if layout == tableaupb.Layout_LAYOUT_HORIZONTAL {
 						size := 2
 						for i := 1; i <= size; i++ {
-							// fmt.Println("cell: ", prefix+caption+strconv.Itoa(i)+key)
-							gen.TestParseFieldOptions(valueFd.Message(), row, depth+1, prefix+caption+strconv.Itoa(i))
+							// fmt.Println("cell: ", prefix+name+strconv.Itoa(i)+key)
+							gen.TestParseFieldOptions(valueFd.Message(), row, depth+1, prefix+name+strconv.Itoa(i))
 						}
 					} else {
-						// fmt.Println("cell: ", prefix+caption+strconv.Itoa(i)+key)
-						gen.TestParseFieldOptions(valueFd.Message(), row, depth+1, prefix+caption)
+						// fmt.Println("cell: ", prefix+name+strconv.Itoa(i)+key)
+						gen.TestParseFieldOptions(valueFd.Message(), row, depth+1, prefix+name)
 					}
 				} else {
 					// value is scalar type
-					key := "Key"     // deafult key caption
-					value := "Value" // deafult value caption
-					fmt.Println("cell(scalar map key): ", prefix+caption+key)
-					fmt.Println("cell(scalar map value): ", prefix+caption+value)
+					key := "Key"     // deafult key name
+					value := "Value" // deafult value name
+					fmt.Println("cell(scalar map key): ", prefix+name+key)
+					fmt.Println("cell(scalar map value): ", prefix+name+value)
 
-					*row = append(*row, Cell{Caption: prefix + caption + key})
-					*row = append(*row, Cell{Caption: prefix + caption + value})
+					*row = append(*row, Cell{Caption: prefix + name + key})
+					*row = append(*row, Cell{Caption: prefix + name + value})
 				}
 			}
 		} else if fd.IsList() {
 			if fd.Kind() == protoreflect.MessageKind {
-				if layout == tableaupb.CompositeLayout_COMPOSITE_LAYOUT_VERTICAL {
-					gen.TestParseFieldOptions(fd.Message(), row, depth+1, prefix+caption)
+				if layout == tableaupb.Layout_LAYOUT_VERTICAL {
+					gen.TestParseFieldOptions(fd.Message(), row, depth+1, prefix+name)
 				} else {
 					size := 2
 					for i := 1; i <= size; i++ {
-						gen.TestParseFieldOptions(fd.Message(), row, depth+1, prefix+caption+strconv.Itoa(i))
+						gen.TestParseFieldOptions(fd.Message(), row, depth+1, prefix+name+strconv.Itoa(i))
 					}
 				}
 			} else {
-				if etype == tableaupb.FieldType_FIELD_TYPE_CELL_LIST {
-					fmt.Println("cell(FIELD_TYPE_CELL_LIST): ", prefix+caption)
-					*row = append(*row, Cell{Caption: prefix + caption})
+				if etype == tableaupb.Type_TYPE_INCELL_LIST {
+					fmt.Println("cell(FIELD_TYPE_CELL_LIST): ", prefix+name)
+					*row = append(*row, Cell{Caption: prefix + name})
 				} else {
 					panic(fmt.Sprintf("unknown list type: %v\n", etype))
 				}
 			}
 		} else {
 			if fd.Kind() == protoreflect.MessageKind {
-				if etype == tableaupb.FieldType_FIELD_TYPE_CELL_MESSAGE {
-					fmt.Println("cell(FIELD_TYPE_CELL_MESSAGE): ", prefix+caption)
-					*row = append(*row, Cell{Caption: prefix + caption})
+				if etype == tableaupb.Type_TYPE_INCELL_MESSAGE {
+					fmt.Println("cell(FIELD_TYPE_CELL_MESSAGE): ", prefix+name)
+					*row = append(*row, Cell{Caption: prefix + name})
 				} else {
 					subMsgName := string(fd.Message().FullName())
 					_, found := specialMessageMap[subMsgName]
 					if found {
-						fmt.Println("cell(special message): ", prefix+caption)
-						*row = append(*row, Cell{Caption: prefix + caption})
+						fmt.Println("cell(special message): ", prefix+name)
+						*row = append(*row, Cell{Caption: prefix + name})
 					} else {
 						pkgName := fd.Message().ParentFile().Package()
 						if string(pkgName) != gen.ProtoPackageName {
 							panic(fmt.Sprintf("unknown message %v in package %v", subMsgName, pkgName))
 						}
-						gen.TestParseFieldOptions(fd.Message(), row, depth+1, prefix+caption)
+						gen.TestParseFieldOptions(fd.Message(), row, depth+1, prefix+name)
 					}
 				}
 			} else {
-				fmt.Println("cell: ", prefix+caption)
-				*row = append(*row, Cell{Caption: prefix + caption})
+				fmt.Println("cell: ", prefix+name)
+				*row = append(*row, Cell{Caption: prefix + name})
 			}
 		}
 	}

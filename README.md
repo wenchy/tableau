@@ -24,14 +24,14 @@ A powerful configuration conversion tool based on Protobuf(proto3).
 
 ## TODO
 
-### Testing
+### protoc plugins
 - [ ] Golang
 - [ ] C++
 - [ ] C#/.NET
 - [ ] Python
 - [ ] Lua
-- [ ] Java
 - [ ] Javascript/Typescript/Node
+- [ ] Java
 
 ### Metadata
 - [ ] metatable: a message to describe the worksheet's metadata.

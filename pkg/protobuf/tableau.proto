@@ -5,11 +5,11 @@ option go_package = "github.com/Wenchy/tableau/pkg/tableaupb";
 import "tableau_options.proto";
 
 // Cardinality of field
-enum FieldCard
+enum Card
 {
-    FIELD_CARD_REQUIRED = 0; // appears exactly one time
-    FIELD_CARD_OPTIONAL = 1; // appears zero or one times
-    FIELD_CARD_REPEATED = 2; // appears zero or more times
+    CARD_REQUIRED = 0; // appears exactly one time
+    CARD_OPTIONAL = 1; // appears zero or one times
+    CARD_REPEATED = 2; // appears zero or more times
 }
 
 message MetaTable
@@ -25,8 +25,8 @@ message MetaTable
 
 message MetaField
 {
-    FieldCard card = 1;
-    FieldType type = 2;
+    Card card = 1;
+    Type type = 2;
     string name = 3; // varaible name
     string caption = 4; // column name or name prefix
     bool required = 5; // [default = true];

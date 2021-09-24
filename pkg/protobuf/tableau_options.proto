@@ -1,102 +1,59 @@
 syntax = "proto3";
-// For easy use, comment the package delaration.
-// package tableau;
+package tableau;
 option go_package = "github.com/Wenchy/tableau/pkg/tableaupb";
 
 import "google/protobuf/descriptor.proto";
 
+// Option Field numbers must be in the range 50000-99999. This range
+// is reserved for internal use within individual organizations.
+
 extend google.protobuf.FileOptions
 {
-	string workbook = 51001; // workbook name
+    Workbook workbook = 50000;
 }
 
 extend google.protobuf.MessageOptions
 {
-    string worksheet = 52001; // worksheet name
-    int32 captrow = 52002; // [default = 1]; // exact row number of caption at worksheet
-    int32 typerow = 52003; // [default = 2]; // TODO: exact row number of type at worksheet, for generating protos.
-    int32 descrow = 52004; // [default = 1]; // exact row number of description at wooksheet
-    int32 datarow = 52005; // [default = 2]; // start row number of data
-    bool transpose = 52006; // [default = false]; // interchange the rows and columns
-    string tags = 52007; // [default = ""]; // tags for usage, e.g.: "1,2" specifying loading servers. Speciallly, "*" means all servers.
-
-	// string x_workbook = 52010;
-}
-
-// type of the message field.
-enum FieldType
-{
-    // auto deduced protobuf types
-    FIELD_TYPE_DEFAULT = 0;
-    
-    //////////////////////////////
-    /////Build-in Types///////////
-    //////////////////////////////
-    // interger
-    FIELD_TYPE_INT32 = 1;
-    FIELD_TYPE_UINT32 = 2;
-    FIELD_TYPE_INT64 = 3;
-    FIELD_TYPE_UINT64 = 4;
-    // floating-point number
-    FIELD_TYPE_DOUBLE = 5;
-    FIELD_TYPE_FLOAT = 6;
-    // bool
-    FIELD_TYPE_BOOL = 7;
-    // string
-    FIELD_TYPE_STRING = 8;
-
-    ////////////////////////
-    /////Message Type//////
-    ////////////////////////
-    FIELD_TYPE_MESSSAGE = 10;
-
-    ////////////////////////
-    /////Extended Types/////
-    ////////////////////////
-    // time
-    FIELD_TYPE_DATE = 21; // format: "yyyy-MM-dd"
-    FIELD_TYPE_TIME = 22; // format: "HH:mm:ss"
-    FIELD_TYPE_DATETIME = 23; // format: "yyyy-MM-dd HH:mm:ss"
-    // list in a cell:
-    // - the list **item** must be **built-in** type
-    // - format: ',' separated items
-    FIELD_TYPE_CELL_LIST = 24;
-    // map in a cell:
-    // - both the **key** and **value** must be **built-in** type
-    // - format: key-value pairs is separated by ',', and
-    //           key and value is separated by ':'
-    FIELD_TYPE_CELL_MAP = 25;
-    // message in a cell
-    FIELD_TYPE_CELL_MESSAGE = 26;
-
-    // FIELD_TYPE_RICH_TEXT = 31;
-    // FIELD_TYPE_JSON = 32;
-}
-
-// layout of composite types, such as list and map.
-enum CompositeLayout
-{
-    COMPOSITE_LAYOUT_DEFAULT = 0; // default direction: vertical for map, horizontal for list
-    COMPOSITE_LAYOUT_VERTICAL = 1; // vertical direction
-    COMPOSITE_LAYOUT_HORIZONTAL = 2; // horizontal direction
+    Worksheet worksheet = 50000;
 }
 
 extend google.protobuf.FieldOptions
 {
+    Field field = 50000;
+}
+
+message Workbook
+{
+    string name = 1;  // workbook name
+}
+
+message Worksheet
+{
+    string name = 1;     // worksheet name
+    int32 namerow = 2;   // [default = 1]; // exact row number of name at worksheet
+    int32 typerow = 3;   // [default = 2]; // TODO: exact row number of type at worksheet, for generating protos.
+    int32 descrow = 4;   // [default = 1]; // exact row number of description at wooksheet
+    int32 datarow = 5;   // [default = 2]; // start row number of data
+    bool transpose = 6;  // [default = false]; // interchange the rows and columns
+    string tags = 7;     // [default = ""]; // tags for usage, e.g.: "1,2" specifying loading servers. Speciallly, "*"
+                         // means all servers.
+}
+
+message Field
+{
     // NOTE(wenchyzhu): It's pity that something goes wrong with protoc.
     // We cannot define an option's name as `name` when extend FieldOptions. Because protoc reports
     // an error: `Option field "(name)" is not a field or extension of message "FieldOptions".``
-    
-    // column caption: the word `caption` is self-explanatory to denote the metarow.
-    // It means `caption` if field's type is scalar,
-    // or `caption prefix` if field's type is composite such as List and Map.
-    string caption = 53001;
-    // tableau field type
-    FieldType type = 53002; // [default = FIELD_TYPE_DEFAULT];
-    string key = 53003;
-    CompositeLayout layout = 53004; // [default = COMPOSITE_LAYOUT_DEFAULT];
-    string sep = 53005; // [default = ',']; separator
-    string subsep = 53006; // [default = ':']; sub separator
+
+    // column name: the word `name` is self-explanatory to denote the metarow.
+    // It means `name` if field's type is scalar,
+    // or `name prefix` if field's type is composite such as List and Map.
+    string name = 1;
+    Type type = 2;  // [default = TYPE_DEFAULT];
+    string key = 3;
+    Layout layout = 4;  // [default = COMPOSITE_LAYOUT_DEFAULT];
+    string sep = 5;              // [default = ',']; separator
+    string subsep = 6;           // [default = ':']; sub separator
 
     /////////////////////////////
     // Simple Validators Below //
@@ -105,7 +62,65 @@ extend google.protobuf.FieldOptions
     // repeated: size range of array
     // integer: value range
     // string: count of utf-8 code point
-    int32 min = 53101; // min value
-    int32 max = 53102; // max value
-    string range = 53103; // format like set description: [1,10], (1,10], [1,10), [1,~]
+    int32 min = 11;     // min value
+    int32 max = 12;     // max value
+    string range = 13;  // format like set description: [1,10], (1,10], [1,10), [1,~]
+}
+
+// field type.
+enum Type
+{
+    // auto deduced protobuf types
+    TYPE_DEFAULT = 0;
+
+    //////////////////////////////
+    /////Build-in Types///////////
+    //////////////////////////////
+    // interger
+    TYPE_INT32 = 1;
+    TYPE_UINT32 = 2;
+    TYPE_INT64 = 3;
+    TYPE_UINT64 = 4;
+    // floating-point number
+    TYPE_DOUBLE = 5;
+    TYPE_FLOAT = 6;
+    // bool
+    TYPE_BOOL = 7;
+    // string
+    TYPE_STRING = 8;
+
+    ////////////////////////
+    /////Message Type//////
+    ////////////////////////
+    TYPE_MESSSAGE = 10;
+
+    ////////////////////////
+    /////Extended Types/////
+    ////////////////////////
+    // time
+    TYPE_DATE = 21;      // format: "yyyy-MM-dd"
+    TYPE_TIME = 22;      // format: "HH:mm:ss"
+    TYPE_DATETIME = 23;  // format: "yyyy-MM-dd HH:mm:ss"
+    // list in a cell:
+    // - the list **item** must be **built-in** type
+    // - format: ',' separated items
+    TYPE_INCELL_LIST = 24;
+    // map in a cell:
+    // - both the **key** and **value** must be **built-in** type
+    // - format: key-value pairs is separated by ',', and
+    //           key and value is separated by ':'
+    TYPE_INCELL_MAP = 25;
+    // message in a cell
+    TYPE_INCELL_MESSAGE = 26;
+
+    // TYPE_RICH_TEXT = 31;
+    // TYPE_JSON = 32;
+}
+
+// layout of composite types, such as list and map.
+enum Layout
+{
+    LAYOUT_DEFAULT = 0;     // default direction: vertical for map, horizontal for list
+    LAYOUT_VERTICAL = 1;    // vertical direction
+    LAYOUT_HORIZONTAL = 2;  // horizontal direction
 }

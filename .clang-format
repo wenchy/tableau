@@ -10,6 +10,3 @@ TabWidth:        4
 Language:        Proto
 BasedOnStyle:  Google
 ColumnLimit:     120
-IndentWidth:     4
-TabWidth:        4
-BreakBeforeBraces: Allman
