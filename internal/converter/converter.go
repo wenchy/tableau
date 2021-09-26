@@ -325,7 +325,6 @@ func TestParseMessageOptions(md protoreflect.MessageDescriptor) (string, string,
 	opts := md.Options().(*descriptorpb.MessageOptions)
 	msgName := string(md.Name())
 	worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(*tableaupb.Worksheet)
-
 	worksheetName := worksheet.Name
 	namerow := worksheet.Namerow
 	if worksheet.Namerow == 0 {
@@ -340,7 +339,7 @@ func TestParseMessageOptions(md protoreflect.MessageDescriptor) (string, string,
 		datarow = 2 // default
 	}
 	transpose := worksheet.Transpose
-	atom.Log.Debugf("message:%s, worksheetName:%s, namerow:%d, descrow:%d, datarow:%d, transpose:%v\n", msgName, worksheetName, namerow, descrow, datarow, transpose)
+	atom.Log.Debugf("msgName:%s, worksheetName:%s, namerow:%d, descrow:%d, datarow:%d, transpose:%v\n", msgName, worksheetName, namerow, descrow, datarow, transpose)
 	return msgName, worksheetName, namerow, descrow, datarow, transpose
 }
 
@@ -373,23 +372,59 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 		// 	atom.Log.Debug("repeated", fd.Kind().String(), fd.FullName().Name())
 		// 	// Redact(fd.Options().ProtoReflect().Interface())
 		// }
+
+		// default value
+		name := strcase.ToCamel(string(fd.FullName().Name()))
+		etype := tableaupb.Type_TYPE_DEFAULT
+		key := ""
+		layout := tableaupb.Layout_LAYOUT_DEFAULT
+		sep := ""
+		subsep := ""
+
 		opts := fd.Options().(*descriptorpb.FieldOptions)
 		field := proto.GetExtension(opts, tableaupb.E_Field).(*tableaupb.Field)
-
-		name := field.Name
-		etype := field.Type
-		key := field.Key
-		layout := field.Layout
-		sep := field.Sep
+		if field != nil {
+			name = field.Name
+			etype = field.Type
+			key = field.Key
+			layout = field.Layout
+			sep = field.Sep
+			subsep = field.Subsep
+		} else {
+			// default processing
+			if fd.IsList() {
+				// truncate suffix `List` (CamelCase) corresponding to `_list` (snake_case)
+				name = strings.TrimSuffix(name, "List")
+			} else if fd.IsMap() {
+				// truncate suffix `Map` (CamelCase) corresponding to `_map` (snake_case)
+				// name = strings.TrimSuffix(name, "Map")
+				name = ""
+				key = "Key"
+			}
+		}
 		if sep == "" {
 			sep = ","
 		}
-		subsep := field.Subsep
 		if subsep == "" {
 			subsep = ":"
 		}
 		atom.Log.Debugf("%s%s(%v) %s(%s) %s = %d [(name) = \"%s\", (type) = %s, (key) = \"%s\", (layout) = \"%s\", (sep) = \"%s\"];",
-			getTabStr(depth), fd.Cardinality().String(), fd.IsMap(), fd.Kind().String(), msgName, fd.FullName().Name(), fd.Number(), prefix+name, etype.String(), layout.String(), key, sep)
+			getTabStr(depth), fd.Cardinality().String(), fd.IsMap(), fd.Kind().String(), msgName, fd.FullName().Name(), fd.Number(), prefix+name, etype.String(), key, layout.String(), sep)
+		atom.Log.Debugw("field metadata",
+			"tabs", depth,
+			"cardinality", fd.Cardinality().String(),
+			"isMap", fd.IsMap(),
+			"kind", fd.Kind().String(),
+			"msgName", msgName,
+			"fullName", fd.FullName(),
+			"number", fd.Number(),
+			"name", prefix+name,
+			"type", etype.String(),
+			"key", key,
+			"layout", layout.String(),
+			"sep", sep,
+		)
+
 		// atom.Log.Debug(fd.ContainingMessage().FullName())
 
 		// if fd.Cardinality() == protoreflect.Repeated && fd.Kind() == protoreflect.MessageKind {

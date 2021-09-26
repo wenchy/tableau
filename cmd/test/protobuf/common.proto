@@ -5,6 +5,6 @@ option go_package = "github.com/Wenchy/tableau/cmd/test/testpb";
 import "tableau_options.proto";
 
 message Item {
-  int32 id = 1 [(tableau.field).name = "ID"];
-  int32 num = 2 [(tableau.field).name = "NUM"];
+  int32 id = 1 [(tableau.field).name = "Id"];
+  int32 num = 2 [(tableau.field).name = "Num"];
 }

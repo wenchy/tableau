@@ -233,6 +233,53 @@ func (x *EnvConf) GetCoefficent() float64 {
 	return 0
 }
 
+type MailConf struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	MailMap map[int32]*MailConf_Row `protobuf:"bytes,1,rep,name=mail_map,json=mailMap,proto3" json:"mail_map,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"` // default: [(tableau.field).key = "Key"];
+}
+
+func (x *MailConf) Reset() {
+	*x = MailConf{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_test_conf_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *MailConf) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MailConf) ProtoMessage() {}
+
+func (x *MailConf) ProtoReflect() protoreflect.Message {
+	mi := &file_test_conf_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MailConf.ProtoReflect.Descriptor instead.
+func (*MailConf) Descriptor() ([]byte, []int) {
+	return file_test_conf_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *MailConf) GetMailMap() map[int32]*MailConf_Row {
+	if x != nil {
+		return x.MailMap
+	}
+	return nil
+}
+
 type ItemConf_Row struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -252,7 +299,7 @@ type ItemConf_Row struct {
 func (x *ItemConf_Row) Reset() {
 	*x = ItemConf_Row{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_test_conf_proto_msgTypes[4]
+		mi := &file_test_conf_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -265,7 +312,7 @@ func (x *ItemConf_Row) String() string {
 func (*ItemConf_Row) ProtoMessage() {}
 
 func (x *ItemConf_Row) ProtoReflect() protoreflect.Message {
-	mi := &file_test_conf_proto_msgTypes[4]
+	mi := &file_test_conf_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -358,7 +405,7 @@ type ItemConf_Attribute struct {
 func (x *ItemConf_Attribute) Reset() {
 	*x = ItemConf_Attribute{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_test_conf_proto_msgTypes[5]
+		mi := &file_test_conf_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -371,7 +418,7 @@ func (x *ItemConf_Attribute) String() string {
 func (*ItemConf_Attribute) ProtoMessage() {}
 
 func (x *ItemConf_Attribute) ProtoReflect() protoreflect.Message {
-	mi := &file_test_conf_proto_msgTypes[5]
+	mi := &file_test_conf_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -428,7 +475,7 @@ type ItemConf_Enhancement struct {
 func (x *ItemConf_Enhancement) Reset() {
 	*x = ItemConf_Enhancement{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_test_conf_proto_msgTypes[6]
+		mi := &file_test_conf_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -441,7 +488,7 @@ func (x *ItemConf_Enhancement) String() string {
 func (*ItemConf_Enhancement) ProtoMessage() {}
 
 func (x *ItemConf_Enhancement) ProtoReflect() protoreflect.Message {
-	mi := &file_test_conf_proto_msgTypes[6]
+	mi := &file_test_conf_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -490,7 +537,7 @@ type ItemConf_Cost struct {
 func (x *ItemConf_Cost) Reset() {
 	*x = ItemConf_Cost{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_test_conf_proto_msgTypes[7]
+		mi := &file_test_conf_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -503,7 +550,7 @@ func (x *ItemConf_Cost) String() string {
 func (*ItemConf_Cost) ProtoMessage() {}
 
 func (x *ItemConf_Cost) ProtoReflect() protoreflect.Message {
-	mi := &file_test_conf_proto_msgTypes[7]
+	mi := &file_test_conf_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -545,7 +592,7 @@ type ActivityConf_Activity struct {
 func (x *ActivityConf_Activity) Reset() {
 	*x = ActivityConf_Activity{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_test_conf_proto_msgTypes[11]
+		mi := &file_test_conf_proto_msgTypes[12]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -558,7 +605,7 @@ func (x *ActivityConf_Activity) String() string {
 func (*ActivityConf_Activity) ProtoMessage() {}
 
 func (x *ActivityConf_Activity) ProtoReflect() protoreflect.Message {
-	mi := &file_test_conf_proto_msgTypes[11]
+	mi := &file_test_conf_proto_msgTypes[12]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -602,7 +649,7 @@ type ActivityConf_Chapter struct {
 func (x *ActivityConf_Chapter) Reset() {
 	*x = ActivityConf_Chapter{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_test_conf_proto_msgTypes[12]
+		mi := &file_test_conf_proto_msgTypes[13]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -615,7 +662,7 @@ func (x *ActivityConf_Chapter) String() string {
 func (*ActivityConf_Chapter) ProtoMessage() {}
 
 func (x *ActivityConf_Chapter) ProtoReflect() protoreflect.Message {
-	mi := &file_test_conf_proto_msgTypes[12]
+	mi := &file_test_conf_proto_msgTypes[13]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -668,7 +715,7 @@ type ActivityConf_Section struct {
 func (x *ActivityConf_Section) Reset() {
 	*x = ActivityConf_Section{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_test_conf_proto_msgTypes[13]
+		mi := &file_test_conf_proto_msgTypes[14]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -681,7 +728,7 @@ func (x *ActivityConf_Section) String() string {
 func (*ActivityConf_Section) ProtoMessage() {}
 
 func (x *ActivityConf_Section) ProtoReflect() protoreflect.Message {
-	mi := &file_test_conf_proto_msgTypes[13]
+	mi := &file_test_conf_proto_msgTypes[14]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -753,7 +800,7 @@ type EnvConf_Basic struct {
 func (x *EnvConf_Basic) Reset() {
 	*x = EnvConf_Basic{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_test_conf_proto_msgTypes[16]
+		mi := &file_test_conf_proto_msgTypes[17]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -766,7 +813,7 @@ func (x *EnvConf_Basic) String() string {
 func (*EnvConf_Basic) ProtoMessage() {}
 
 func (x *EnvConf_Basic) ProtoReflect() protoreflect.Message {
-	mi := &file_test_conf_proto_msgTypes[16]
+	mi := &file_test_conf_proto_msgTypes[17]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -808,6 +855,77 @@ func (x *EnvConf_Basic) GetValuable() bool {
 		return x.Valuable
 	}
 	return false
+}
+
+type MailConf_Row struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Key      int32   `protobuf:"varint,1,opt,name=key,proto3" json:"key,omitempty"`
+	Title    string  `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	Content  string  `protobuf:"bytes,3,opt,name=content,proto3" json:"content,omitempty"`
+	ItemList []*Item `protobuf:"bytes,4,rep,name=item_list,json=itemList,proto3" json:"item_list,omitempty"`
+}
+
+func (x *MailConf_Row) Reset() {
+	*x = MailConf_Row{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_test_conf_proto_msgTypes[19]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *MailConf_Row) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MailConf_Row) ProtoMessage() {}
+
+func (x *MailConf_Row) ProtoReflect() protoreflect.Message {
+	mi := &file_test_conf_proto_msgTypes[19]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MailConf_Row.ProtoReflect.Descriptor instead.
+func (*MailConf_Row) Descriptor() ([]byte, []int) {
+	return file_test_conf_proto_rawDescGZIP(), []int{3, 1}
+}
+
+func (x *MailConf_Row) GetKey() int32 {
+	if x != nil {
+		return x.Key
+	}
+	return 0
+}
+
+func (x *MailConf_Row) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *MailConf_Row) GetContent() string {
+	if x != nil {
+		return x.Content
+	}
+	return ""
+}
+
+func (x *MailConf_Row) GetItemList() []*Item {
+	if x != nil {
+		return x.ItemList
+	}
+	return nil
 }
 
 var File_test_conf_proto protoreflect.FileDescriptor
@@ -1001,11 +1119,28 @@ var file_test_conf_proto_rawDesc = []byte{
 	0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x12, 0x1a,
 	0x0a, 0x08, 0x76, 0x61, 0x6c, 0x75, 0x61, 0x62, 0x6c, 0x65, 0x18, 0x04, 0x20, 0x01, 0x28, 0x08,
 	0x52, 0x08, 0x76, 0x61, 0x6c, 0x75, 0x61, 0x62, 0x6c, 0x65, 0x3a, 0x0b, 0x82, 0xb5, 0x18, 0x07,
-	0x0a, 0x03, 0x45, 0x6e, 0x76, 0x30, 0x01, 0x42, 0x3a, 0x5a, 0x29, 0x67, 0x69, 0x74, 0x68, 0x75,
-	0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x57, 0x65, 0x6e, 0x63, 0x68, 0x79, 0x2f, 0x74, 0x61, 0x62,
-	0x6c, 0x65, 0x61, 0x75, 0x2f, 0x63, 0x6d, 0x64, 0x2f, 0x74, 0x65, 0x73, 0x74, 0x2f, 0x74, 0x65,
-	0x73, 0x74, 0x70, 0x62, 0x82, 0xb5, 0x18, 0x0b, 0x0a, 0x09, 0x54, 0x65, 0x73, 0x74, 0x2e, 0x78,
-	0x6c, 0x73, 0x78, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x0a, 0x03, 0x45, 0x6e, 0x76, 0x30, 0x01, 0x22, 0x90, 0x02, 0x0a, 0x08, 0x4d, 0x61, 0x69, 0x6c,
+	0x43, 0x6f, 0x6e, 0x66, 0x12, 0x36, 0x0a, 0x08, 0x6d, 0x61, 0x69, 0x6c, 0x5f, 0x6d, 0x61, 0x70,
+	0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x1b, 0x2e, 0x74, 0x65, 0x73, 0x74, 0x2e, 0x4d, 0x61,
+	0x69, 0x6c, 0x43, 0x6f, 0x6e, 0x66, 0x2e, 0x4d, 0x61, 0x69, 0x6c, 0x4d, 0x61, 0x70, 0x45, 0x6e,
+	0x74, 0x72, 0x79, 0x52, 0x07, 0x6d, 0x61, 0x69, 0x6c, 0x4d, 0x61, 0x70, 0x1a, 0x4e, 0x0a, 0x0c,
+	0x4d, 0x61, 0x69, 0x6c, 0x4d, 0x61, 0x70, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x10, 0x0a, 0x03,
+	0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x05, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x28,
+	0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x12, 0x2e,
+	0x74, 0x65, 0x73, 0x74, 0x2e, 0x4d, 0x61, 0x69, 0x6c, 0x43, 0x6f, 0x6e, 0x66, 0x2e, 0x52, 0x6f,
+	0x77, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x1a, 0x70, 0x0a, 0x03,
+	0x52, 0x6f, 0x77, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x05,
+	0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x74, 0x69, 0x74, 0x6c, 0x65, 0x18, 0x02,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x74, 0x69, 0x74, 0x6c, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x63,
+	0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x63, 0x6f,
+	0x6e, 0x74, 0x65, 0x6e, 0x74, 0x12, 0x27, 0x0a, 0x09, 0x69, 0x74, 0x65, 0x6d, 0x5f, 0x6c, 0x69,
+	0x73, 0x74, 0x18, 0x04, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x0a, 0x2e, 0x74, 0x65, 0x73, 0x74, 0x2e,
+	0x49, 0x74, 0x65, 0x6d, 0x52, 0x08, 0x69, 0x74, 0x65, 0x6d, 0x4c, 0x69, 0x73, 0x74, 0x3a, 0x0a,
+	0x82, 0xb5, 0x18, 0x06, 0x0a, 0x04, 0x4d, 0x61, 0x69, 0x6c, 0x42, 0x3a, 0x5a, 0x29, 0x67, 0x69,
+	0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x57, 0x65, 0x6e, 0x63, 0x68, 0x79, 0x2f,
+	0x74, 0x61, 0x62, 0x6c, 0x65, 0x61, 0x75, 0x2f, 0x63, 0x6d, 0x64, 0x2f, 0x74, 0x65, 0x73, 0x74,
+	0x2f, 0x74, 0x65, 0x73, 0x74, 0x70, 0x62, 0x82, 0xb5, 0x18, 0x0b, 0x0a, 0x09, 0x54, 0x65, 0x73,
+	0x74, 0x2e, 0x78, 0x6c, 0x73, 0x78, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -1020,56 +1155,62 @@ func file_test_conf_proto_rawDescGZIP() []byte {
 	return file_test_conf_proto_rawDescData
 }
 
-var file_test_conf_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_test_conf_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_test_conf_proto_goTypes = []interface{}{
 	(*ItemConf)(nil),              // 0: test.ItemConf
 	(*ActivityConf)(nil),          // 1: test.ActivityConf
 	(*EnvConf)(nil),               // 2: test.EnvConf
-	nil,                           // 3: test.ItemConf.ItemMapEntry
-	(*ItemConf_Row)(nil),          // 4: test.ItemConf.Row
-	(*ItemConf_Attribute)(nil),    // 5: test.ItemConf.Attribute
-	(*ItemConf_Enhancement)(nil),  // 6: test.ItemConf.Enhancement
-	(*ItemConf_Cost)(nil),         // 7: test.ItemConf.Cost
-	nil,                           // 8: test.ItemConf.Row.SaleMapEntry
-	nil,                           // 9: test.ItemConf.Attribute.CostMapEntry
-	nil,                           // 10: test.ActivityConf.ActivityMapEntry
-	(*ActivityConf_Activity)(nil), // 11: test.ActivityConf.Activity
-	(*ActivityConf_Chapter)(nil),  // 12: test.ActivityConf.Chapter
-	(*ActivityConf_Section)(nil),  // 13: test.ActivityConf.Section
-	nil,                           // 14: test.ActivityConf.Activity.ChapterMapEntry
-	nil,                           // 15: test.EnvConf.NewbieItemMapEntry
-	(*EnvConf_Basic)(nil),         // 16: test.EnvConf.Basic
-	(*timestamp.Timestamp)(nil),   // 17: google.protobuf.Timestamp
-	(*duration.Duration)(nil),     // 18: google.protobuf.Duration
-	(*Item)(nil),                  // 19: test.Item
+	(*MailConf)(nil),              // 3: test.MailConf
+	nil,                           // 4: test.ItemConf.ItemMapEntry
+	(*ItemConf_Row)(nil),          // 5: test.ItemConf.Row
+	(*ItemConf_Attribute)(nil),    // 6: test.ItemConf.Attribute
+	(*ItemConf_Enhancement)(nil),  // 7: test.ItemConf.Enhancement
+	(*ItemConf_Cost)(nil),         // 8: test.ItemConf.Cost
+	nil,                           // 9: test.ItemConf.Row.SaleMapEntry
+	nil,                           // 10: test.ItemConf.Attribute.CostMapEntry
+	nil,                           // 11: test.ActivityConf.ActivityMapEntry
+	(*ActivityConf_Activity)(nil), // 12: test.ActivityConf.Activity
+	(*ActivityConf_Chapter)(nil),  // 13: test.ActivityConf.Chapter
+	(*ActivityConf_Section)(nil),  // 14: test.ActivityConf.Section
+	nil,                           // 15: test.ActivityConf.Activity.ChapterMapEntry
+	nil,                           // 16: test.EnvConf.NewbieItemMapEntry
+	(*EnvConf_Basic)(nil),         // 17: test.EnvConf.Basic
+	nil,                           // 18: test.MailConf.MailMapEntry
+	(*MailConf_Row)(nil),          // 19: test.MailConf.Row
+	(*timestamp.Timestamp)(nil),   // 20: google.protobuf.Timestamp
+	(*duration.Duration)(nil),     // 21: google.protobuf.Duration
+	(*Item)(nil),                  // 22: test.Item
 }
 var file_test_conf_proto_depIdxs = []int32{
-	3,  // 0: test.ItemConf.item_map:type_name -> test.ItemConf.ItemMapEntry
-	10, // 1: test.ActivityConf.activity_map:type_name -> test.ActivityConf.ActivityMapEntry
-	15, // 2: test.EnvConf.newbie_item_map:type_name -> test.EnvConf.NewbieItemMapEntry
-	16, // 3: test.EnvConf.basic1:type_name -> test.EnvConf.Basic
-	16, // 4: test.EnvConf.basic2:type_name -> test.EnvConf.Basic
-	4,  // 5: test.ItemConf.ItemMapEntry.value:type_name -> test.ItemConf.Row
-	5,  // 6: test.ItemConf.Row.attributes:type_name -> test.ItemConf.Attribute
-	8,  // 7: test.ItemConf.Row.sale_map:type_name -> test.ItemConf.Row.SaleMapEntry
-	17, // 8: test.ItemConf.Row.expiry_time:type_name -> google.protobuf.Timestamp
-	18, // 9: test.ItemConf.Row.duration:type_name -> google.protobuf.Duration
-	6,  // 10: test.ItemConf.Attribute.enhancements:type_name -> test.ItemConf.Enhancement
-	9,  // 11: test.ItemConf.Attribute.cost_map:type_name -> test.ItemConf.Attribute.CostMapEntry
-	7,  // 12: test.ItemConf.Attribute.CostMapEntry.value:type_name -> test.ItemConf.Cost
-	11, // 13: test.ActivityConf.ActivityMapEntry.value:type_name -> test.ActivityConf.Activity
-	14, // 14: test.ActivityConf.Activity.chapter_map:type_name -> test.ActivityConf.Activity.ChapterMapEntry
-	13, // 15: test.ActivityConf.Chapter.sections:type_name -> test.ActivityConf.Section
-	19, // 16: test.ActivityConf.Section.items:type_name -> test.Item
-	17, // 17: test.ActivityConf.Section.begin_time:type_name -> google.protobuf.Timestamp
-	17, // 18: test.ActivityConf.Section.end_time:type_name -> google.protobuf.Timestamp
-	18, // 19: test.ActivityConf.Section.duration:type_name -> google.protobuf.Duration
-	12, // 20: test.ActivityConf.Activity.ChapterMapEntry.value:type_name -> test.ActivityConf.Chapter
-	21, // [21:21] is the sub-list for method output_type
-	21, // [21:21] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	4,  // 0: test.ItemConf.item_map:type_name -> test.ItemConf.ItemMapEntry
+	11, // 1: test.ActivityConf.activity_map:type_name -> test.ActivityConf.ActivityMapEntry
+	16, // 2: test.EnvConf.newbie_item_map:type_name -> test.EnvConf.NewbieItemMapEntry
+	17, // 3: test.EnvConf.basic1:type_name -> test.EnvConf.Basic
+	17, // 4: test.EnvConf.basic2:type_name -> test.EnvConf.Basic
+	18, // 5: test.MailConf.mail_map:type_name -> test.MailConf.MailMapEntry
+	5,  // 6: test.ItemConf.ItemMapEntry.value:type_name -> test.ItemConf.Row
+	6,  // 7: test.ItemConf.Row.attributes:type_name -> test.ItemConf.Attribute
+	9,  // 8: test.ItemConf.Row.sale_map:type_name -> test.ItemConf.Row.SaleMapEntry
+	20, // 9: test.ItemConf.Row.expiry_time:type_name -> google.protobuf.Timestamp
+	21, // 10: test.ItemConf.Row.duration:type_name -> google.protobuf.Duration
+	7,  // 11: test.ItemConf.Attribute.enhancements:type_name -> test.ItemConf.Enhancement
+	10, // 12: test.ItemConf.Attribute.cost_map:type_name -> test.ItemConf.Attribute.CostMapEntry
+	8,  // 13: test.ItemConf.Attribute.CostMapEntry.value:type_name -> test.ItemConf.Cost
+	12, // 14: test.ActivityConf.ActivityMapEntry.value:type_name -> test.ActivityConf.Activity
+	15, // 15: test.ActivityConf.Activity.chapter_map:type_name -> test.ActivityConf.Activity.ChapterMapEntry
+	14, // 16: test.ActivityConf.Chapter.sections:type_name -> test.ActivityConf.Section
+	22, // 17: test.ActivityConf.Section.items:type_name -> test.Item
+	20, // 18: test.ActivityConf.Section.begin_time:type_name -> google.protobuf.Timestamp
+	20, // 19: test.ActivityConf.Section.end_time:type_name -> google.protobuf.Timestamp
+	21, // 20: test.ActivityConf.Section.duration:type_name -> google.protobuf.Duration
+	13, // 21: test.ActivityConf.Activity.ChapterMapEntry.value:type_name -> test.ActivityConf.Chapter
+	19, // 22: test.MailConf.MailMapEntry.value:type_name -> test.MailConf.Row
+	22, // 23: test.MailConf.Row.item_list:type_name -> test.Item
+	24, // [24:24] is the sub-list for method output_type
+	24, // [24:24] is the sub-list for method input_type
+	24, // [24:24] is the sub-list for extension type_name
+	24, // [24:24] is the sub-list for extension extendee
+	0,  // [0:24] is the sub-list for field type_name
 }
 
 func init() { file_test_conf_proto_init() }
@@ -1115,8 +1256,8 @@ func file_test_conf_proto_init() {
 				return nil
 			}
 		}
-		file_test_conf_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ItemConf_Row); i {
+		file_test_conf_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*MailConf); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1128,7 +1269,7 @@ func file_test_conf_proto_init() {
 			}
 		}
 		file_test_conf_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ItemConf_Attribute); i {
+			switch v := v.(*ItemConf_Row); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1140,7 +1281,7 @@ func file_test_conf_proto_init() {
 			}
 		}
 		file_test_conf_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ItemConf_Enhancement); i {
+			switch v := v.(*ItemConf_Attribute); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1152,6 +1293,18 @@ func file_test_conf_proto_init() {
 			}
 		}
 		file_test_conf_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ItemConf_Enhancement); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_test_conf_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ItemConf_Cost); i {
 			case 0:
 				return &v.state
@@ -1163,7 +1316,7 @@ func file_test_conf_proto_init() {
 				return nil
 			}
 		}
-		file_test_conf_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
+		file_test_conf_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ActivityConf_Activity); i {
 			case 0:
 				return &v.state
@@ -1175,7 +1328,7 @@ func file_test_conf_proto_init() {
 				return nil
 			}
 		}
-		file_test_conf_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
+		file_test_conf_proto_msgTypes[13].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ActivityConf_Chapter); i {
 			case 0:
 				return &v.state
@@ -1187,7 +1340,7 @@ func file_test_conf_proto_init() {
 				return nil
 			}
 		}
-		file_test_conf_proto_msgTypes[13].Exporter = func(v interface{}, i int) interface{} {
+		file_test_conf_proto_msgTypes[14].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ActivityConf_Section); i {
 			case 0:
 				return &v.state
@@ -1199,8 +1352,20 @@ func file_test_conf_proto_init() {
 				return nil
 			}
 		}
-		file_test_conf_proto_msgTypes[16].Exporter = func(v interface{}, i int) interface{} {
+		file_test_conf_proto_msgTypes[17].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*EnvConf_Basic); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_test_conf_proto_msgTypes[19].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*MailConf_Row); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1218,7 +1383,7 @@ func file_test_conf_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_test_conf_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   17,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -8,13 +8,14 @@ import (
 func main() {
 	// tableau.Convert("test", "./testdata/", "./output/")
 	tbx := tableau.NewTableaux(&tableau.Options{
-		ProtoPackageName:          "test",
-		InputPath:                 "./testdata/",
-		OutputPath:                "./output/",
-		OutputFilenameAsSnakeCase: false,
-		OutputFormat:              tableau.JSON,
-		OutputPretty:              true,
-		EmitUnpopulated:           true,
+		ProtoPackageName: "test",
+		InputPath:        "./testdata/",
+		OutputPath:       "./output/",
+		// OutputFilenameAsSnakeCase: false,
+		OutputFormat:    tableau.JSON,
+		OutputPretty:    true,
+		EmitUnpopulated: true,
+		LogLevel:        "debug",
 	})
 	tbx.Convert()
 

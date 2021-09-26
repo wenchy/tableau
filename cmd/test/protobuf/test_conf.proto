@@ -60,7 +60,7 @@ message ActivityConf {
     int32 id = 1 [(tableau.field).name = "章ID"];
     string desc = 2 [(tableau.field).name = "章描述"];
     // repeated Section sections = 3 [(tableau.field).layout = tableau.LAYOUT_VERTICAL];
-    repeated Section sections = 3 [(tableau.field) = { layout: LAYOUT_VERTICAL }];
+    repeated Section sections = 3 [(tableau.field).layout = LAYOUT_VERTICAL];
   }
 
   message Section {
@@ -101,4 +101,17 @@ message EnvConf {
     string content = 3;
     bool valuable = 4;
   }
+}
+
+message MailConf {
+    option (tableau.worksheet).name = "Mail";
+  
+    map<int32, Row> mail_map = 1; // default: [(tableau.field).key = "Key"];
+  
+    message Row {
+      int32 key = 1;
+      string title = 2;
+      string content = 3;
+      repeated Item item_list = 4; // default: [(tableau.field).name = "Item"];
+    }
 }
