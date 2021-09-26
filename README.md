@@ -11,8 +11,11 @@ A powerful configuration conversion tool based on Protobuf(proto3).
 - Importer: xlsx importer.
 - IR: Intermediate Representation.
 - Filter: filter the IR.
-- Exporter: JSON exporter, protobin exporter, prototext exporter, xml exporter, sqlite3 exporter, and so on.
-- ProtoConf: a configuration metadata format based on protobuf.
+- Exporter: JSON, protowire, prototext, xml, yaml, and so on.
+- Protoconf: a configuration metadata format based on protobuf.
+
+## Workflow
+xlsx -> Importer -> Protoconf -> Exporter -> JSON/protowire/prototext/xml/yaml
 
 ## Types
 - Scalar

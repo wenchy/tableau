@@ -10,10 +10,10 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/360EntSecGroup-Skylar/excelize/v2"
 	"github.com/Wenchy/tableau/internal/atom"
 	"github.com/Wenchy/tableau/pkg/tableaupb"
 	"github.com/iancoleman/strcase"
+	"github.com/xuri/excelize/v2"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
@@ -31,8 +31,8 @@ type metasheet struct {
 
 type Generator struct {
 	ProtoPackageName string // protobuf package name.
-	InputPath        string // root dir of workbooks.
-	OutputPath       string // output path of generated files.
+	InputDir         string // input dir of workbooks.
+	OutputDir        string // output dir of generated protoconf files.
 
 	metasheet metasheet // meta info of worksheet
 }
@@ -49,12 +49,12 @@ type Cell struct {
 type Row []Cell
 
 func (gen *Generator) Generate() {
-	err := os.RemoveAll(gen.OutputPath)
+	err := os.RemoveAll(gen.OutputDir)
 	if err != nil {
 		panic(err)
 	}
-	// create oupput dir
-	err = os.MkdirAll(gen.OutputPath, 0700)
+	// create output dir
+	err = os.MkdirAll(gen.OutputDir, 0700)
 	if err != nil {
 		panic(err)
 	}
@@ -102,7 +102,7 @@ func (gen *Generator) export(protomsg proto.Message) {
 	gen.TestParseFieldOptions(md, &row, 0, "")
 	fmt.Println("==================", msgName)
 
-	filename := gen.OutputPath + workbook.Name
+	filename := gen.OutputDir + workbook.Name
 	var wb *excelize.File
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
 		wb = excelize.NewFile()

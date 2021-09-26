@@ -9,8 +9,8 @@ import (
 // Tableaux is an alias type of converter.Tableaux.
 type Tableaux = converter.Tableaux
 
-func Convert(protoPackageName, inputPath, outputPath string) {
-	tableaux := converter.Tableaux{ProtoPackageName: protoPackageName, InputPath: inputPath, OutputPath: outputPath}
+func Convert(protoPackageName, indir, outdir string) {
+	tableaux := converter.Tableaux{ProtoPackageName: protoPackageName, InputDir: indir, OutputDir: outdir}
 	tableaux.Convert()
 }
 
@@ -18,8 +18,8 @@ func NewTableaux(opts *Options) *Tableaux {
 	opts.init()
 	tbx := converter.Tableaux{
 		ProtoPackageName:          opts.ProtoPackageName,
-		InputPath:                 opts.InputPath,
-		OutputPath:                opts.OutputPath,
+		InputDir:                  opts.InputDir,
+		OutputDir:                 opts.OutputDir,
 		OutputFilenameAsSnakeCase: opts.OutputFilenameAsSnakeCase,
 		OutputFormat:              converter.Format(opts.OutputFormat),
 		OutputPretty:              opts.OutputPretty,
@@ -34,7 +34,7 @@ func NewTableaux(opts *Options) *Tableaux {
 // Generator is an alias type of generator.Generator.
 type Generator = xlsxgen.Generator
 
-func Generate(protoPackageName, inputPath, outputPath string) {
-	generator := xlsxgen.Generator{ProtoPackageName: protoPackageName, InputPath: inputPath, OutputPath: outputPath}
+func Generate(protoPackageName, indir, outdir string) {
+	generator := xlsxgen.Generator{ProtoPackageName: protoPackageName, InputDir: indir, OutputDir: outdir}
 	generator.Generate()
 }

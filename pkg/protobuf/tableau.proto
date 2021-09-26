@@ -4,24 +4,30 @@ option go_package = "github.com/Wenchy/tableau/pkg/tableaupb";
 
 import "tableau_options.proto";
 
-// Cardinality of field
-enum Card {
-  CARD_REQUIRED = 0;  // appears exactly one time
-  CARD_OPTIONAL = 1;  // appears zero or one times
-  CARD_REPEATED = 2;  // appears zero or more times
-}
-
 message Workbook {
   WorkbookOptions options = 1;
   repeated Worksheet worksheets = 2;
+  string name = 3;
 }
 
 message Worksheet {
   WorksheetOptions options = 1;
   repeated Field fields = 2;
+  string name = 3;
 }
 
 message Field {
   FieldOptions options = 1;
-  Card card = 2;
+  string card = 2;  // Cardinality of field, value can be: "repeated" or ""
+  string type = 3;
+  string name = 4;
+  //   uint32 tagid = 5;
+  repeated Field fields = 6;
+
+  MapEntry map_entry = 7;
+}
+
+message MapEntry {
+  string key_type = 1;
+  string value_type = 2;
 }

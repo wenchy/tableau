@@ -241,10 +241,10 @@ type WorksheetOptions struct {
 	unknownFields protoimpl.UnknownFields
 
 	Name      string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`            // worksheet name
-	Namerow   int32  `protobuf:"varint,2,opt,name=namerow,proto3" json:"namerow,omitempty"`     // [default = 1]; // exact row number of name at worksheet
+	Namerow   int32  `protobuf:"varint,2,opt,name=namerow,proto3" json:"namerow,omitempty"`     // [default = 1]; // exact row number of name at worksheet.
 	Typerow   int32  `protobuf:"varint,3,opt,name=typerow,proto3" json:"typerow,omitempty"`     // [default = 2]; // TODO: exact row number of type at worksheet, for generating protos.
-	Descrow   int32  `protobuf:"varint,4,opt,name=descrow,proto3" json:"descrow,omitempty"`     // [default = 1]; // exact row number of description at wooksheet
-	Datarow   int32  `protobuf:"varint,5,opt,name=datarow,proto3" json:"datarow,omitempty"`     // [default = 2]; // start row number of data
+	Descrow   int32  `protobuf:"varint,4,opt,name=descrow,proto3" json:"descrow,omitempty"`     // [default = 1]; // exact row number of description at wooksheet.
+	Datarow   int32  `protobuf:"varint,5,opt,name=datarow,proto3" json:"datarow,omitempty"`     // [default = 2]; // start row number of data at wooksheet.
 	Transpose bool   `protobuf:"varint,6,opt,name=transpose,proto3" json:"transpose,omitempty"` // [default = false]; // interchange the rows and columns
 	Tags      string `protobuf:"bytes,7,opt,name=tags,proto3" json:"tags,omitempty"`            // [default = ""]; // tags for usage, e.g.: "1,2" specifying loading servers. Speciallly, "*"
 }
@@ -341,7 +341,7 @@ type FieldOptions struct {
 	Name   string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Type   Type   `protobuf:"varint,2,opt,name=type,proto3,enum=tableau.Type" json:"type,omitempty"` // [default = TYPE_DEFAULT];
 	Key    string `protobuf:"bytes,3,opt,name=key,proto3" json:"key,omitempty"`
-	Layout Layout `protobuf:"varint,4,opt,name=layout,proto3,enum=tableau.Layout" json:"layout,omitempty"` // [default = COMPOSITE_LAYOUT_DEFAULT];
+	Layout Layout `protobuf:"varint,4,opt,name=layout,proto3,enum=tableau.Layout" json:"layout,omitempty"` // [default = LAYOUT_DEFAULT];
 	Sep    string `protobuf:"bytes,5,opt,name=sep,proto3" json:"sep,omitempty"`                            // [default = ',']; separator
 	Subsep string `protobuf:"bytes,6,opt,name=subsep,proto3" json:"subsep,omitempty"`                      // [default = ':']; sub separator
 	/////////////////////////////

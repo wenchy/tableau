@@ -45,8 +45,8 @@ type metasheet struct {
 
 type Tableaux struct {
 	ProtoPackageName          string // protobuf package name.
-	InputPath                 string // root dir of workbooks.
-	OutputPath                string // output path of generated files.
+	InputDir                  string // input dir of workbooks.
+	OutputDir                 string // output dir of generated files.
 	OutputFilenameAsSnakeCase bool   // output filename as snake case, default is camel case same as the protobuf message name.
 	OutputFormat              Format // output format: json, protobin, or prototext. Default is json.
 	OutputPretty              bool   // output pretty format, with mulitline and indent.
@@ -86,7 +86,7 @@ func (tbx *Tableaux) Convert() {
 	// atom.Log.Debug("====================")
 
 	// create oupput dir
-	err := os.MkdirAll(tbx.OutputPath, 0700)
+	err := os.MkdirAll(tbx.OutputDir, 0700)
 	if err != nil {
 		panic(err)
 	}
@@ -132,7 +132,7 @@ func (tbx *Tableaux) Export(protomsg proto.Message) {
 	tbx.metasheet.transpose = transpose
 
 	atom.Log.Debug("==================")
-	sheet := ReadSheet(tbx.InputPath+workbook.Name, worksheetName)
+	sheet := ReadSheet(tbx.InputDir+workbook.Name, worksheetName)
 	if transpose {
 		// col caprow: name row
 		// col [datarow, MaxRow]: data
@@ -196,7 +196,7 @@ func (tbx *Tableaux) Export(protomsg proto.Message) {
 	if tbx.OutputFilenameAsSnakeCase {
 		filename = strcase.ToSnake(msgName)
 	}
-	filePath := tbx.OutputPath + filename
+	filePath := tbx.OutputDir + filename
 	switch tbx.OutputFormat {
 	case JSON:
 		exportJSON(protomsg, filePath, tbx.OutputPretty, tbx.EmitUnpopulated)
