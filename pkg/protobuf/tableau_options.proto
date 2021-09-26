@@ -4,123 +4,115 @@ option go_package = "github.com/Wenchy/tableau/pkg/tableaupb";
 
 import "google/protobuf/descriptor.proto";
 
-// Option Field numbers must be in the range 50000-99999. This range
+// Option field numbers must be in the range 50000-99999. This range
 // is reserved for internal use within individual organizations.
 
-extend google.protobuf.FileOptions
-{
-    Workbook workbook = 50000;
+extend google.protobuf.FileOptions {
+  WorkbookOptions workbook = 50000;
 }
 
-extend google.protobuf.MessageOptions
-{
-    Worksheet worksheet = 50000;
+extend google.protobuf.MessageOptions {
+  WorksheetOptions worksheet = 50000;
 }
 
-extend google.protobuf.FieldOptions
-{
-    Field field = 50000;
+extend google.protobuf.FieldOptions {
+  FieldOptions field = 50000;
 }
 
-message Workbook
-{
-    string name = 1;  // workbook name
+message WorkbookOptions {
+  string name = 1;  // workbook name
 }
 
-message Worksheet
-{
-    string name = 1;     // worksheet name
-    int32 namerow = 2;   // [default = 1]; // exact row number of name at worksheet
-    int32 typerow = 3;   // [default = 2]; // TODO: exact row number of type at worksheet, for generating protos.
-    int32 descrow = 4;   // [default = 1]; // exact row number of description at wooksheet
-    int32 datarow = 5;   // [default = 2]; // start row number of data
-    bool transpose = 6;  // [default = false]; // interchange the rows and columns
-    string tags = 7;     // [default = ""]; // tags for usage, e.g.: "1,2" specifying loading servers. Speciallly, "*"
-                         // means all servers.
+message WorksheetOptions {
+  string name = 1;     // worksheet name
+  int32 namerow = 2;   // [default = 1]; // exact row number of name at worksheet
+  int32 typerow = 3;   // [default = 2]; // TODO: exact row number of type at worksheet, for generating protos.
+  int32 descrow = 4;   // [default = 1]; // exact row number of description at wooksheet
+  int32 datarow = 5;   // [default = 2]; // start row number of data
+  bool transpose = 6;  // [default = false]; // interchange the rows and columns
+  string tags = 7;     // [default = ""]; // tags for usage, e.g.: "1,2" specifying loading servers. Speciallly, "*"
+                       // means all servers.
 }
 
-message Field
-{
-    // NOTE(wenchyzhu): It's pity that something goes wrong with protoc.
-    // We cannot define an option's name as `name` when extend FieldOptions. Because protoc reports
-    // an error: `Option field "(name)" is not a field or extension of message "FieldOptions".``
+message FieldOptions {
+  // NOTE(wenchyzhu): It's pity that something goes wrong with protoc.
+  // We cannot define an option's name as `name` when extend FieldOptions. Because protoc reports
+  // an error: `Option field "(name)" is not a field or extension of message "FieldOptions".``
 
-    // column name: the word `name` is self-explanatory to denote the metarow.
-    // It means `name` if field's type is scalar,
-    // or `name prefix` if field's type is composite such as List and Map.
-    string name = 1;
-    Type type = 2;  // [default = TYPE_DEFAULT];
-    string key = 3;
-    Layout layout = 4;  // [default = COMPOSITE_LAYOUT_DEFAULT];
-    string sep = 5;              // [default = ',']; separator
-    string subsep = 6;           // [default = ':']; sub separator
+  // column name: the word `name` is self-explanatory to denote the metarow.
+  // It means `name` if field's type is scalar,
+  // or `name prefix` if field's type is composite such as List and Map.
+  string name = 1;
+  Type type = 2;  // [default = TYPE_DEFAULT];
+  string key = 3;
+  Layout layout = 4;  // [default = COMPOSITE_LAYOUT_DEFAULT];
+  string sep = 5;     // [default = ',']; separator
+  string subsep = 6;  // [default = ':']; sub separator
 
-    /////////////////////////////
-    // Simple Validators Below //
-    /////////////////////////////
-    // Different meanings:
-    // repeated: size range of array
-    // integer: value range
-    // string: count of utf-8 code point
-    int32 min = 11;     // min value
-    int32 max = 12;     // max value
-    string range = 13;  // format like set description: [1,10], (1,10], [1,10), [1,~]
+  /////////////////////////////
+  // Simple Validators Below //
+  /////////////////////////////
+  // Different meanings:
+  // repeated: size range of array
+  // integer: value range
+  // string: count of utf-8 code point
+  int32 min = 11;     // min value
+  int32 max = 12;     // max value
+  string range = 13;  // format like set description: [1,10], (1,10], [1,10), [1,~]
 }
 
 // field type.
-enum Type
-{
-    // auto deduced protobuf types
-    TYPE_DEFAULT = 0;
+enum Type {
+  // auto deduced protobuf types
+  TYPE_DEFAULT = 0;
 
-    //////////////////////////////
-    /////Build-in Types///////////
-    //////////////////////////////
-    // interger
-    TYPE_INT32 = 1;
-    TYPE_UINT32 = 2;
-    TYPE_INT64 = 3;
-    TYPE_UINT64 = 4;
-    // floating-point number
-    TYPE_DOUBLE = 5;
-    TYPE_FLOAT = 6;
-    // bool
-    TYPE_BOOL = 7;
-    // string
-    TYPE_STRING = 8;
+  //////////////////////////////
+  /////Build-in Types///////////
+  //////////////////////////////
+  // interger
+  TYPE_INT32 = 1;
+  TYPE_UINT32 = 2;
+  TYPE_INT64 = 3;
+  TYPE_UINT64 = 4;
+  // floating-point number
+  TYPE_DOUBLE = 5;
+  TYPE_FLOAT = 6;
+  // bool
+  TYPE_BOOL = 7;
+  // string
+  TYPE_STRING = 8;
 
-    ////////////////////////
-    /////Message Type//////
-    ////////////////////////
-    TYPE_MESSSAGE = 10;
+  ////////////////////////
+  /////Message Type//////
+  ////////////////////////
+  TYPE_MESSSAGE = 10;
 
-    ////////////////////////
-    /////Extended Types/////
-    ////////////////////////
-    // time
-    TYPE_DATE = 21;      // format: "yyyy-MM-dd"
-    TYPE_TIME = 22;      // format: "HH:mm:ss"
-    TYPE_DATETIME = 23;  // format: "yyyy-MM-dd HH:mm:ss"
-    // list in a cell:
-    // - the list **item** must be **built-in** type
-    // - format: ',' separated items
-    TYPE_INCELL_LIST = 24;
-    // map in a cell:
-    // - both the **key** and **value** must be **built-in** type
-    // - format: key-value pairs is separated by ',', and
-    //           key and value is separated by ':'
-    TYPE_INCELL_MAP = 25;
-    // message in a cell
-    TYPE_INCELL_MESSAGE = 26;
+  ////////////////////////
+  /////Extended Types/////
+  ////////////////////////
+  // time
+  TYPE_DATE = 21;      // format: "yyyy-MM-dd"
+  TYPE_TIME = 22;      // format: "HH:mm:ss"
+  TYPE_DATETIME = 23;  // format: "yyyy-MM-dd HH:mm:ss"
+  // list in a cell:
+  // - the list **item** must be **built-in** type
+  // - format: ',' separated items
+  TYPE_INCELL_LIST = 24;
+  // map in a cell:
+  // - both the **key** and **value** must be **built-in** type
+  // - format: key-value pairs is separated by ',', and
+  //           key and value is separated by ':'
+  TYPE_INCELL_MAP = 25;
+  // message in a cell
+  TYPE_INCELL_MESSAGE = 26;
 
-    // TYPE_RICH_TEXT = 31;
-    // TYPE_JSON = 32;
+  // TYPE_RICH_TEXT = 31;
+  // TYPE_JSON = 32;
 }
 
 // layout of composite types, such as list and map.
-enum Layout
-{
-    LAYOUT_DEFAULT = 0;     // default direction: vertical for map, horizontal for list
-    LAYOUT_VERTICAL = 1;    // vertical direction
-    LAYOUT_HORIZONTAL = 2;  // horizontal direction
+enum Layout {
+  LAYOUT_DEFAULT = 0;     // default direction: vertical for map, horizontal for list
+  LAYOUT_VERTICAL = 1;    // vertical direction
+  LAYOUT_HORIZONTAL = 2;  // horizontal direction
 }

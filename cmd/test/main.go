@@ -19,7 +19,7 @@ func main() {
 	})
 	tbx.Convert()
 
-	// tableau.Generate("test", "./testdata/", "./samples/")
+	tableau.Generate("test", "./testdata/", "./samples/")
 }
 
 /*

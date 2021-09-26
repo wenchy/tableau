@@ -95,7 +95,7 @@ func (tbx *Tableaux) Convert() {
 	protoregistry.GlobalFiles.RangeFilesByPackage(protoPackage, func(fd protoreflect.FileDescriptor) bool {
 		atom.Log.Debugf("filepath: %s", fd.Path())
 		opts := fd.Options().(*descriptorpb.FileOptions)
-		workbook := proto.GetExtension(opts, tableaupb.E_Workbook).(*tableaupb.Workbook)
+		workbook := proto.GetExtension(opts, tableaupb.E_Workbook).(*tableaupb.WorkbookOptions)
 		if workbook == nil {
 			return true
 		}
@@ -106,7 +106,7 @@ func (tbx *Tableaux) Convert() {
 			md := msgs.Get(i)
 			// atom.Log.Debugf("%s", md.FullName())
 			opts := md.Options().(*descriptorpb.MessageOptions)
-			worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(*tableaupb.Worksheet)
+			worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(*tableaupb.WorksheetOptions)
 			if worksheet == nil {
 				continue
 			}
@@ -312,10 +312,10 @@ func exportSheet(sheet *xlsx.Sheet) {
 }
 
 // TestParseFileOptions is aimed to parse the options of a protobuf definition file.
-func TestParseFileOptions(fd protoreflect.FileDescriptor) (string, *tableaupb.Workbook) {
+func TestParseFileOptions(fd protoreflect.FileDescriptor) (string, *tableaupb.WorkbookOptions) {
 	opts := fd.Options().(*descriptorpb.FileOptions)
 	protofile := string(fd.FullName())
-	workbook := proto.GetExtension(opts, tableaupb.E_Workbook).(*tableaupb.Workbook)
+	workbook := proto.GetExtension(opts, tableaupb.E_Workbook).(*tableaupb.WorkbookOptions)
 	atom.Log.Debugf("file:%s.proto, workbook:%s", protofile, workbook)
 	return protofile, workbook
 }
@@ -324,7 +324,7 @@ func TestParseFileOptions(fd protoreflect.FileDescriptor) (string, *tableaupb.Wo
 func TestParseMessageOptions(md protoreflect.MessageDescriptor) (string, string, int32, int32, int32, bool) {
 	opts := md.Options().(*descriptorpb.MessageOptions)
 	msgName := string(md.Name())
-	worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(*tableaupb.Worksheet)
+	worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(*tableaupb.WorksheetOptions)
 	worksheetName := worksheet.Name
 	namerow := worksheet.Namerow
 	if worksheet.Namerow == 0 {
@@ -347,7 +347,7 @@ func TestParseMessageOptions(md protoreflect.MessageDescriptor) (string, string,
 func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[string]string, depth int, prefix string) {
 	md := msg.Descriptor()
 	opts := md.Options().(*descriptorpb.MessageOptions)
-	worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(*tableaupb.Worksheet)
+	worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(*tableaupb.WorksheetOptions)
 	worksheetName := ""
 	if worksheet != nil {
 		worksheetName = worksheet.Name
@@ -382,7 +382,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 		subsep := ""
 
 		opts := fd.Options().(*descriptorpb.FieldOptions)
-		field := proto.GetExtension(opts, tableaupb.E_Field).(*tableaupb.Field)
+		field := proto.GetExtension(opts, tableaupb.E_Field).(*tableaupb.FieldOptions)
 		if field != nil {
 			name = field.Name
 			etype = field.Type

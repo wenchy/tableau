@@ -1,4 +1,4 @@
-package generator
+package xlsxgen
 
 import (
 	"bytes"
@@ -6,25 +6,20 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 	"unicode"
 
 	"github.com/360EntSecGroup-Skylar/excelize/v2"
+	"github.com/Wenchy/tableau/internal/atom"
 	"github.com/Wenchy/tableau/pkg/tableaupb"
+	"github.com/iancoleman/strcase"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/dynamicpb"
 )
-
-// type Format int
-
-// // file format
-// const (
-// 	Proto Format = 0
-// 	Xlsx         = 1
-// )
 
 type metasheet struct {
 	worksheet string // worksheet name
@@ -38,7 +33,6 @@ type Generator struct {
 	ProtoPackageName string // protobuf package name.
 	InputPath        string // root dir of workbooks.
 	OutputPath       string // output path of generated files.
-	// OutputFormat     Format // output format: Proto, xlsx.
 
 	metasheet metasheet // meta info of worksheet
 }
@@ -49,8 +43,8 @@ var specialMessageMap = map[string]int{
 }
 
 type Cell struct {
-	Caption string
-	Data    string
+	Name string
+	Data string
 }
 type Row []Cell
 
@@ -67,23 +61,24 @@ func (gen *Generator) Generate() {
 
 	protoPackage := protoreflect.FullName(gen.ProtoPackageName)
 	protoregistry.GlobalFiles.RangeFilesByPackage(protoPackage, func(fd protoreflect.FileDescriptor) bool {
-		fmt.Printf("filepath: %s\n", fd.Path())
+		atom.Log.Debugf("filepath: %s\n", fd.Path())
 		opts := fd.Options().(*descriptorpb.FileOptions)
-		workbook := proto.GetExtension(opts, tableaupb.E_Workbook).(string)
-		if workbook == "" {
+		workbook := proto.GetExtension(opts, tableaupb.E_Workbook).(*tableaupb.WorkbookOptions)
+		if workbook == nil {
 			return true
 		}
 
-		fmt.Printf("proto: %s => workbook: %s\n", fd.Path(), workbook)
+		atom.Log.Debugf("proto: %s => workbook: %s\n", fd.Path(), workbook)
 		msgs := fd.Messages()
 		for i := 0; i < msgs.Len(); i++ {
 			md := msgs.Get(i)
-			// fmt.Printf("%s\n", md.FullName())
+			// atom.Log.Debugf("%s\n", md.FullName())
 			opts := md.Options().(*descriptorpb.MessageOptions)
-			worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(string)
-			if worksheet != "" {
-				fmt.Printf("message: %s, worksheet: %s\n", md.FullName(), worksheet)
+			worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(*tableaupb.WorksheetOptions)
+			if worksheet == nil {
+				continue
 			}
+			atom.Log.Infof("generate: %s, message: %s@%s, worksheet: %s@%s", md.Name(), fd.Path(), md.Name(), workbook.Name, worksheet.Name)
 			newMsg := dynamicpb.NewMessage(md)
 			gen.export(newMsg)
 		}
@@ -107,7 +102,7 @@ func (gen *Generator) export(protomsg proto.Message) {
 	gen.TestParseFieldOptions(md, &row, 0, "")
 	fmt.Println("==================", msgName)
 
-	filename := gen.OutputPath + workbook
+	filename := gen.OutputPath + workbook.Name
 	var wb *excelize.File
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
 		wb = excelize.NewFile()
@@ -125,7 +120,7 @@ func (gen *Generator) export(protomsg proto.Message) {
 			Modified:       datetime,
 			Revision:       "0",
 			Subject:        "Configuration",
-			Title:          workbook,
+			Title:          workbook.Name,
 			Language:       "en-US",
 			Version:        "1.0.0",
 		})
@@ -188,11 +183,11 @@ func (gen *Generator) export(protomsg proto.Message) {
 		}
 		wb.SetRowHeight(worksheet, 1, 50)
 		for i, cell := range row {
-			hanWidth := 1 * float64(getHanCount(cell.Caption))
-			letterWidth := 1 * float64(getLetterCount(cell.Caption))
-			digitWidth := 1 * float64(getDigitCount(cell.Caption))
+			hanWidth := 1 * float64(getHanCount(cell.Name))
+			letterWidth := 1 * float64(getLetterCount(cell.Name))
+			digitWidth := 1 * float64(getDigitCount(cell.Name))
 			width := hanWidth + letterWidth + digitWidth + 4.0
-			// width := 2 * float64(utf8.RuneCountInString(cell.Caption))
+			// width := 2 * float64(utf8.RuneCountInString(cell.Name))
 			colname, err := excelize.ColumnNumberToName(i + 1)
 			if err != nil {
 				panic(err)
@@ -203,12 +198,12 @@ func (gen *Generator) export(protomsg proto.Message) {
 			if err != nil {
 				panic(err)
 			}
-			err = wb.SetCellValue(worksheet, axis, cell.Caption)
+			err = wb.SetCellValue(worksheet, axis, cell.Name)
 			if err != nil {
 				panic(err)
 			}
 
-			err = wb.AddComment(worksheet, axis, `{"author":"Tableau: ","text":"\n`+cell.Caption+`, \nthis is a comment."}`)
+			err = wb.AddComment(worksheet, axis, `{"author":"Tableau: ","text":"\n`+cell.Name+`, \nthis is a comment."}`)
 			if err != nil {
 				panic(err)
 			}
@@ -217,7 +212,7 @@ func (gen *Generator) export(protomsg proto.Message) {
 			if err != nil {
 				panic(err)
 			}
-			fmt.Printf("%s(%v) ", cell.Caption, width)
+			atom.Log.Debugf("%s(%v) ", cell.Name, width)
 
 			// test for validation
 			// - min
@@ -331,11 +326,11 @@ func getDigitCount(s string) int {
 }
 
 // TestParseFileOptions is aimed to parse the options of a protobuf definition file.
-func TestParseFileOptions(fd protoreflect.FileDescriptor) (string, string) {
+func TestParseFileOptions(fd protoreflect.FileDescriptor) (string, *tableaupb.WorkbookOptions) {
 	opts := fd.Options().(*descriptorpb.FileOptions)
 	protofile := string(fd.FullName())
-	workbook := proto.GetExtension(opts, tableaupb.E_Workbook).(string)
-	fmt.Printf("file:%s.proto, workbook:%s\n", protofile, workbook)
+	workbook := proto.GetExtension(opts, tableaupb.E_Workbook).(*tableaupb.WorkbookOptions)
+	atom.Log.Debugf("file:%s.proto, workbook:%s\n", protofile, workbook)
 	return protofile, workbook
 }
 
@@ -343,7 +338,7 @@ func TestParseFileOptions(fd protoreflect.FileDescriptor) (string, string) {
 func TestParseMessageOptions(md protoreflect.MessageDescriptor) (string, string, int32, int32, int32, bool) {
 	opts := md.Options().(*descriptorpb.MessageOptions)
 	msgName := string(md.Name())
-	worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(*tableaupb.Worksheet)
+	worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(*tableaupb.WorksheetOptions)
 
 	worksheetName := worksheet.Name
 	namerow := worksheet.Namerow
@@ -359,7 +354,7 @@ func TestParseMessageOptions(md protoreflect.MessageDescriptor) (string, string,
 		datarow = 2 // default
 	}
 	transpose := worksheet.Transpose
-	fmt.Printf("message:%s, worksheetName:%s, namerow:%d, descrow:%d, datarow:%d, transpose:%v\n", msgName, worksheetName, namerow, descrow, datarow, transpose)
+	atom.Log.Debugf("message:%s, worksheetName:%s, namerow:%d, descrow:%d, datarow:%d, transpose:%v\n", msgName, worksheetName, namerow, descrow, datarow, transpose)
 	return msgName, worksheetName, namerow, descrow, datarow, transpose
 }
 
@@ -374,13 +369,17 @@ func getTabStr(depth int) string {
 // TestParseFieldOptions is aimed to parse the options of all the fields of a protobuf message.
 func (gen *Generator) TestParseFieldOptions(md protoreflect.MessageDescriptor, row *Row, depth int, prefix string) {
 	opts := md.Options().(*descriptorpb.MessageOptions)
-	worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(string)
+	worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(*tableaupb.WorksheetOptions)
+	worksheetName := ""
+	if worksheet != nil {
+		worksheetName = worksheet.Name
+	}
 	pkg := md.ParentFile().Package()
-	fmt.Printf("%s// %s, '%s', %v, %v, %v\n", getTabStr(depth), md.FullName(), worksheet, md.IsMapEntry(), prefix, pkg)
+	atom.Log.Debugf("%s// %s, '%s', %v, %v, %v\n", getTabStr(depth), md.FullName(), worksheetName, md.IsMapEntry(), prefix, pkg)
 	for i := 0; i < md.Fields().Len(); i++ {
 		fd := md.Fields().Get(i)
 		if string(pkg) != gen.ProtoPackageName && pkg != "google.protobuf" {
-			fmt.Printf("%s// no need to proces package: %v\n", getTabStr(depth), pkg)
+			atom.Log.Debugf("%s// no need to proces package: %v\n", getTabStr(depth), pkg)
 			return
 		}
 		msgName := ""
@@ -388,23 +387,57 @@ func (gen *Generator) TestParseFieldOptions(md protoreflect.MessageDescriptor, r
 			msgName = string(fd.Message().FullName())
 		}
 
-		opts := fd.Options().(*descriptorpb.FieldOptions)
-		field := proto.GetExtension(opts, tableaupb.E_Field).(*tableaupb.Field)
+		// default value
+		name := strcase.ToCamel(string(fd.FullName().Name()))
+		etype := tableaupb.Type_TYPE_DEFAULT
+		key := ""
+		layout := tableaupb.Layout_LAYOUT_DEFAULT
+		sep := ""
+		subsep := ""
 
-		name := field.Name
-		etype := field.Type
-		key := field.Key
-		layout := field.Layout
-		sep := field.Sep
+		opts := fd.Options().(*descriptorpb.FieldOptions)
+		field := proto.GetExtension(opts, tableaupb.E_Field).(*tableaupb.FieldOptions)
+		if field != nil {
+			name = field.Name
+			etype = field.Type
+			key = field.Key
+			layout = field.Layout
+			sep = field.Sep
+			subsep = field.Subsep
+		} else {
+			// default processing
+			if fd.IsList() {
+				// truncate suffix `List` (CamelCase) corresponding to `_list` (snake_case)
+				name = strings.TrimSuffix(name, "List")
+			} else if fd.IsMap() {
+				// truncate suffix `Map` (CamelCase) corresponding to `_map` (snake_case)
+				// name = strings.TrimSuffix(name, "Map")
+				name = ""
+				key = "Key"
+			}
+		}
 		if sep == "" {
 			sep = ","
 		}
-		subsep := field.Subsep
 		if subsep == "" {
 			subsep = ":"
 		}
-		fmt.Printf("%s%s(%v) %s(%s) %s = %d [(name) = \"%s\", (type) = %s, (key) = \"%s\", (layout) = \"%s\", (sep) = \"%s\"];\n",
-			getTabStr(depth), fd.Cardinality().String(), fd.IsMap(), fd.Kind().String(), msgName, fd.FullName().Name(), fd.Number(), prefix+name, etype.String(), layout.String(), key, sep)
+		atom.Log.Debugf("%s%s(%v) %s(%s) %s = %d [(name) = \"%s\", (type) = %s, (key) = \"%s\", (layout) = \"%s\", (sep) = \"%s\"];",
+			getTabStr(depth), fd.Cardinality().String(), fd.IsMap(), fd.Kind().String(), msgName, fd.FullName().Name(), fd.Number(), prefix+name, etype.String(), key, layout.String(), sep)
+		atom.Log.Debugw("field metadata",
+			"tabs", depth,
+			"cardinality", fd.Cardinality().String(),
+			"isMap", fd.IsMap(),
+			"kind", fd.Kind().String(),
+			"msgName", msgName,
+			"fullName", fd.FullName(),
+			"number", fd.Number(),
+			"name", prefix+name,
+			"type", etype.String(),
+			"key", key,
+			"layout", layout.String(),
+			"sep", sep,
+		)
 		if fd.IsMap() {
 			valueFd := fd.MapValue()
 			if etype == tableaupb.Type_TYPE_INCELL_MAP {
@@ -412,7 +445,7 @@ func (gen *Generator) TestParseFieldOptions(md protoreflect.MessageDescriptor, r
 					panic("in-cell map do not support value as message type")
 				}
 				fmt.Println("cell(FIELD_TYPE_CELL_MAP): ", prefix+name)
-				*row = append(*row, Cell{Caption: prefix + name})
+				*row = append(*row, Cell{Name: prefix + name})
 			} else {
 				if valueFd.Kind() == protoreflect.MessageKind {
 					if layout == tableaupb.Layout_LAYOUT_HORIZONTAL {
@@ -432,8 +465,8 @@ func (gen *Generator) TestParseFieldOptions(md protoreflect.MessageDescriptor, r
 					fmt.Println("cell(scalar map key): ", prefix+name+key)
 					fmt.Println("cell(scalar map value): ", prefix+name+value)
 
-					*row = append(*row, Cell{Caption: prefix + name + key})
-					*row = append(*row, Cell{Caption: prefix + name + value})
+					*row = append(*row, Cell{Name: prefix + name + key})
+					*row = append(*row, Cell{Name: prefix + name + value})
 				}
 			}
 		} else if fd.IsList() {
@@ -449,7 +482,7 @@ func (gen *Generator) TestParseFieldOptions(md protoreflect.MessageDescriptor, r
 			} else {
 				if etype == tableaupb.Type_TYPE_INCELL_LIST {
 					fmt.Println("cell(FIELD_TYPE_CELL_LIST): ", prefix+name)
-					*row = append(*row, Cell{Caption: prefix + name})
+					*row = append(*row, Cell{Name: prefix + name})
 				} else {
 					panic(fmt.Sprintf("unknown list type: %v\n", etype))
 				}
@@ -458,13 +491,13 @@ func (gen *Generator) TestParseFieldOptions(md protoreflect.MessageDescriptor, r
 			if fd.Kind() == protoreflect.MessageKind {
 				if etype == tableaupb.Type_TYPE_INCELL_MESSAGE {
 					fmt.Println("cell(FIELD_TYPE_CELL_MESSAGE): ", prefix+name)
-					*row = append(*row, Cell{Caption: prefix + name})
+					*row = append(*row, Cell{Name: prefix + name})
 				} else {
 					subMsgName := string(fd.Message().FullName())
 					_, found := specialMessageMap[subMsgName]
 					if found {
 						fmt.Println("cell(special message): ", prefix+name)
-						*row = append(*row, Cell{Caption: prefix + name})
+						*row = append(*row, Cell{Name: prefix + name})
 					} else {
 						pkgName := fd.Message().ParentFile().Package()
 						if string(pkgName) != gen.ProtoPackageName {
@@ -475,7 +508,7 @@ func (gen *Generator) TestParseFieldOptions(md protoreflect.MessageDescriptor, r
 				}
 			} else {
 				fmt.Println("cell: ", prefix+name)
-				*row = append(*row, Cell{Caption: prefix + name})
+				*row = append(*row, Cell{Name: prefix + name})
 			}
 		}
 	}

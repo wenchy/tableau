@@ -3,7 +3,7 @@ package tableau
 import (
 	"github.com/Wenchy/tableau/internal/atom"
 	"github.com/Wenchy/tableau/internal/converter"
-	"github.com/Wenchy/tableau/internal/generator"
+	"github.com/Wenchy/tableau/internal/xlsxgen"
 )
 
 // Tableaux is an alias type of converter.Tableaux.
@@ -32,9 +32,9 @@ func NewTableaux(opts *Options) *Tableaux {
 }
 
 // Generator is an alias type of generator.Generator.
-type Generator = generator.Generator
+type Generator = xlsxgen.Generator
 
 func Generate(protoPackageName, inputPath, outputPath string) {
-	generator := generator.Generator{ProtoPackageName: protoPackageName, InputPath: inputPath, OutputPath: outputPath}
+	generator := xlsxgen.Generator{ProtoPackageName: protoPackageName, InputPath: inputPath, OutputPath: outputPath}
 	generator.Generate()
 }

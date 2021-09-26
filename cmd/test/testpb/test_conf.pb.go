@@ -865,7 +865,7 @@ type MailConf_Row struct {
 	Key      int32   `protobuf:"varint,1,opt,name=key,proto3" json:"key,omitempty"`
 	Title    string  `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
 	Content  string  `protobuf:"bytes,3,opt,name=content,proto3" json:"content,omitempty"`
-	ItemList []*Item `protobuf:"bytes,4,rep,name=item_list,json=itemList,proto3" json:"item_list,omitempty"`
+	ItemList []*Item `protobuf:"bytes,4,rep,name=item_list,json=itemList,proto3" json:"item_list,omitempty"` // default: [(tableau.field).name = "Item"];
 }
 
 func (x *MailConf_Row) Reset() {

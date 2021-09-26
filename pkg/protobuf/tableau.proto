@@ -5,44 +5,23 @@ option go_package = "github.com/Wenchy/tableau/pkg/tableaupb";
 import "tableau_options.proto";
 
 // Cardinality of field
-enum Card
-{
-    CARD_REQUIRED = 0; // appears exactly one time
-    CARD_OPTIONAL = 1; // appears zero or one times
-    CARD_REPEATED = 2; // appears zero or more times
+enum Card {
+  CARD_REQUIRED = 0;  // appears exactly one time
+  CARD_OPTIONAL = 1;  // appears zero or one times
+  CARD_REPEATED = 2;  // appears zero or more times
 }
 
-message MetaTable
-{
-    string workbook = 1;
-    string worksheet = 2;
-    int32 metarow = 3; // [default = 1]; // exact row number of meta info of this tableau
-    int32 descrow = 4; // [default = 1]; // exact row number of description of this tableau
-    int32 datarow = 5; // [default = 2]; // start row number of data
-
-    repeated MetaField fields = 10;
+message Workbook {
+  WorkbookOptions options = 1;
+  repeated Worksheet worksheets = 2;
 }
 
-message MetaField
-{
-    Card card = 1;
-    Type type = 2;
-    string name = 3; // varaible name
-    string caption = 4; // column name or name prefix
-    bool required = 5; // [default = true];
-    string sep = 6; // [default = ',']; separator
-    string subsep = 7; // [default = ':']; sub separator
+message Worksheet {
+  WorksheetOptions options = 1;
+  repeated Field fields = 2;
+}
 
-    // valid if type is FIELD_TYPE_MESSSAGE
-    repeated MetaField fields = 10;
-
-    ////////////////////////////////////////////////////////////////////////
-    // Simple validators below
-    ////////////////////////////////////////////////////////////////////////
-    // Different meanings:
-    // repeated: size range of list or map
-    // integer: value range
-    // string: count of utf-8 code point
-    int32 min = 20; // min value
-    int32 max = 21; // max value
+message Field {
+  FieldOptions options = 1;
+  Card card = 2;
 }
