@@ -13,6 +13,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/iancoleman/strcase"
 	"github.com/xuri/excelize/v2"
+	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 var mapRegexp *regexp.Regexp
@@ -70,6 +72,7 @@ func (gen *Generator) Generate() {
 					"tableau/protobuf/options.proto": 1, // default import
 				},
 			},
+			withNote: false,
 		}
 
 		for _, sheetName := range f.GetSheetMap() {
@@ -92,6 +95,7 @@ func (gen *Generator) Generate() {
 			}
 			namerow := rows[0]
 			typerow := rows[1]
+			noterow := rows[2]
 
 			for i := 0; i < len(namerow); i++ {
 				nameCell := strings.TrimSpace(namerow[i])
@@ -100,7 +104,7 @@ func (gen *Generator) Generate() {
 					continue
 				}
 				field := &tableaupb.Field{}
-				cursor, err := book.parseField(i, namerow, typerow, field)
+				cursor, err := book.parseField(i, namerow, typerow, noterow, field)
 				if err != nil {
 					atom.Log.Panic(err)
 				}
@@ -116,12 +120,14 @@ func (gen *Generator) Generate() {
 }
 
 type book struct {
-	wb *tableaupb.Workbook
+	wb       *tableaupb.Workbook
+	withNote bool
 }
 
-func (b *book) parseField(cursor int, namerow, typerow []string, field *tableaupb.Field) (int, error) {
+func (b *book) parseField(cursor int, namerow, typerow, noterow []string, field *tableaupb.Field) (int, error) {
 	nameCell := strings.TrimSpace(namerow[cursor])
 	typeCell := strings.TrimSpace(typerow[cursor])
+	noteCell := strings.TrimSpace(noterow[cursor])
 	atom.Log.Debugf("column|name: %s, type: %s", nameCell, typeCell)
 	var err error
 	if matches := mapRegexp.FindStringSubmatch(typeCell); len(matches) > 0 {
@@ -138,14 +144,14 @@ func (b *book) parseField(cursor int, namerow, typerow []string, field *tableaup
 		field.Options = &tableaupb.FieldOptions{
 			Key: nameCell,
 		}
-		field.Fields = append(field.Fields, b.parseScalarField(nameCell, keyType))
+		field.Fields = append(field.Fields, b.parseScalarField(nameCell, keyType, noteCell))
 		for cursor++; cursor < len(namerow); cursor++ {
 			nameCell := strings.TrimSpace(namerow[cursor])
 			if nameCell == "" {
 				continue
 			}
 			subField := &tableaupb.Field{}
-			cursor, err = b.parseField(cursor, namerow, typerow, subField)
+			cursor, err = b.parseField(cursor, namerow, typerow, noterow, subField)
 			if err != nil {
 				atom.Log.Panic(err)
 			}
@@ -172,7 +178,7 @@ func (b *book) parseField(cursor int, namerow, typerow []string, field *tableaup
 				Name:   "", // name is empty for vertical list
 				Layout: layout,
 			}
-			field.Fields = append(field.Fields, b.parseScalarField(nameCell, colType))
+			field.Fields = append(field.Fields, b.parseScalarField(nameCell, colType, noteCell))
 
 			for cursor++; cursor < len(namerow); cursor++ {
 				nameCell := strings.TrimSpace(namerow[cursor])
@@ -180,7 +186,7 @@ func (b *book) parseField(cursor int, namerow, typerow []string, field *tableaup
 					continue
 				}
 				subField := &tableaupb.Field{}
-				cursor, err = b.parseField(cursor, namerow, typerow, subField)
+				cursor, err = b.parseField(cursor, namerow, typerow, noterow, subField)
 				if err != nil {
 					atom.Log.Panic(err)
 				}
@@ -188,6 +194,9 @@ func (b *book) parseField(cursor int, namerow, typerow []string, field *tableaup
 			}
 		} else {
 			// horizontal list: continuous N columns belong to this list after this cursor.
+			noteIndex := strings.Index(noteCell, "1")
+			note := noteCell[noteIndex+1:]
+
 			prefix := nameCell[:index]
 			name := prefix
 
@@ -199,17 +208,19 @@ func (b *book) parseField(cursor int, namerow, typerow []string, field *tableaup
 				Layout: layout,
 			}
 			camelCaseName := nameCell[index+1:]
-			field.Fields = append(field.Fields, b.parseScalarField(camelCaseName, colType))
+			field.Fields = append(field.Fields, b.parseScalarField(camelCaseName, colType, note))
 
 			for cursor++; cursor < len(namerow); cursor++ {
 				nameCell := strings.TrimSpace(namerow[cursor])
 				typeCell := strings.TrimSpace(typerow[cursor])
+				noteCell := strings.TrimSpace(noterow[cursor])
 				if nameCell == "" {
 					continue
 				}
 				if strings.HasPrefix(nameCell, prefix+"1") {
 					camelCaseName = nameCell[index+1:]
-					field.Fields = append(field.Fields, b.parseScalarField(camelCaseName, typeCell))
+					note = noteCell[noteIndex+1:]
+					field.Fields = append(field.Fields, b.parseScalarField(camelCaseName, typeCell, note))
 				} else if strings.HasPrefix(nameCell, prefix) {
 					continue
 				} else {
@@ -220,13 +231,20 @@ func (b *book) parseField(cursor int, namerow, typerow []string, field *tableaup
 		}
 	} else {
 		// scalar
-		*field = *b.parseScalarField(nameCell, typeCell)
+		*field = *b.parseScalarField(nameCell, typeCell, noteCell)
 	}
 
 	return cursor, nil
 }
 
-func (b *book) parseScalarField(name, typ string) *tableaupb.Field {
+func (b *book) genNote(note string) string {
+	if b.withNote {
+		return note
+	}
+	return ""
+}
+
+func (b *book) parseScalarField(name, typ, note string) *tableaupb.Field {
 	if typ == "timestamp" {
 		typ = "google.protobuf.Timestamp"
 		b.wb.Imports["google/protobuf/timestamp.proto"] = 1
@@ -240,6 +258,7 @@ func (b *book) parseScalarField(name, typ string) *tableaupb.Field {
 		Type: typ,
 		Options: &tableaupb.FieldOptions{
 			Name: name,
+			Note: b.genNote(note),
 		},
 	}
 }
@@ -265,7 +284,7 @@ func (gen *Generator) exportWorkbook(wb *tableaupb.Workbook) error {
 		w.WriteString(fmt.Sprintf("import \"%s\";\n", key))
 	}
 	w.WriteString("\n")
-	w.WriteString(fmt.Sprintf("option (tableau.workbook) = {%s};\n", proto.CompactTextString(wb.Options)))
+	w.WriteString(fmt.Sprintf("option (tableau.workbook) = {%s};\n", genPrototext(wb.Options)))
 	w.WriteString("\n")
 
 	for _, ws := range wb.Worksheets {
@@ -279,7 +298,7 @@ func (gen *Generator) exportWorkbook(wb *tableaupb.Workbook) error {
 
 func (gen *Generator) exportWorksheet(w *bufio.Writer, ws *tableaupb.Worksheet) error {
 	w.WriteString(fmt.Sprintf("message %s {\n", ws.Name))
-	w.WriteString(fmt.Sprintf("  option (tableau.worksheet) = {%s};\n", proto.CompactTextString(ws.Options)))
+	w.WriteString(fmt.Sprintf("  option (tableau.worksheet) = {%s};\n", genPrototext(ws.Options)))
 	w.WriteString("\n")
 
 	depth := 1
@@ -294,12 +313,21 @@ func (gen *Generator) exportWorksheet(w *bufio.Writer, ws *tableaupb.Worksheet) 
 	return nil
 }
 
+func genPrototext(m protoreflect.ProtoMessage) []byte {
+	// text := proto.CompactTextString(field.Options)
+	text, err := prototext.Marshal(m)
+	if err != nil {
+		panic(err)
+	}
+	return text
+}
+
 func (gen *Generator) exportField(depth int, w *bufio.Writer, tagid int, field *tableaupb.Field) error {
 	head := "%s%s"
 	if field.Card != "" {
 		head += " " // cardinality exists
 	}
-	w.WriteString(fmt.Sprintf(head+"%s %s = %d [(tableau.field) = {%s}];\n", indent(depth), field.Card, field.Type, field.Name, tagid, proto.CompactTextString(field.Options)))
+	w.WriteString(fmt.Sprintf(head+"%s %s = %d [(tableau.field) = {%s}];\n", indent(depth), field.Card, field.Type, field.Name, tagid, genPrototext(field.Options)))
 
 	if field.Fields != nil { // iff field is a map or list.
 		embbedMsgName := field.Type
