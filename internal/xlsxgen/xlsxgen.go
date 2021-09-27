@@ -11,7 +11,7 @@ import (
 	"unicode"
 
 	"github.com/Wenchy/tableau/internal/atom"
-	"github.com/Wenchy/tableau/pkg/tableaupb"
+	"github.com/Wenchy/tableau/proto/tableaupb"
 	"github.com/iancoleman/strcase"
 	"github.com/xuri/excelize/v2"
 	"google.golang.org/protobuf/proto"
@@ -24,7 +24,7 @@ import (
 type metasheet struct {
 	worksheet string // worksheet name
 	namerow   int32  // exact row number of name at worksheet
-	descrow   int32  // exact row number of description at wooksheet
+	noterow   int32  // exact row number of description at wooksheet
 	datarow   int32  // start row number of data
 	transpose bool   // interchange the rows and columns
 }
@@ -91,10 +91,10 @@ func (gen *Generator) export(protomsg proto.Message) {
 	md := protomsg.ProtoReflect().Descriptor()
 	_, workbook := TestParseFileOptions(md.ParentFile())
 	fmt.Println("==================", workbook)
-	msgName, worksheet, namerow, descrow, datarow, transpose := TestParseMessageOptions(md)
+	msgName, worksheet, namerow, noterow, datarow, transpose := TestParseMessageOptions(md)
 	gen.metasheet.worksheet = worksheet
 	gen.metasheet.namerow = namerow
-	gen.metasheet.descrow = descrow
+	gen.metasheet.noterow = noterow
 	gen.metasheet.datarow = datarow
 	gen.metasheet.transpose = transpose
 
@@ -345,17 +345,17 @@ func TestParseMessageOptions(md protoreflect.MessageDescriptor) (string, string,
 	if worksheet.Namerow != 0 {
 		namerow = 1 // default
 	}
-	descrow := worksheet.Descrow
-	if descrow == 0 {
-		descrow = 1 // default
+	noterow := worksheet.Noterow
+	if noterow == 0 {
+		noterow = 1 // default
 	}
 	datarow := worksheet.Datarow
 	if datarow == 0 {
 		datarow = 2 // default
 	}
 	transpose := worksheet.Transpose
-	atom.Log.Debugf("message:%s, worksheetName:%s, namerow:%d, descrow:%d, datarow:%d, transpose:%v\n", msgName, worksheetName, namerow, descrow, datarow, transpose)
-	return msgName, worksheetName, namerow, descrow, datarow, transpose
+	atom.Log.Debugf("message:%s, worksheetName:%s, namerow:%d, noterow:%d, datarow:%d, transpose:%v\n", msgName, worksheetName, namerow, noterow, datarow, transpose)
+	return msgName, worksheetName, namerow, noterow, datarow, transpose
 }
 
 func getTabStr(depth int) string {

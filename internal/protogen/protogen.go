@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/Wenchy/tableau/internal/atom"
-	"github.com/Wenchy/tableau/pkg/tableaupb"
+	"github.com/Wenchy/tableau/proto/tableaupb"
 	"github.com/golang/protobuf/proto"
 	"github.com/iancoleman/strcase"
 	"github.com/xuri/excelize/v2"
@@ -47,6 +47,10 @@ func (gen *Generator) Generate() {
 		atom.Log.Fatal(err)
 	}
 	for _, wbFile := range files {
+		if strings.HasPrefix(wbFile.Name(), "~$") {
+			// ignore xlsx temp file named with prefix "~$"
+			continue
+		}
 		wbPath := filepath.Join(gen.InputDir, wbFile.Name())
 		atom.Log.Debugf("workbook: %s", wbPath)
 		f, err := excelize.OpenFile(wbPath)
@@ -63,7 +67,7 @@ func (gen *Generator) Generate() {
 				Worksheets: []*tableaupb.Worksheet{},
 				Name:       wbProtoName,
 				Imports: map[string]int32{
-					"tableau_options.proto": 1, // default import
+					"tableau/protobuf/options.proto": 1, // default import
 				},
 			},
 		}
@@ -78,7 +82,7 @@ func (gen *Generator) Generate() {
 					Name:      sheetName,
 					Namerow:   1,
 					Typerow:   2,
-					Descrow:   3,
+					Noterow:   3,
 					Datarow:   4,
 					Transpose: false,
 					Tags:      "",

@@ -1,8 +1,8 @@
 syntax = "proto3";
 package tableau;
-option go_package = "github.com/Wenchy/tableau/pkg/tableaupb";
+option go_package = "github.com/Wenchy/tableau/proto/tableaupb";
 
-import "tableau_options.proto";
+import "options.proto";
 
 message Workbook {
   WorkbookOptions options = 1;

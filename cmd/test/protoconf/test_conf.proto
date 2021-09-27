@@ -2,9 +2,9 @@ syntax = "proto3";
 package test;
 option go_package = "github.com/Wenchy/tableau/cmd/test/testpb";
 
+import "tableau/protobuf/options.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
-import "tableau_options.proto";
 import "common.proto";
 
 option (tableau.workbook).name = "Test.xlsx";

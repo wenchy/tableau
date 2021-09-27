@@ -2,14 +2,14 @@ syntax = "proto3";
 package test;
 option go_package = "github.com/Wenchy/tableau/cmd/test/testpb";
 
-import "tableau_options.proto";
+import "tableau/protobuf/options.proto";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/duration.proto";
 
 option (tableau.workbook) = {name:"Test.xlsx" };
 
 message ActivityConf {
-  option (tableau.worksheet) = {name:"ActivityConf" namerow:1 typerow:2 descrow:3 datarow:4 };
+  option (tableau.worksheet) = {name:"ActivityConf" namerow:1 typerow:2 noterow:3 datarow:4 };
 
   map<uint32, Activity> activity_map = 1 [(tableau.field) = {key:"ActivityID" }];
 

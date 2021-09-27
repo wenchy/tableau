@@ -3,8 +3,8 @@ package main
 import (
 	"testing"
 
+	"github.com/Wenchy/tableau"
 	"github.com/Wenchy/tableau/internal/atom"
-	"github.com/Wenchy/tableau/pkg/tableau"
 	_ "github.com/Wenchy/tableau/test/testpb"
 )
 

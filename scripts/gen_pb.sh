@@ -6,8 +6,8 @@ set -o pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
-tableau_indir="./pkg/protobuf/"
-tableau_outdir="./pkg/tableaupb/"
+tableau_indir="./proto/tableau/protobuf"
+tableau_outdir="./proto/tableaupb"
 
 # remove *.go
 rm -fv $tableau_outdir/*.go

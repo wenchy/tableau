@@ -11,7 +11,7 @@ import (
 	"unicode"
 
 	"github.com/Wenchy/tableau/internal/atom"
-	"github.com/Wenchy/tableau/pkg/tableaupb"
+	"github.com/Wenchy/tableau/proto/tableaupb"
 	"github.com/iancoleman/strcase"
 	"github.com/tealeg/xlsx/v3"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -38,7 +38,7 @@ const (
 type metasheet struct {
 	worksheet string // worksheet name
 	namerow   int32  // exact row number of name at worksheet
-	descrow   int32  // exact row number of description at wooksheet
+	noterow   int32  // exact row number of description at wooksheet
 	datarow   int32  // start row number of data
 	transpose bool   // interchange the rows and columns
 }
@@ -124,10 +124,10 @@ func (tbx *Tableaux) Export(protomsg proto.Message) {
 	msg := protomsg.ProtoReflect()
 	_, workbook := TestParseFileOptions(md.ParentFile())
 	atom.Log.Debug("==================")
-	msgName, worksheetName, namerow, descrow, datarow, transpose := TestParseMessageOptions(md)
+	msgName, worksheetName, namerow, noterow, datarow, transpose := TestParseMessageOptions(md)
 	tbx.metasheet.worksheet = worksheetName
 	tbx.metasheet.namerow = namerow
-	tbx.metasheet.descrow = descrow
+	tbx.metasheet.noterow = noterow
 	tbx.metasheet.datarow = datarow
 	tbx.metasheet.transpose = transpose
 
@@ -330,17 +330,17 @@ func TestParseMessageOptions(md protoreflect.MessageDescriptor) (string, string,
 	if worksheet.Namerow == 0 {
 		namerow = 1 // default
 	}
-	descrow := worksheet.Descrow
-	if descrow == 0 {
-		descrow = 1 // default
+	noterow := worksheet.Noterow
+	if noterow == 0 {
+		noterow = 1 // default
 	}
 	datarow := worksheet.Datarow
 	if datarow == 0 {
 		datarow = 2 // default
 	}
 	transpose := worksheet.Transpose
-	atom.Log.Debugf("msgName:%s, worksheetName:%s, namerow:%d, descrow:%d, datarow:%d, transpose:%v\n", msgName, worksheetName, namerow, descrow, datarow, transpose)
-	return msgName, worksheetName, namerow, descrow, datarow, transpose
+	atom.Log.Debugf("msgName:%s, worksheetName:%s, namerow:%d, noterow:%d, datarow:%d, transpose:%v\n", msgName, worksheetName, namerow, noterow, datarow, transpose)
+	return msgName, worksheetName, namerow, noterow, datarow, transpose
 }
 
 // TestParseFieldOptions is aimed to parse the options of all the fields of a protobuf message.

@@ -1,8 +1,8 @@
 package main
 
 import (
+	"github.com/Wenchy/tableau"
 	_ "github.com/Wenchy/tableau/cmd/test/testpb"
-	"github.com/Wenchy/tableau/pkg/tableau"
 )
 
 func main() {

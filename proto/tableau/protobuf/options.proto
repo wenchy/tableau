@@ -1,6 +1,6 @@
 syntax = "proto3";
 package tableau;
-option go_package = "github.com/Wenchy/tableau/pkg/tableaupb";
+option go_package = "github.com/Wenchy/tableau/proto/tableaupb";
 
 import "google/protobuf/descriptor.proto";
 
@@ -26,9 +26,9 @@ message WorkbookOptions {
 message WorksheetOptions {
   string name = 1;     // worksheet name
   int32 namerow = 2;   // [default = 1]; // exact row number of name at worksheet.
-  int32 typerow = 3;   // [default = 2]; // TODO: exact row number of type at worksheet, for generating protos.
-  int32 descrow = 4;   // [default = 1]; // exact row number of description at wooksheet.
-  int32 datarow = 5;   // [default = 2]; // start row number of data at wooksheet.
+  int32 typerow = 3;   // [default = 2]; // exact row number of type at worksheet, for generating protos.
+  int32 noterow = 4;   // [default = 3]; // exact row number of note at wooksheet.
+  int32 datarow = 5;   // [default = 4]; // start row number of data at wooksheet.
   bool transpose = 6;  // [default = false]; // interchange the rows and columns
   string tags = 7;     // [default = ""]; // tags for usage, e.g.: "1,2" specifying loading servers. Speciallly, "*"
                        // means all servers.
