@@ -10,7 +10,7 @@ import (
 func init() {
 	atom.InitZap("debug")
 }
-func Test_Generate(t *testing.T) {
+func Test_GenerateProtoconf(t *testing.T) {
 	generator := protogen.Generator{
 		ProtoPackage: "test",
 		GoPackage:    "github.com/Wenchy/tableau/cmd/test/testpb",

@@ -15,7 +15,6 @@
 # vendor/
 *.DS_Store
 .idea/
+_*
 cmd/test/test
-cmd/test/output/
-cmd/test/samples/
 test/protogen/protoconf

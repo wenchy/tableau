@@ -8,6 +8,7 @@ message Workbook {
   WorkbookOptions options = 1;
   repeated Worksheet worksheets = 2;
   string name = 3;
+  map<string, int32> imports = 4;  // imported proto files
 }
 
 message Worksheet {

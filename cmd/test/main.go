@@ -10,7 +10,7 @@ func main() {
 	tbx := tableau.NewTableaux(&tableau.Options{
 		ProtoPackageName: "test",
 		InputDir:         "./testdata/",
-		OutputDir:        "./output/",
+		OutputDir:        "./_output/json/",
 		// OutputFilenameAsSnakeCase: false,
 		OutputFormat:    tableau.JSON,
 		OutputPretty:    true,
@@ -19,7 +19,7 @@ func main() {
 	})
 	tbx.Convert()
 
-	tableau.Generate("test", "./testdata/", "./samples/")
+	tableau.Generate("test", "./testdata/", "./_output/xlsx/")
 }
 
 /*

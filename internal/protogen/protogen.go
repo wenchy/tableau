@@ -55,13 +55,19 @@ func (gen *Generator) Generate() {
 			return
 		}
 		wbProtoName := strcase.ToSnake(strings.TrimSuffix(wbFile.Name(), filepath.Ext(wbFile.Name())))
-		wb := &tableaupb.Workbook{
-			Options: &tableaupb.WorkbookOptions{
-				Name: wbProtoName,
+		book := &book{
+			wb: &tableaupb.Workbook{
+				Options: &tableaupb.WorkbookOptions{
+					Name: wbFile.Name(),
+				},
+				Worksheets: []*tableaupb.Worksheet{},
+				Name:       wbProtoName,
+				Imports: map[string]int32{
+					"tableau_options.proto": 1, // default import
+				},
 			},
-			Worksheets: []*tableaupb.Worksheet{},
-			Name:       wbFile.Name(),
 		}
+
 		for _, sheetName := range f.GetSheetMap() {
 			rows, err := f.GetRows(sheetName)
 			if err != nil {
@@ -90,22 +96,26 @@ func (gen *Generator) Generate() {
 					continue
 				}
 				field := &tableaupb.Field{}
-				cursor, err := gen.parseField(i, namerow, typerow, field)
+				cursor, err := book.parseField(i, namerow, typerow, field)
 				if err != nil {
 					atom.Log.Panic(err)
 				}
 				i = cursor
 				ws.Fields = append(ws.Fields, field)
 			}
-			wb.Worksheets = append(wb.Worksheets, ws)
+			book.wb.Worksheets = append(book.wb.Worksheets, ws)
 		}
-		if err := gen.exportWorkbook(wb); err != nil {
+		if err := gen.exportWorkbook(book.wb); err != nil {
 			atom.Log.Panic(err)
 		}
 	}
 }
 
-func (gen *Generator) parseField(cursor int, namerow, typerow []string, field *tableaupb.Field) (int, error) {
+type book struct {
+	wb *tableaupb.Workbook
+}
+
+func (b *book) parseField(cursor int, namerow, typerow []string, field *tableaupb.Field) (int, error) {
 	nameCell := strings.TrimSpace(namerow[cursor])
 	typeCell := strings.TrimSpace(typerow[cursor])
 	atom.Log.Debugf("column|name: %s, type: %s", nameCell, typeCell)
@@ -124,14 +134,14 @@ func (gen *Generator) parseField(cursor int, namerow, typerow []string, field *t
 		field.Options = &tableaupb.FieldOptions{
 			Key: nameCell,
 		}
-		field.Fields = append(field.Fields, genScalarField(nameCell, keyType))
+		field.Fields = append(field.Fields, b.parseScalarField(nameCell, keyType))
 		for cursor++; cursor < len(namerow); cursor++ {
 			nameCell := strings.TrimSpace(namerow[cursor])
 			if nameCell == "" {
 				continue
 			}
 			subField := &tableaupb.Field{}
-			cursor, err = gen.parseField(cursor, namerow, typerow, subField)
+			cursor, err = b.parseField(cursor, namerow, typerow, subField)
 			if err != nil {
 				atom.Log.Panic(err)
 			}
@@ -140,49 +150,99 @@ func (gen *Generator) parseField(cursor int, namerow, typerow []string, field *t
 		return cursor, nil
 	} else if matches := listRegexp.FindStringSubmatch(typeCell); len(matches) > 0 {
 		// list
-		ElemType := matches[1]
+		elemType := matches[1]
 		colType := matches[2]
-		field.Card = "repeated"
-		field.Name = strcase.ToSnake(ElemType) + "_list"
-		field.Type = ElemType
-		field.Options = &tableaupb.FieldOptions{
-			Name:   ElemType,
-			Layout: tableaupb.Layout_LAYOUT_VERTICAL,
+		// preprocess
+		layout := tableaupb.Layout_LAYOUT_VERTICAL // default layout is vertical.
+		index := -1
+		if index = strings.Index(nameCell, "1"); index > 0 {
+			layout = tableaupb.Layout_LAYOUT_HORIZONTAL
 		}
-		field.Fields = append(field.Fields, genScalarField(nameCell, colType))
-		for cursor++; cursor < len(namerow); cursor++ {
-			nameCell := strings.TrimSpace(namerow[cursor])
-			if nameCell == "" {
-				continue
+
+		if layout == tableaupb.Layout_LAYOUT_VERTICAL {
+			// vertical list: all columns belong to this list after this cursor.
+			field.Card = "repeated"
+			field.Name = strcase.ToSnake(elemType) + "_list"
+			field.Type = elemType
+			field.Options = &tableaupb.FieldOptions{
+				Name:   "", // name is empty for vertical list
+				Layout: layout,
 			}
-			subField := &tableaupb.Field{}
-			cursor, err = gen.parseField(cursor, namerow, typerow, subField)
-			if err != nil {
-				atom.Log.Panic(err)
+			field.Fields = append(field.Fields, b.parseScalarField(nameCell, colType))
+
+			for cursor++; cursor < len(namerow); cursor++ {
+				nameCell := strings.TrimSpace(namerow[cursor])
+				if nameCell == "" {
+					continue
+				}
+				subField := &tableaupb.Field{}
+				cursor, err = b.parseField(cursor, namerow, typerow, subField)
+				if err != nil {
+					atom.Log.Panic(err)
+				}
+				field.Fields = append(field.Fields, subField)
 			}
-			field.Fields = append(field.Fields, subField)
+		} else {
+			// horizontal list: continuous N columns belong to this list after this cursor.
+			prefix := nameCell[:index]
+			name := prefix
+
+			field.Card = "repeated"
+			field.Name = strcase.ToSnake(name) + "_list"
+			field.Type = elemType
+			field.Options = &tableaupb.FieldOptions{
+				Name:   prefix,
+				Layout: layout,
+			}
+			camelCaseName := nameCell[index+1:]
+			field.Fields = append(field.Fields, b.parseScalarField(camelCaseName, colType))
+
+			for cursor++; cursor < len(namerow); cursor++ {
+				nameCell := strings.TrimSpace(namerow[cursor])
+				typeCell := strings.TrimSpace(typerow[cursor])
+				if nameCell == "" {
+					continue
+				}
+				if strings.HasPrefix(nameCell, prefix+"1") {
+					camelCaseName = nameCell[index+1:]
+					field.Fields = append(field.Fields, b.parseScalarField(camelCaseName, typeCell))
+				} else if strings.HasPrefix(nameCell, prefix) {
+					continue
+				} else {
+					cursor--
+					break
+				}
+			}
 		}
 	} else {
 		// scalar
-		*field = *genScalarField(nameCell, typeCell)
+		*field = *b.parseScalarField(nameCell, typeCell)
 	}
 
 	return cursor, nil
 }
 
-func genScalarField(nameCell, typeCell string) *tableaupb.Field {
+func (b *book) parseScalarField(name, typ string) *tableaupb.Field {
+	if typ == "timestamp" {
+		typ = "google.protobuf.Timestamp"
+		b.wb.Imports["google/protobuf/timestamp.proto"] = 1
+	} else if typ == "duration" {
+		typ = "google.protobuf.Duration"
+		b.wb.Imports["google/protobuf/duration.proto"] = 1
+	}
+
 	return &tableaupb.Field{
-		Name: strcase.ToSnake(nameCell),
-		Type: typeCell,
+		Name: strcase.ToSnake(name),
+		Type: typ,
 		Options: &tableaupb.FieldOptions{
-			Name: nameCell,
+			Name: name,
 		},
 	}
 }
 
 func (gen *Generator) exportWorkbook(wb *tableaupb.Workbook) error {
 	atom.Log.Debug(proto.MarshalTextString(wb))
-	path := filepath.Join(gen.OutputDir, wb.Options.Name+".proto")
+	path := filepath.Join(gen.OutputDir, wb.Name+".proto")
 	atom.Log.Debugf("output: %s", path)
 	f, err := os.Create(path)
 	if err != nil {
@@ -197,7 +257,9 @@ func (gen *Generator) exportWorkbook(wb *tableaupb.Workbook) error {
 	w.WriteString(fmt.Sprintf("package %s;\n", gen.ProtoPackage))
 	w.WriteString(fmt.Sprintf("option go_package = \"%s\";\n", gen.GoPackage))
 	w.WriteString("\n")
-	w.WriteString("import \"tableau_options.proto\";\n")
+	for key, _ := range wb.Imports {
+		w.WriteString(fmt.Sprintf("import \"%s\";\n", key))
+	}
 	w.WriteString("\n")
 	w.WriteString(fmt.Sprintf("option (tableau.workbook) = {%s};\n", proto.CompactTextString(wb.Options)))
 	w.WriteString("\n")
@@ -240,14 +302,15 @@ func (gen *Generator) exportField(depth int, w *bufio.Writer, tagid int, field *
 		if field.MapEntry != nil {
 			embbedMsgName = field.MapEntry.ValueType
 		}
-		w.WriteString(fmt.Sprintf("message %s {\n", embbedMsgName))
+		w.WriteString("\n")
+		w.WriteString(fmt.Sprintf("%smessage %s {\n", indent(depth), embbedMsgName))
 		for i, f := range field.Fields {
 			tagid := i + 1
 			if err := gen.exportField(depth+1, w, tagid, f); err != nil {
 				return err
 			}
 		}
-		w.WriteString("}\n")
+		w.WriteString(fmt.Sprintf("%s}\n", indent(depth)))
 	}
 	return nil
 }
