@@ -7,19 +7,18 @@ import (
 
 func main() {
 	// tableau.Convert("test", "./testdata/", "./output/")
-	tbx := tableau.NewTableaux(&tableau.Options{
-		ProtoPackageName: "test",
-		InputDir:         "./testdata/",
-		OutputDir:        "./_output/json/",
+	tableau.NewTableaux(&tableau.Options{
+		ProtoPackage: "test",
+		InputDir:     "./testdata/",
+		OutputDir:    "./_output/json/",
 		// OutputFilenameAsSnakeCase: false,
 		OutputFormat:    tableau.JSON,
 		OutputPretty:    true,
 		EmitUnpopulated: true,
 		LogLevel:        "debug",
-	})
-	tbx.Convert()
+	}).Convert()
 
-	tableau.Generate("test", "./testdata/", "./_output/xlsx/")
+	tableau.Protoconf2Xlsx("test", "./testdata/", "./_output/xlsx/")
 }
 
 /*

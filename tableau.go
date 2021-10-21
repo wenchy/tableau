@@ -3,21 +3,22 @@ package tableau
 import (
 	"github.com/Wenchy/tableau/internal/atom"
 	"github.com/Wenchy/tableau/internal/converter"
+	"github.com/Wenchy/tableau/internal/protogen"
 	"github.com/Wenchy/tableau/internal/xlsxgen"
 )
 
 // Tableaux is an alias type of converter.Tableaux.
 type Tableaux = converter.Tableaux
 
-func Convert(protoPackageName, indir, outdir string) {
-	tableaux := converter.Tableaux{ProtoPackageName: protoPackageName, InputDir: indir, OutputDir: outdir}
+func Convert(protoPackage, indir, outdir string) {
+	tableaux := converter.Tableaux{ProtoPackage: protoPackage, InputDir: indir, OutputDir: outdir}
 	tableaux.Convert()
 }
 
 func NewTableaux(opts *Options) *Tableaux {
 	opts.init()
 	tbx := converter.Tableaux{
-		ProtoPackageName:          opts.ProtoPackageName,
+		ProtoPackage:              opts.ProtoPackage,
 		InputDir:                  opts.InputDir,
 		OutputDir:                 opts.OutputDir,
 		OutputFilenameAsSnakeCase: opts.OutputFilenameAsSnakeCase,
@@ -31,10 +32,23 @@ func NewTableaux(opts *Options) *Tableaux {
 	return &tbx
 }
 
-// Generator is an alias type of generator.Generator.
-type Generator = xlsxgen.Generator
+// Protoconf2Xlsx converts protoconf files to xlsx files (with meta header).
+func Protoconf2Xlsx(protoPackage, indir, outdir string) {
+	g := xlsxgen.Generator{
+		ProtoPackage: protoPackage,
+		InputDir:     indir,
+		OutputDir:    outdir,
+	}
+	g.Generate()
+}
 
-func Generate(protoPackageName, indir, outdir string) {
-	generator := xlsxgen.Generator{ProtoPackageName: protoPackageName, InputDir: indir, OutputDir: outdir}
-	generator.Generate()
+// Xlsx2Protoconf converts xlsx files (with meta header) to protoconf files.
+func Xlsx2Protoconf(protoPackage, goPackage, indir, outdir string) {
+	g := protogen.Generator{
+		ProtoPackage: protoPackage,
+		GoPackage:    goPackage,
+		InputDir:     indir,
+		OutputDir:    outdir,
+	}
+	g.Generate()
 }

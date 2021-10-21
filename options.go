@@ -11,7 +11,7 @@ const (
 
 // Options is the wrapper of tableau params.
 type Options struct {
-	ProtoPackageName          string // protobuf package name.
+	ProtoPackage              string // protobuf package name.
 	InputDir                  string // input dir of workbooks.
 	OutputDir                 string // output dir of generated files.
 	OutputFilenameAsSnakeCase bool   // output filename as snake case, default is camel case same as the protobuf message name.

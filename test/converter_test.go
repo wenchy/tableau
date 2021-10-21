@@ -16,9 +16,9 @@ func Test_ConvertExcelToJSON(t *testing.T) {
 
 	// tableau.Convert("test", "./testdata/", "./output/")
 	tbx := tableau.NewTableaux(&tableau.Options{
-		ProtoPackageName: "test",
-		InputDir:         "./testdata/",
-		OutputDir:        "./_output/json/",
+		ProtoPackage: "test",
+		InputDir:     "./testdata/",
+		OutputDir:    "./_output/json/",
 		// OutputFilenameAsSnakeCase: false,
 		OutputFormat:    tableau.JSON,
 		OutputPretty:    true,

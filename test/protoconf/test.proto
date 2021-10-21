@@ -9,7 +9,7 @@ import "google/protobuf/duration.proto";
 option (tableau.workbook) = {name:"Test.xlsx"};
 
 message Activity {
-  option (tableau.worksheet) = {name:"Activity" namerow:1 typerow:2 noterow:3 datarow:4};
+  option (tableau.worksheet) = {name:"Activity"  namerow:1  typerow:2  noterow:3  datarow:4};
 
   map<uint32, Activity> activity_map = 1 [(tableau.field) = {key:"ActivityID"}];
 
@@ -26,7 +26,7 @@ message Activity {
       message Section {
         uint32 section_id = 1 [(tableau.field) = {name:"SectionID"}];
         string section_name = 2 [(tableau.field) = {name:"SectionName"}];
-        repeated Item section_item_list = 3 [(tableau.field) = {name:"SectionItem" layout:LAYOUT_HORIZONTAL}];
+        repeated Item section_item_list = 3 [(tableau.field) = {name:"SectionItem"  layout:LAYOUT_HORIZONTAL}];
 
         message Item {
           int32 id = 1 [(tableau.field) = {name:"Id"}];

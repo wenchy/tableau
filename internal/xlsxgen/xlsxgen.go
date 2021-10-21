@@ -30,7 +30,7 @@ type metasheet struct {
 }
 
 type Generator struct {
-	ProtoPackageName string // protobuf package name.
+	ProtoPackage string // protobuf package name.
 	InputDir         string // input dir of workbooks.
 	OutputDir        string // output dir of generated protoconf files.
 
@@ -59,7 +59,7 @@ func (gen *Generator) Generate() {
 		panic(err)
 	}
 
-	protoPackage := protoreflect.FullName(gen.ProtoPackageName)
+	protoPackage := protoreflect.FullName(gen.ProtoPackage)
 	protoregistry.GlobalFiles.RangeFilesByPackage(protoPackage, func(fd protoreflect.FileDescriptor) bool {
 		atom.Log.Debugf("filepath: %s\n", fd.Path())
 		opts := fd.Options().(*descriptorpb.FileOptions)
@@ -378,7 +378,7 @@ func (gen *Generator) TestParseFieldOptions(md protoreflect.MessageDescriptor, r
 	atom.Log.Debugf("%s// %s, '%s', %v, %v, %v\n", getTabStr(depth), md.FullName(), worksheetName, md.IsMapEntry(), prefix, pkg)
 	for i := 0; i < md.Fields().Len(); i++ {
 		fd := md.Fields().Get(i)
-		if string(pkg) != gen.ProtoPackageName && pkg != "google.protobuf" {
+		if string(pkg) != gen.ProtoPackage && pkg != "google.protobuf" {
 			atom.Log.Debugf("%s// no need to proces package: %v\n", getTabStr(depth), pkg)
 			return
 		}
@@ -500,7 +500,7 @@ func (gen *Generator) TestParseFieldOptions(md protoreflect.MessageDescriptor, r
 						*row = append(*row, Cell{Name: prefix + name})
 					} else {
 						pkgName := fd.Message().ParentFile().Package()
-						if string(pkgName) != gen.ProtoPackageName {
+						if string(pkgName) != gen.ProtoPackage {
 							panic(fmt.Sprintf("unknown message %v in package %v", subMsgName, pkgName))
 						}
 						gen.TestParseFieldOptions(fd.Message(), row, depth+1, prefix+name)

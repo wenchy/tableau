@@ -30,7 +30,7 @@ type Format int
 // file format
 const (
 	JSON      Format = 0
-	Protowire         = 1
+	Protowire        = 1
 	Prototext        = 2
 	// Xlsx             = 3
 )
@@ -44,7 +44,7 @@ type metasheet struct {
 }
 
 type Tableaux struct {
-	ProtoPackageName          string // protobuf package name.
+	ProtoPackage              string // protobuf package name.
 	InputDir                  string // input dir of workbooks.
 	OutputDir                 string // output dir of generated files.
 	OutputFilenameAsSnakeCase bool   // output filename as snake case, default is camel case same as the protobuf message name.
@@ -91,7 +91,7 @@ func (tbx *Tableaux) Convert() {
 		panic(err)
 	}
 
-	protoPackage := protoreflect.FullName(tbx.ProtoPackageName)
+	protoPackage := protoreflect.FullName(tbx.ProtoPackage)
 	protoregistry.GlobalFiles.RangeFilesByPackage(protoPackage, func(fd protoreflect.FileDescriptor) bool {
 		atom.Log.Debugf("filepath: %s", fd.Path())
 		opts := fd.Options().(*descriptorpb.FileOptions)
@@ -357,7 +357,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 	atom.Log.Debugf("%s// %s, '%s', %v, %v, %v", getTabStr(depth), md.FullName(), worksheetName, md.IsMapEntry(), prefix, pkg)
 	for i := 0; i < md.Fields().Len(); i++ {
 		fd := md.Fields().Get(i)
-		if string(pkg) != tbx.ProtoPackageName && pkg != "google.protobuf" {
+		if string(pkg) != tbx.ProtoPackage && pkg != "google.protobuf" {
 			atom.Log.Debugf("%s// no need to proces package: %v", getTabStr(depth), pkg)
 			return
 		}
@@ -638,7 +638,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 						newValue = tbx.getFieldValue(fd, cellValue)
 					} else {
 						pkgName := newValue.Message().Descriptor().ParentFile().Package()
-						if string(pkgName) != tbx.ProtoPackageName {
+						if string(pkgName) != tbx.ProtoPackage {
 							atom.Log.Panicf("unknown message %v in package %v", subMsgName, pkgName)
 						}
 						tbx.TestParseFieldOptions(newValue.Message(), row, depth+1, prefix+name)
