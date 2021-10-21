@@ -489,7 +489,7 @@ func (gen *Generator) TestParseFieldOptions(md protoreflect.MessageDescriptor, r
 			}
 		} else {
 			if fd.Kind() == protoreflect.MessageKind {
-				if etype == tableaupb.Type_TYPE_INCELL_MESSAGE {
+				if etype == tableaupb.Type_TYPE_INCELL_STRUCT {
 					fmt.Println("cell(FIELD_TYPE_CELL_MESSAGE): ", prefix+name)
 					*row = append(*row, Cell{Name: prefix + name})
 				} else {

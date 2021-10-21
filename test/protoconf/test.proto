@@ -8,8 +8,8 @@ import "google/protobuf/duration.proto";
 
 option (tableau.workbook) = {name:"Test.xlsx"};
 
-message ActivityConf {
-  option (tableau.worksheet) = {name:"ActivityConf"  namerow:1  typerow:2  noterow:3  datarow:4};
+message Activity {
+  option (tableau.worksheet) = {name:"Activity" namerow:1 typerow:2 noterow:3 datarow:4};
 
   map<uint32, Activity> activity_map = 1 [(tableau.field) = {key:"ActivityID"}];
 
@@ -26,7 +26,7 @@ message ActivityConf {
       message Section {
         uint32 section_id = 1 [(tableau.field) = {name:"SectionID"}];
         string section_name = 2 [(tableau.field) = {name:"SectionName"}];
-        repeated Item section_item_list = 3 [(tableau.field) = {name:"SectionItem"  layout:LAYOUT_HORIZONTAL}];
+        repeated Item section_item_list = 3 [(tableau.field) = {name:"SectionItem" layout:LAYOUT_HORIZONTAL}];
 
         message Item {
           int32 id = 1 [(tableau.field) = {name:"Id"}];
@@ -35,6 +35,15 @@ message ActivityConf {
         google.protobuf.Timestamp begin_time = 4 [(tableau.field) = {name:"BeginTime"}];
         google.protobuf.Timestamp end_time = 5 [(tableau.field) = {name:"EndTime"}];
         google.protobuf.Duration duration = 6 [(tableau.field) = {name:"Duration"}];
+        Task task = 7 [(tableau.field) = {name:"Task"}];
+
+        message Task {
+          int32 type = 1 [(tableau.field) = {name:"Type"}];
+          int32 param_1 = 2 [(tableau.field) = {name:"Param1"}];
+          int32 param_2 = 3 [(tableau.field) = {name:"Param2"}];
+          int32 param_3 = 4 [(tableau.field) = {name:"Param3"}];
+          int32 target = 5 [(tableau.field) = {name:"Target"}];
+        }
       }
     }
   }

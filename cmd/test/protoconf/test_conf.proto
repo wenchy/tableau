@@ -76,6 +76,12 @@ message ActivityConf {
     google.protobuf.Timestamp begin_time = 7 [(tableau.field).name = "开始时间"];
     google.protobuf.Timestamp end_time = 8 [(tableau.field).name = "结束时间"];
     google.protobuf.Duration duration = 9 [(tableau.field).name = "持续多久"];
+    Task task = 10 [(tableau.field).name = "任务"];
+    message Task {
+      int32 type = 1 [(tableau.field).name = "类型"];
+      int32 param = 2 [(tableau.field).name = "参数"];
+      int32 target = 3 [(tableau.field).name = "目标"];
+    }
   }
 }
 
@@ -90,8 +96,8 @@ message EnvConf {
   int32 platform_type = 3 [(tableau.field).name = "PlatformType"];
   string name = 4 [(tableau.field).name = "名字"];
   map<int32, int32> newbie_item_map = 5 [(tableau.field) = { name: "赠送的道具" type: TYPE_INCELL_MAP }];
-  Basic basic1 = 6 [(tableau.field) = { name: "基本信息1" type: TYPE_INCELL_MESSAGE }];
-  Basic basic2 = 7 [(tableau.field) = { name: "基本信息2" type: TYPE_INCELL_MESSAGE }];
+  Basic basic1 = 6 [(tableau.field) = { name: "基本信息1" type: TYPE_INCELL_STRUCT }];
+  Basic basic2 = 7 [(tableau.field) = { name: "基本信息2" type: TYPE_INCELL_STRUCT }];
   float ratio = 8 [(tableau.field).name = "比例"];
   double coefficent = 9 [(tableau.field).name = "系数"];
 
@@ -104,14 +110,14 @@ message EnvConf {
 }
 
 message MailConf {
-    option (tableau.worksheet).name = "Mail";
-  
-    map<int32, Row> mail_map = 1; // default: [(tableau.field).key = "Key"];
-  
-    message Row {
-      int32 key = 1;
-      string title = 2;
-      string content = 3;
-      repeated Item item_list = 4; // default: [(tableau.field).name = "Item"];
-    }
+  option (tableau.worksheet).name = "Mail";
+
+  map<int32, Row> mail_map = 1;  // default: [(tableau.field).key = "Key"];
+
+  message Row {
+    int32 key = 1;
+    string title = 2;
+    string content = 3;
+    repeated Item item_list = 4;  // default: [(tableau.field).name = "Item"];
+  }
 }

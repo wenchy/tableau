@@ -62,10 +62,10 @@ xlsx -> Importer -> Protoconf -> Exporter -> JSON/protowire/prototext/xml/yaml
 
 ### Conversion
 - [x] xlsx -> JSON(common format and human readable)
-- [x] xlsx -> protobin(small size)
+- [x] xlsx -> protowire(small size)
 - [x] xlsx -> prototext(human debugging)
 - [ ] JSON -> xlsx
-- [ ] protobin -> xlsx
+- [ ] protowire -> xlsx
 - [ ] prototext -> xlsx
 
 ### Pretty Print
@@ -100,7 +100,7 @@ xlsx -> Importer -> Protoconf -> Exporter -> JSON/protowire/prototext/xml/yaml
 - [x] map: vertical(column direction) layout, and is map's default layout.
 - [x] map: unordered map or hash map.
 - [ ] map: ordered map.
-- [x] map: simple in-cell map, both key and value must be **scalar** type. It is a comma-separated list of key=value pairs. E.g.: `1:10,2:20,3:30`. 
+- [x] map: simple in-cell map, both key and value must be **scalar** type. It is a comma-separated list of `key:value` pairs. E.g.: `1:10,2:20,3:30`. 
 - [x] map: scalable or dynamic map size.
 - [x] map: smart recognition of empty value at any position.
 - [x] nesting: unlimited nesting of message, list, and map.

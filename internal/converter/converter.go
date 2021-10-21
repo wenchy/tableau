@@ -30,7 +30,7 @@ type Format int
 // file format
 const (
 	JSON      Format = 0
-	Protobin         = 1
+	Protowire         = 1
 	Prototext        = 2
 	// Xlsx             = 3
 )
@@ -48,7 +48,7 @@ type Tableaux struct {
 	InputDir                  string // input dir of workbooks.
 	OutputDir                 string // output dir of generated files.
 	OutputFilenameAsSnakeCase bool   // output filename as snake case, default is camel case same as the protobuf message name.
-	OutputFormat              Format // output format: json, protobin, or prototext. Default is json.
+	OutputFormat              Format // output format: json, protowire, or prototext. Default is json.
 	OutputPretty              bool   // output pretty format, with mulitline and indent.
 	LocationName              string // Location represents the collection of time offsets in use in a geographical area. Default is "Asia/Shanghai".
 	// EmitUnpopulated specifies whether to emit unpopulated fields. It does not
@@ -200,8 +200,8 @@ func (tbx *Tableaux) Export(protomsg proto.Message) {
 	switch tbx.OutputFormat {
 	case JSON:
 		exportJSON(protomsg, filePath, tbx.OutputPretty, tbx.EmitUnpopulated)
-	case Protobin:
-		exportProtobin(protomsg, filePath)
+	case Protowire:
+		exportProtowire(protomsg, filePath)
 	case Prototext:
 		exportPrototext(protomsg, filePath, tbx.OutputPretty)
 	default:
@@ -236,12 +236,12 @@ func exportJSON(protomsg proto.Message, filePath string, pretty bool, emitUnpopu
 	// out.WriteTo(os.Stdout)
 }
 
-func exportProtobin(protomsg proto.Message, filePath string) {
+func exportProtowire(protomsg proto.Message, filePath string) {
 	out, err := proto.Marshal(protomsg)
 	if err != nil {
 		atom.Log.Panicf("Failed to encode protomsg: %v", err)
 	}
-	if err := ioutil.WriteFile(filePath+".protobin", out, 0644); err != nil {
+	if err := ioutil.WriteFile(filePath+".protowire", out, 0644); err != nil {
 		atom.Log.Panicf("Failed to write file: %v", err)
 	}
 	// out.WriteTo(os.Stdout)
@@ -610,7 +610,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 			}
 		} else {
 			if fd.Kind() == protoreflect.MessageKind {
-				if etype == tableaupb.Type_TYPE_INCELL_MESSAGE {
+				if etype == tableaupb.Type_TYPE_INCELL_STRUCT {
 					cellValue, ok := row[prefix+name]
 					if !ok {
 						atom.Log.Panicf("not found column name: %v", prefix+name)

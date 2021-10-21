@@ -5,7 +5,7 @@ type Format int
 // file format
 const (
 	JSON      Format = 0
-	Protobin         = 1
+	Protowire        = 1
 	Prototext        = 2
 )
 
@@ -15,7 +15,7 @@ type Options struct {
 	InputDir                  string // input dir of workbooks.
 	OutputDir                 string // output dir of generated files.
 	OutputFilenameAsSnakeCase bool   // output filename as snake case, default is camel case same as the protobuf message name.
-	OutputFormat              Format // output format: json, protobin, or prototext, and default is json.
+	OutputFormat              Format // output format: json, protowire, or prototext, and default is json.
 	OutputPretty              bool   // output pretty format, with mulitline and indent.
 	LocationName              string // Location represents the collection of time offsets in use in a geographical area. Default is "Asia/Shanghai".
 	EmitUnpopulated           bool   // EmitUnpopulated specifies whether to emit unpopulated fields.

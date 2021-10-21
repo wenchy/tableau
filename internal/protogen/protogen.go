@@ -19,10 +19,12 @@ import (
 
 var mapRegexp *regexp.Regexp
 var listRegexp *regexp.Regexp
+var structRegexp *regexp.Regexp
 
 func init() {
-	mapRegexp = regexp.MustCompile(`^map<(.+),(.+)>`) // e.g.: map<uint32,MessageType>
-	listRegexp = regexp.MustCompile(`^\[(.+)\](.+)`)  // e.g.: [Section]uint32
+	mapRegexp = regexp.MustCompile(`^map<(.+),(.+)>`)  // e.g.: map<uint32,Element>
+	listRegexp = regexp.MustCompile(`^\[(.+)\](.+)`)   // e.g.: [Element]uint32
+	structRegexp = regexp.MustCompile(`^\{(.+)\}(.+)`) // e.g.: {Element}uint32
 }
 
 type Generator struct {
@@ -229,6 +231,39 @@ func (b *book) parseField(cursor int, namerow, typerow, noterow []string, field 
 				}
 			}
 		}
+	} else if matches := structRegexp.FindStringSubmatch(typeCell); len(matches) > 0 {
+		// struct
+		elemType := matches[1]
+		colType := matches[2]
+
+		index := len(elemType)
+		prefix := nameCell[:index]
+
+		field.Name = strcase.ToSnake(elemType)
+		field.Type = elemType
+		field.Options = &tableaupb.FieldOptions{
+			Name: prefix,
+		}
+		camelCaseName := nameCell[index:]
+		field.Fields = append(field.Fields, b.parseScalarField(camelCaseName, colType, noteCell))
+
+		for cursor++; cursor < len(namerow); cursor++ {
+			nameCell := strings.TrimSpace(namerow[cursor])
+			typeCell := strings.TrimSpace(typerow[cursor])
+			noteCell := strings.TrimSpace(noterow[cursor])
+			if nameCell == "" {
+				continue
+			}
+			if strings.HasPrefix(nameCell, prefix) {
+				camelCaseName = nameCell[index:]
+				field.Fields = append(field.Fields, b.parseScalarField(camelCaseName, typeCell, noteCell))
+			} else if strings.HasPrefix(nameCell, prefix) {
+				continue
+			} else {
+				cursor--
+				break
+			}
+		}
 	} else {
 		// scalar
 		*field = *b.parseScalarField(nameCell, typeCell, noteCell)
@@ -330,12 +365,12 @@ func (gen *Generator) exportField(depth int, w *bufio.Writer, tagid int, field *
 	w.WriteString(fmt.Sprintf(head+"%s %s = %d [(tableau.field) = {%s}];\n", indent(depth), field.Card, field.Type, field.Name, tagid, genPrototext(field.Options)))
 
 	if field.Fields != nil { // iff field is a map or list.
-		embbedMsgName := field.Type
+		nestedMsgName := field.Type
 		if field.MapEntry != nil {
-			embbedMsgName = field.MapEntry.ValueType
+			nestedMsgName = field.MapEntry.ValueType
 		}
 		w.WriteString("\n")
-		w.WriteString(fmt.Sprintf("%smessage %s {\n", indent(depth), embbedMsgName))
+		w.WriteString(fmt.Sprintf("%smessage %s {\n", indent(depth), nestedMsgName))
 		for i, f := range field.Fields {
 			tagid := i + 1
 			if err := gen.exportField(depth+1, w, tagid, f); err != nil {
