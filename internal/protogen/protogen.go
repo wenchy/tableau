@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/Wenchy/tableau/internal/atom"
+	"github.com/Wenchy/tableau/options"
 	"github.com/Wenchy/tableau/proto/tableaupb"
 	"github.com/golang/protobuf/proto"
 	"github.com/iancoleman/strcase"
@@ -33,6 +34,7 @@ type Generator struct {
 	InputDir     string // input dir of workbooks.
 	OutputDir    string // output dir of generated protoconf files.
 
+	Header *options.HeaderOption // header settings.
 }
 
 func (gen *Generator) Generate() {
@@ -85,10 +87,10 @@ func (gen *Generator) Generate() {
 			ws := &tableaupb.Worksheet{
 				Options: &tableaupb.WorksheetOptions{
 					Name:      sheetName,
-					Namerow:   1,
-					Typerow:   2,
-					Noterow:   3,
-					Datarow:   4,
+					Namerow:   gen.Header.Namerow,
+					Typerow:   gen.Header.Typerow,
+					Noterow:   gen.Header.Noterow,
+					Datarow:   gen.Header.Datarow,
 					Transpose: false,
 					Tags:      "",
 				},

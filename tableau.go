@@ -5,28 +5,20 @@ import (
 	"github.com/Wenchy/tableau/internal/converter"
 	"github.com/Wenchy/tableau/internal/protogen"
 	"github.com/Wenchy/tableau/internal/xlsxgen"
+	"github.com/Wenchy/tableau/options"
 )
 
-// Tableaux is an alias type of converter.Tableaux.
-type Tableaux = converter.Tableaux
-
-func Convert(protoPackage, indir, outdir string) {
-	tableaux := converter.Tableaux{ProtoPackage: protoPackage, InputDir: indir, OutputDir: outdir}
-	tableaux.Convert()
-}
-
 // NewTableaux creates a new Tableaux with specified options.
-func NewTableaux(opts *Options) *Tableaux {
-	opts.init()
+func NewTableaux(protoPackage, indir, outdir string, setters ...options.Option) *converter.Tableaux {
+	opts := options.ParseOptions(setters...)
 	tbx := converter.Tableaux{
-		ProtoPackage:              opts.ProtoPackage,
-		InputDir:                  opts.InputDir,
-		OutputDir:                 opts.OutputDir,
-		OutputFilenameAsSnakeCase: opts.OutputFilenameAsSnakeCase,
-		OutputFormat:              converter.Format(opts.OutputFormat),
-		OutputPretty:              opts.OutputPretty,
-		LocationName:              opts.LocationName,
-		EmitUnpopulated:           opts.EmitUnpopulated,
+		ProtoPackage: protoPackage,
+		InputDir:     indir,
+		OutputDir:    outdir,
+
+		LocationName: opts.LocationName,
+
+		Output: opts.Output,
 	}
 	atom.InitZap(opts.LogLevel)
 	atom.Log.Infof("options inited: %+v", opts)
@@ -44,12 +36,14 @@ func Protoconf2Xlsx(protoPackage, indir, outdir string) {
 }
 
 // Xlsx2Protoconf converts xlsx files (with meta header) to protoconf files.
-func Xlsx2Protoconf(protoPackage, goPackage, indir, outdir string) {
+func Xlsx2Protoconf(protoPackage, goPackage, indir, outdir string, setters ...options.Option) {
+	opts := options.ParseOptions(setters...)
 	g := protogen.Generator{
 		ProtoPackage: protoPackage,
 		GoPackage:    goPackage,
 		InputDir:     indir,
 		OutputDir:    outdir,
+		Header:       opts.Header,
 	}
 	g.Generate()
 }

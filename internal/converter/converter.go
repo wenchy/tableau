@@ -11,6 +11,7 @@ import (
 	"unicode"
 
 	"github.com/Wenchy/tableau/internal/atom"
+	"github.com/Wenchy/tableau/options"
 	"github.com/Wenchy/tableau/proto/tableaupb"
 	"github.com/iancoleman/strcase"
 	"github.com/tealeg/xlsx/v3"
@@ -25,16 +26,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type Format int
-
-// file format
-const (
-	JSON      Format = 0
-	Protowire        = 1
-	Prototext        = 2
-	// Xlsx             = 3
-)
-
 type metasheet struct {
 	worksheet string // worksheet name
 	namerow   int32  // exact row number of name at worksheet
@@ -44,29 +35,15 @@ type metasheet struct {
 }
 
 type Tableaux struct {
-	ProtoPackage              string // protobuf package name.
-	InputDir                  string // input dir of workbooks.
-	OutputDir                 string // output dir of generated files.
-	OutputFilenameAsSnakeCase bool   // output filename as snake case, default is camel case same as the protobuf message name.
-	OutputFormat              Format // output format: json, protowire, or prototext. Default is json.
-	OutputPretty              bool   // output pretty format, with mulitline and indent.
-	LocationName              string // Location represents the collection of time offsets in use in a geographical area. Default is "Asia/Shanghai".
-	// EmitUnpopulated specifies whether to emit unpopulated fields. It does not
-	// emit unpopulated oneof fields or unpopulated extension fields.
-	// The JSON value emitted for unpopulated fields are as follows:
-	//  ╔═══════╤════════════════════════════╗
-	//  ║ JSON  │ Protobuf field             ║
-	//  ╠═══════╪════════════════════════════╣
-	//  ║ false │ proto3 boolean fields      ║
-	//  ║ 0     │ proto3 numeric fields      ║
-	//  ║ ""    │ proto3 string/bytes fields ║
-	//  ║ null  │ proto2 scalar fields       ║
-	//  ║ null  │ message fields             ║
-	//  ║ []    │ list fields                ║
-	//  ║ {}    │ map fields                 ║
-	//  ╚═══════╧════════════════════════════╝
-	EmitUnpopulated bool
-	metasheet       metasheet // meta info of worksheet
+	ProtoPackage string // protobuf package name.
+	InputDir     string // input dir of workbooks.
+	OutputDir    string // output dir of generated files.
+
+	LocationName string // Location represents the collection of time offsets in use in a geographical area. Default is "Asia/Shanghai".
+
+	Output *options.OutputOption // output settings.
+
+	metasheet metasheet // meta info of worksheet
 }
 
 var specialMessageMap = map[string]int{
@@ -193,20 +170,20 @@ func (tbx *Tableaux) Export(protomsg proto.Message) {
 	}
 	atom.Log.Debug("==================")
 	filename := msgName
-	if tbx.OutputFilenameAsSnakeCase {
+	if tbx.Output.FilenameAsSnakeCase {
 		filename = strcase.ToSnake(msgName)
 	}
 	filePath := tbx.OutputDir + filename
-	switch tbx.OutputFormat {
-	case JSON:
-		exportJSON(protomsg, filePath, tbx.OutputPretty, tbx.EmitUnpopulated)
-	case Protowire:
+	switch tbx.Output.Format {
+	case options.JSON:
+		exportJSON(protomsg, filePath, tbx.Output.Pretty, tbx.Output.EmitUnpopulated)
+	case options.Protowire:
 		exportProtowire(protomsg, filePath)
-	case Prototext:
-		exportPrototext(protomsg, filePath, tbx.OutputPretty)
+	case options.Prototext:
+		exportPrototext(protomsg, filePath, tbx.Output.Pretty)
 	default:
 		atom.Log.Debugf("unknown format, default to JSON")
-		exportJSON(protomsg, filePath, tbx.OutputPretty, tbx.EmitUnpopulated)
+		exportJSON(protomsg, filePath, tbx.Output.Pretty, tbx.Output.EmitUnpopulated)
 	}
 }
 

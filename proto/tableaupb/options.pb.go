@@ -243,8 +243,8 @@ type WorksheetOptions struct {
 	Name      string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`            // worksheet name
 	Namerow   int32  `protobuf:"varint,2,opt,name=namerow,proto3" json:"namerow,omitempty"`     // [default = 1]; // exact row number of name at worksheet.
 	Typerow   int32  `protobuf:"varint,3,opt,name=typerow,proto3" json:"typerow,omitempty"`     // [default = 2]; // exact row number of type at worksheet, for generating protos.
-	Noterow   int32  `protobuf:"varint,4,opt,name=noterow,proto3" json:"noterow,omitempty"`     // [default = 3]; // exact row number of note at wooksheet.
-	Datarow   int32  `protobuf:"varint,5,opt,name=datarow,proto3" json:"datarow,omitempty"`     // [default = 4]; // start row number of data at wooksheet.
+	Noterow   int32  `protobuf:"varint,4,opt,name=noterow,proto3" json:"noterow,omitempty"`     // [default = 3]; // exact row number of note at worksheet.
+	Datarow   int32  `protobuf:"varint,5,opt,name=datarow,proto3" json:"datarow,omitempty"`     // [default = 4]; // start row number of data at worksheet.
 	Transpose bool   `protobuf:"varint,6,opt,name=transpose,proto3" json:"transpose,omitempty"` // [default = false]; // interchange the rows and columns
 	Tags      string `protobuf:"bytes,7,opt,name=tags,proto3" json:"tags,omitempty"`            // [default = ""]; // tags for usage, e.g.: "1,2" specifying loading servers. Speciallly, "*"
 }
