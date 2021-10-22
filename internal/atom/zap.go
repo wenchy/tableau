@@ -18,6 +18,13 @@ var levelMap = map[string]zapcore.Level{
 
 var Log *zap.SugaredLogger
 
+func init() {
+	err := InitZap("debug")
+	if err != nil {
+		panic(err)
+	}
+}
+
 func InitZap(level string) error {
 	zapLevel, ok := levelMap[level]
 	if !ok {

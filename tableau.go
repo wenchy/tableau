@@ -15,6 +15,7 @@ func Convert(protoPackage, indir, outdir string) {
 	tableaux.Convert()
 }
 
+// NewTableaux creates a new Tableaux with specified options.
 func NewTableaux(opts *Options) *Tableaux {
 	opts.init()
 	tbx := converter.Tableaux{
