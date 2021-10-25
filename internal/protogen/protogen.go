@@ -136,8 +136,8 @@ func (b *book) parseField(cursor int, namerow, typerow, noterow []string, field 
 	var err error
 	if matches := mapRegexp.FindStringSubmatch(typeCell); len(matches) > 0 {
 		// map
-		keyType := matches[1]
-		valueType := matches[2]
+		keyType := strings.TrimSpace(matches[1])
+		valueType := strings.TrimSpace(matches[2])
 
 		field.Name = strcase.ToSnake(valueType) + "_map"
 		field.Type = typeCell
@@ -164,8 +164,8 @@ func (b *book) parseField(cursor int, namerow, typerow, noterow []string, field 
 		return cursor, nil
 	} else if matches := listRegexp.FindStringSubmatch(typeCell); len(matches) > 0 {
 		// list
-		elemType := matches[1]
-		colType := matches[2]
+		elemType := strings.TrimSpace(matches[1])
+		colType := strings.TrimSpace(matches[2])
 		// preprocess
 		layout := tableaupb.Layout_LAYOUT_VERTICAL // default layout is vertical.
 		index := -1
@@ -235,8 +235,8 @@ func (b *book) parseField(cursor int, namerow, typerow, noterow []string, field 
 		}
 	} else if matches := structRegexp.FindStringSubmatch(typeCell); len(matches) > 0 {
 		// struct
-		elemType := matches[1]
-		colType := matches[2]
+		elemType := strings.TrimSpace(matches[1])
+		colType := strings.TrimSpace(matches[2])
 
 		index := len(elemType)
 		prefix := nameCell[:index]
@@ -324,8 +324,12 @@ func (gen *Generator) exportWorkbook(wb *tableaupb.Workbook) error {
 	w.WriteString(fmt.Sprintf("option (tableau.workbook) = {%s};\n", genPrototext(wb.Options)))
 	w.WriteString("\n")
 
-	for _, ws := range wb.Worksheets {
-		if err := gen.exportWorksheet(w, ws); err != nil {
+	for i, ws := range wb.Worksheets {
+		isLastSheet := false
+		if i == len(wb.Worksheets)-1 {
+			isLastSheet = true
+		}
+		if err := gen.exportWorksheet(w, ws, isLastSheet); err != nil {
 			return err
 		}
 	}
@@ -333,7 +337,7 @@ func (gen *Generator) exportWorkbook(wb *tableaupb.Workbook) error {
 	return nil
 }
 
-func (gen *Generator) exportWorksheet(w *bufio.Writer, ws *tableaupb.Worksheet) error {
+func (gen *Generator) exportWorksheet(w *bufio.Writer, ws *tableaupb.Worksheet, isLastSheet bool) error {
 	w.WriteString(fmt.Sprintf("message %s {\n", ws.Name))
 	w.WriteString(fmt.Sprintf("  option (tableau.worksheet) = {%s};\n", genPrototext(ws.Options)))
 	w.WriteString("\n")
@@ -345,8 +349,10 @@ func (gen *Generator) exportWorksheet(w *bufio.Writer, ws *tableaupb.Worksheet) 
 			return err
 		}
 	}
-
 	w.WriteString("}\n")
+	if !isLastSheet {
+		w.WriteString("\n")
+	}
 	return nil
 }
 
