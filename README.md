@@ -91,8 +91,8 @@ xlsx -> Importer -> Protoconf -> Exporter -> JSON/protowire/prototext/xml/yaml
 ### Composite Types
 - [x] message: horizontal(row direction) layout, fields located in cells.
 - [x] message: simple in-cell message, each field must be **scalar** type. It is a comma-separated list of fields. E.g.: `1,test,3.0`. List's size need not to be equal to fields' size, as fields will be filled in order. Fields not configured will be filled default values due to its scalar type.
-- [x] list: horizontal(row direction) layout, and is list's default layout.
-- [x] list: vertical(column direction) layout.
+- [x] list: horizontal(row direction) layout, which is list's default layout, and each item can be **message** or **scalar**.
+- [x] list: vertical(column direction) layout. and each item should be **message**.
 - [x] list: simple in-cell list, element must be **scalar** type. It is a comma-separated list of elements. E.g.: `1,2,3`. 
 - [x] list: scalable or dynamic list size.
 - [x] list: smart recognition of empty element at any position.

@@ -24,7 +24,7 @@ var structRegexp *regexp.Regexp
 
 func init() {
 	mapRegexp = regexp.MustCompile(`^map<(.+),(.+)>`)  // e.g.: map<uint32,Element>
-	listRegexp = regexp.MustCompile(`^\[(.+)\](.+)`)   // e.g.: [Element]uint32
+	listRegexp = regexp.MustCompile(`^\[(.*)\](.+)`)   // e.g.: [Element]uint32
 	structRegexp = regexp.MustCompile(`^\{(.+)\}(.+)`) // e.g.: {Element}uint32
 }
 
@@ -164,8 +164,15 @@ func (b *book) parseField(cursor int, namerow, typerow, noterow []string, field 
 		return cursor, nil
 	} else if matches := listRegexp.FindStringSubmatch(typeCell); len(matches) > 0 {
 		// list
-		elemType := strings.TrimSpace(matches[1])
 		colType := strings.TrimSpace(matches[2])
+		var isScalarType bool
+		elemType := strings.TrimSpace(matches[1])
+		if elemType == "" {
+			// scalar type, such as int32, string, etc.
+			elemType = colType
+			isScalarType = true
+		}
+
 		// preprocess
 		layout := tableaupb.Layout_LAYOUT_VERTICAL // default layout is vertical.
 		index := -1
@@ -182,19 +189,25 @@ func (b *book) parseField(cursor int, namerow, typerow, noterow []string, field 
 				Name:   "", // name is empty for vertical list
 				Layout: layout,
 			}
-			field.Fields = append(field.Fields, b.parseScalarField(nameCell, colType, noteCell))
 
-			for cursor++; cursor < len(namerow); cursor++ {
-				nameCell := strings.TrimSpace(namerow[cursor])
-				if nameCell == "" {
-					continue
+			if isScalarType {
+				// TODO: support list of scalar type when lyout is vertical?
+				// NOTE(wenchyzhu): we don't support list of scalar type when layout is vertical
+			} else {
+				field.Fields = append(field.Fields, b.parseScalarField(nameCell, colType, noteCell))
+
+				for cursor++; cursor < len(namerow); cursor++ {
+					nameCell := strings.TrimSpace(namerow[cursor])
+					if nameCell == "" {
+						continue
+					}
+					subField := &tableaupb.Field{}
+					cursor, err = b.parseField(cursor, namerow, typerow, noterow, subField)
+					if err != nil {
+						atom.Log.Panic(err)
+					}
+					field.Fields = append(field.Fields, subField)
 				}
-				subField := &tableaupb.Field{}
-				cursor, err = b.parseField(cursor, namerow, typerow, noterow, subField)
-				if err != nil {
-					atom.Log.Panic(err)
-				}
-				field.Fields = append(field.Fields, subField)
 			}
 		} else {
 			// horizontal list: continuous N columns belong to this list after this cursor.
@@ -211,25 +224,40 @@ func (b *book) parseField(cursor int, namerow, typerow, noterow []string, field 
 				Name:   prefix,
 				Layout: layout,
 			}
-			camelCaseName := nameCell[index+1:]
-			field.Fields = append(field.Fields, b.parseScalarField(camelCaseName, colType, note))
-
-			for cursor++; cursor < len(namerow); cursor++ {
-				nameCell := strings.TrimSpace(namerow[cursor])
-				typeCell := strings.TrimSpace(typerow[cursor])
-				noteCell := strings.TrimSpace(noterow[cursor])
-				if nameCell == "" {
-					continue
+			if isScalarType {
+				for cursor++; cursor < len(namerow); cursor++ {
+					nameCell := strings.TrimSpace(namerow[cursor])
+					if nameCell == "" {
+						continue
+					}
+					if strings.HasPrefix(nameCell, prefix) {
+						continue
+					} else {
+						cursor--
+						break
+					}
 				}
-				if strings.HasPrefix(nameCell, prefix+"1") {
-					camelCaseName = nameCell[index+1:]
-					note = noteCell[noteIndex+1:]
-					field.Fields = append(field.Fields, b.parseScalarField(camelCaseName, typeCell, note))
-				} else if strings.HasPrefix(nameCell, prefix) {
-					continue
-				} else {
-					cursor--
-					break
+			} else {
+				camelCaseName := nameCell[index+1:]
+				field.Fields = append(field.Fields, b.parseScalarField(camelCaseName, colType, note))
+
+				for cursor++; cursor < len(namerow); cursor++ {
+					nameCell := strings.TrimSpace(namerow[cursor])
+					typeCell := strings.TrimSpace(typerow[cursor])
+					noteCell := strings.TrimSpace(noterow[cursor])
+					if nameCell == "" {
+						continue
+					}
+					if strings.HasPrefix(nameCell, prefix+"1") {
+						camelCaseName = nameCell[index+1:]
+						note = noteCell[noteIndex+1:]
+						field.Fields = append(field.Fields, b.parseScalarField(camelCaseName, typeCell, note))
+					} else if strings.HasPrefix(nameCell, prefix) {
+						continue
+					} else {
+						cursor--
+						break
+					}
 				}
 			}
 		}

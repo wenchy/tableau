@@ -544,42 +544,52 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 				newValue = msg.Mutable(fd)
 			}
 			reflectList := newValue.List()
-			if fd.Kind() == protoreflect.MessageKind {
+			if etype == tableaupb.Type_TYPE_INCELL_LIST {
+				cellValue, ok := row[prefix+name]
+				if !ok {
+					atom.Log.Panicf("name not found: %s", prefix+name)
+				}
+				if cellValue != "" {
+					// If s does not contain sep and sep is not empty, Split returns a
+					// slice of length 1 whose only element is s.
+					splits := strings.Split(cellValue, sep)
+					for _, v := range splits {
+						value := tbx.getFieldValue(fd, v)
+						reflectList.Append(value)
+					}
+				}
+			} else {
 				emptyListValue := reflectList.NewElement()
 				if layout == tableaupb.Layout_LAYOUT_VERTICAL {
 					newListValue := reflectList.NewElement()
-					tbx.TestParseFieldOptions(newListValue.Message(), row, depth+1, prefix+name)
-					if !MessageValueEqual(emptyListValue, newListValue) {
-						reflectList.Append(newListValue)
+					if fd.Kind() == protoreflect.MessageKind {
+						tbx.TestParseFieldOptions(newListValue.Message(), row, depth+1, prefix+name)
+						if !MessageValueEqual(emptyListValue, newListValue) {
+							reflectList.Append(newListValue)
+						}
+					} else {
+						// TODO: support list of scalar type when lyout is vertical?
+						// NOTE(wenchyzhu): we don't support list of scalar type when layout is vertical
 					}
 				} else {
 					size := getPrefixSize(row, prefix+name)
 					// atom.Log.Debug("prefix size: ", size)
 					for i := 1; i <= size; i++ {
 						newListValue := reflectList.NewElement()
-						tbx.TestParseFieldOptions(newListValue.Message(), row, depth+1, prefix+name+strconv.Itoa(i))
-						if !MessageValueEqual(emptyListValue, newListValue) {
+						if fd.Kind() == protoreflect.MessageKind {
+							tbx.TestParseFieldOptions(newListValue.Message(), row, depth+1, prefix+name+strconv.Itoa(i))
+							if !MessageValueEqual(emptyListValue, newListValue) {
+								reflectList.Append(newListValue)
+							}
+						} else {
+							cellValue, ok := row[prefix+name+strconv.Itoa(i)]
+							if !ok {
+								atom.Log.Panicf("not found column name: %v", prefix+name)
+							}
+							newListValue = tbx.getFieldValue(fd, cellValue)
 							reflectList.Append(newListValue)
 						}
 					}
-				}
-			} else {
-				if etype == tableaupb.Type_TYPE_INCELL_LIST {
-					cellValue, ok := row[prefix+name]
-					if !ok {
-						atom.Log.Panicf("name not found: %s", prefix+name)
-					}
-					if cellValue != "" {
-						// If s does not contain sep and sep is not empty, Split returns a
-						// slice of length 1 whose only element is s.
-						splits := strings.Split(cellValue, sep)
-						for _, v := range splits {
-							value := tbx.getFieldValue(fd, v)
-							reflectList.Append(value)
-						}
-					}
-				} else {
-					atom.Log.Panicf("unknown list type: %v", etype)
 				}
 			}
 			if !msg.Has(fd) && reflectList.Len() != 0 {
