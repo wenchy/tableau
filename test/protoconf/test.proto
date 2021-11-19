@@ -2,7 +2,7 @@ syntax = "proto3";
 package test;
 option go_package = "github.com/Wenchy/tableau/cmd/test/testpb";
 
-import "tableau/protobuf/options.proto";
+import "tableau/protobuf/tableau.proto";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/duration.proto";
 

@@ -73,7 +73,7 @@ func (gen *Generator) Generate() {
 				Worksheets: []*tableaupb.Worksheet{},
 				Name:       wbProtoName,
 				Imports: map[string]int32{
-					"tableau/protobuf/options.proto": 1, // default import
+					"tableau/protobuf/tableau.proto": 1, // default import
 				},
 			},
 			withNote: false,
