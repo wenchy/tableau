@@ -364,7 +364,13 @@ func (gen *Generator) exportWorkbook(wb *tableaupb.Workbook) error {
 		if i == len(wb.Worksheets)-1 {
 			isLastSheet = true
 		}
-		if err := gen.exportWorksheet(w, ws, isLastSheet); err != nil {
+		sheet := &sheet{
+			ws:             ws,
+			writer:         w,
+			isLastSheet:    isLastSheet,
+			nestedMessages: make(map[string]*tableaupb.Field),
+		}
+		if err := sheet.export(); err != nil {
 			return err
 		}
 	}
@@ -372,21 +378,28 @@ func (gen *Generator) exportWorkbook(wb *tableaupb.Workbook) error {
 	return nil
 }
 
-func (gen *Generator) exportWorksheet(w *bufio.Writer, ws *tableaupb.Worksheet, isLastSheet bool) error {
-	w.WriteString(fmt.Sprintf("message %s {\n", ws.Name))
-	w.WriteString(fmt.Sprintf("  option (tableau.worksheet) = {%s};\n", genPrototext(ws.Options)))
-	w.WriteString("\n")
+type sheet struct {
+	ws             *tableaupb.Worksheet
+	writer         *bufio.Writer
+	isLastSheet    bool
+	nestedMessages map[string]*tableaupb.Field // type name -> field
+}
 
+func (s *sheet) export() error {
+	s.writer.WriteString(fmt.Sprintf("message %s {\n", s.ws.Name))
+	s.writer.WriteString(fmt.Sprintf("  option (tableau.worksheet) = {%s};\n", genPrototext(s.ws.Options)))
+	s.writer.WriteString("\n")
+	// generate the fields
 	depth := 1
-	for i, f := range ws.Fields {
+	for i, field := range s.ws.Fields {
 		tagid := i + 1
-		if err := gen.exportField(depth, w, tagid, f); err != nil {
+		if err := s.exportField(depth, tagid, field); err != nil {
 			return err
 		}
 	}
-	w.WriteString("}\n")
-	if !isLastSheet {
-		w.WriteString("\n")
+	s.writer.WriteString("}\n")
+	if !s.isLastSheet {
+		s.writer.WriteString("\n")
 	}
 	return nil
 }
@@ -400,31 +413,63 @@ func genPrototext(m protoreflect.ProtoMessage) []byte {
 	return text
 }
 
-func (gen *Generator) exportField(depth int, w *bufio.Writer, tagid int, field *tableaupb.Field) error {
+func (s *sheet) exportField(depth int, tagid int, field *tableaupb.Field) error {
 	head := "%s%s"
 	if field.Card != "" {
 		head += " " // cardinality exists
 	}
-	w.WriteString(fmt.Sprintf(head+"%s %s = %d [(tableau.field) = {%s}];\n", indent(depth), field.Card, field.Type, field.Name, tagid, genPrototext(field.Options)))
+	s.writer.WriteString(fmt.Sprintf(head+"%s %s = %d [(tableau.field) = {%s}];\n", indent(depth), field.Card, field.Type, field.Name, tagid, genPrototext(field.Options)))
 
 	if field.Fields != nil { // iff field is a map or list.
 		nestedMsgName := field.Type
 		if field.MapEntry != nil {
 			nestedMsgName = field.MapEntry.ValueType
 		}
-		w.WriteString("\n")
-		w.WriteString(fmt.Sprintf("%smessage %s {\n", indent(depth), nestedMsgName))
+
+		if isSameFieldMessageType(field, s.nestedMessages[nestedMsgName]) {
+			// if the nested message is the same as the previous one,
+			// just use the previous one, and don't generate a new one.
+			return nil
+		}
+
+		// bookkeeping this nested msessage, so we can check if we can reuse it later.
+		s.nestedMessages[nestedMsgName] = field
+
+		s.writer.WriteString("\n")
+		s.writer.WriteString(fmt.Sprintf("%smessage %s {\n", indent(depth), nestedMsgName))
 		for i, f := range field.Fields {
 			tagid := i + 1
-			if err := gen.exportField(depth+1, w, tagid, f); err != nil {
+			if err := s.exportField(depth+1, tagid, f); err != nil {
 				return err
 			}
 		}
-		w.WriteString(fmt.Sprintf("%s}\n", indent(depth)))
+		s.writer.WriteString(fmt.Sprintf("%s}\n", indent(depth)))
 	}
 	return nil
 }
 
 func indent(depth int) string {
 	return strings.Repeat("  ", depth)
+}
+
+func isSameFieldMessageType(left, right *tableaupb.Field) bool {
+	if left == nil || right == nil {
+		return false
+	}
+	if left.Fields == nil || right.Fields == nil {
+		return false
+	}
+	if len(left.Fields) != len(right.Fields) ||
+		left.Type != right.Type ||
+		left.Card != right.Card {
+		return false
+	}
+
+	for i, l := range left.Fields {
+		r := right.Fields[i]
+		if !proto.Equal(l, r) {
+			return false
+		}
+	}
+	return true
 }

@@ -17,7 +17,7 @@ workbook: `(AliasTest)DemoTest`, worksheet: `(AliasActivity)DemoActivity`
 
 | ActivityID           | ActivityName | ActivityBeginTime   | ActivityDuration | ChapterID           | ChapterName | SectionID       | SectionName | SectionItem1Id | SectionItem1Num | SectionItem2Id | SectionItem2Num |
 | -------------------- | ------------ | ------------------- | ---------------- | ------------------- | ----------- | --------------- | ----------- | -------------- | --------------- | -------------- | --------------- |
-| map<uint32,Activity> | string       | Timestamp           | Duration         | map<uint32,Chapter> | string      | [Section]uint32 | int32       | (Item)int32    | (Item)int32     | (Item)int32    | (Item)int32     |
+| map<uint32,Activity> | string       | Timestamp           | Duration         | map<uint32,Chapter> | string      | [Section]uint32 | int32       | [Item]int32    | int32           | int32          | int32           |
 | 1                    | activity1    | 2020-01-01 05:00:00 | 72h              | 1                   | chapter1    | 1               | section1    | 1001           | 1               | 1002           | 2               |
 | 1                    | activity1    | 2020-01-01 05:00:00 | 72h              | 1                   | chapter1    | 2               | section2    | 1001           | 1               | 1002           | 2               |
 | 1                    | activity1    | 2020-01-01 05:00:00 | 72h              | 2                   | chapter2    | 1               | section1    | 1001           | 1               | 1002           | 2               |
