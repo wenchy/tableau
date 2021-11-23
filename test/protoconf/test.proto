@@ -2,6 +2,7 @@ syntax = "proto3";
 package test;
 option go_package = "github.com/Wenchy/tableau/cmd/test/testpb";
 
+import "common.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 import "tableau/protobuf/tableau.proto";
@@ -59,17 +60,17 @@ message Reward {
     uint32 id = 1 [(tableau.field) = {name:"ID"}];
     string desc = 2 [(tableau.field) = {name:"Desc"}];
     repeated Item reward_item_list = 3 [(tableau.field) = {name:"RewardItem" layout:LAYOUT_HORIZONTAL}];
-
-    message Item {
-      int32 id = 1 [(tableau.field) = {name:"Id"}];
-      int32 num = 2 [(tableau.field) = {name:"Num"}];
-    }
     repeated Exchange exchange_list = 4 [(tableau.field) = {layout:LAYOUT_VERTICAL}];
 
     message Exchange {
       uint32 exchange_id = 1 [(tableau.field) = {name:"ExchangeId"}];
       repeated Item input_item_list = 2 [(tableau.field) = {name:"InputItem" layout:LAYOUT_HORIZONTAL}];
-      repeated Item output_item_list = 3 [(tableau.field) = {name:"OutputItem" layout:LAYOUT_HORIZONTAL}];
+      repeated OutputItem output_item_list = 3 [(tableau.field) = {name:"OutputItem" layout:LAYOUT_HORIZONTAL}];
+
+      message OutputItem {
+        int32 id = 1 [(tableau.field) = {name:"Id"}];
+        int32 num = 2 [(tableau.field) = {name:"Num"}];
+      }
     }
   }
 }

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/Wenchy/tableau/internal/atom"
+	"github.com/Wenchy/tableau/internal/fs"
 	"github.com/Wenchy/tableau/options"
 	"github.com/Wenchy/tableau/proto/tableaupb"
 	"github.com/emirpasic/gods/sets/treeset"
@@ -23,6 +24,12 @@ var mapRegexp *regexp.Regexp
 var listRegexp *regexp.Regexp
 var structRegexp *regexp.Regexp
 
+const (
+	tableauProtoPath   = "tableau/protobuf/tableau.proto"
+	timestampProtoPath = "google/protobuf/timestamp.proto"
+	durationProtoPath  = "google/protobuf/duration.proto"
+)
+
 func init() {
 	mapRegexp = regexp.MustCompile(`^map<(.+),(.+)>`)  // e.g.: map<uint32,Element>
 	listRegexp = regexp.MustCompile(`^\[(.*)\](.+)`)   // e.g.: [Element]uint32
@@ -30,28 +37,56 @@ func init() {
 }
 
 type Generator struct {
-	ProtoPackage string // protobuf package name.
-	GoPackage    string // golang package name.
-	InputDir     string // input dir of workbooks.
-	OutputDir    string // output dir of generated protoconf files.
+	ProtoPackage string   // protobuf package name.
+	GoPackage    string   // golang package name.
+	InputDir     string   // input dir of workbooks.
+	OutputDir    string   // output dir of generated protoconf files.
+	Imports      []string // imported common proto file paths
 
 	Header *options.HeaderOption // header settings.
 }
 
 func (gen *Generator) Generate() {
-	err := os.RemoveAll(gen.OutputDir)
-	if err != nil {
-		panic(err)
-	}
-	// create output dir
-	err = os.MkdirAll(gen.OutputDir, 0700)
-	if err != nil {
-		panic(err)
+
+	if existed, err := fs.Exists(gen.OutputDir); err != nil {
+		atom.Log.Panic(err)
+	} else {
+		if existed {
+			// remove all *.proto file but not Imports
+			imports := make(map[string]int)
+			for _, path := range gen.Imports {
+				imports[path] = 1
+			}
+			files, err := os.ReadDir(gen.OutputDir)
+			if err != nil {
+				atom.Log.Panic(err)
+			}
+			for _, file := range files {
+				if !strings.HasSuffix(file.Name(), ".proto") {
+					continue
+				}
+				if _, ok := imports[file.Name()]; ok {
+					continue
+				}
+				fpath := filepath.Join(gen.OutputDir, file.Name())
+				err := os.Remove(fpath)
+				if err != nil {
+					atom.Log.Panic(err)
+				}
+			}
+
+		} else {
+			// create output dir
+			err = os.MkdirAll(gen.OutputDir, 0700)
+			if err != nil {
+				atom.Log.Panic(err)
+			}
+		}
 	}
 
 	files, err := os.ReadDir(gen.InputDir)
 	if err != nil {
-		atom.Log.Fatal(err)
+		atom.Log.Panic(err)
 	}
 	for _, wbFile := range files {
 		if strings.HasPrefix(wbFile.Name(), "~$") {
@@ -74,10 +109,14 @@ func (gen *Generator) Generate() {
 				Worksheets: []*tableaupb.Worksheet{},
 				Name:       wbProtoName,
 				Imports: map[string]int32{
-					"tableau/protobuf/tableau.proto": 1, // default import
+					tableauProtoPath: 1, // default import
 				},
 			},
 			withNote: false,
+		}
+
+		for _, path := range gen.Imports {
+			book.wb.Imports[path] = 1 // custom imports
 		}
 
 		for _, sheetName := range f.GetSheetList() {
@@ -141,7 +180,7 @@ func (b *book) parseField(cursor int, namerow, typerow, noterow []string, field 
 		valueType := strings.TrimSpace(matches[2])
 
 		field.Name = strcase.ToSnake(valueType) + "_map"
-		field.Type = typeCell
+		field.Type, field.TypeIsImported = ParseType(typeCell)
 		field.MapEntry = &tableaupb.MapEntry{
 			KeyType:   keyType,
 			ValueType: valueType,
@@ -185,7 +224,7 @@ func (b *book) parseField(cursor int, namerow, typerow, noterow []string, field 
 			// vertical list: all columns belong to this list after this cursor.
 			field.Card = "repeated"
 			field.Name = strcase.ToSnake(elemType) + "_list"
-			field.Type = elemType
+			field.Type, field.TypeIsImported = ParseType(elemType)
 			field.Options = &tableaupb.FieldOptions{
 				Name:   "", // name is empty for vertical list
 				Layout: layout,
@@ -220,7 +259,7 @@ func (b *book) parseField(cursor int, namerow, typerow, noterow []string, field 
 
 			field.Card = "repeated"
 			field.Name = strcase.ToSnake(name) + "_list"
-			field.Type = elemType
+			field.Type, field.TypeIsImported = ParseType(elemType)
 			field.Options = &tableaupb.FieldOptions{
 				Name:   prefix,
 				Layout: layout,
@@ -271,7 +310,7 @@ func (b *book) parseField(cursor int, namerow, typerow, noterow []string, field 
 		prefix := nameCell[:index]
 
 		field.Name = strcase.ToSnake(elemType)
-		field.Type = elemType
+		field.Type, field.TypeIsImported = ParseType(elemType)
 		field.Options = &tableaupb.FieldOptions{
 			Name: prefix,
 		}
@@ -313,10 +352,10 @@ func (b *book) genNote(note string) string {
 func (b *book) parseScalarField(name, typ, note string) *tableaupb.Field {
 	if typ == "timestamp" {
 		typ = "google.protobuf.Timestamp"
-		b.wb.Imports["google/protobuf/timestamp.proto"] = 1
+		b.wb.Imports[timestampProtoPath] = 1
 	} else if typ == "duration" {
 		typ = "google.protobuf.Duration"
-		b.wb.Imports["google/protobuf/duration.proto"] = 1
+		b.wb.Imports[durationProtoPath] = 1
 	}
 
 	return &tableaupb.Field{
@@ -420,7 +459,8 @@ func (s *sheet) exportField(depth int, tagid int, field *tableaupb.Field) error 
 	}
 	s.writer.WriteString(fmt.Sprintf(head+"%s %s = %d [(tableau.field) = {%s}];\n", indent(depth), field.Card, field.Type, field.Name, tagid, genPrototext(field.Options)))
 
-	if field.Fields != nil { // iff field is a map or list.
+	if !field.TypeIsImported && field.Fields != nil {
+		// iff field is a map or list and message type is not imported.
 		nestedMsgName := field.Type
 		if field.MapEntry != nil {
 			nestedMsgName = field.MapEntry.ValueType
@@ -472,4 +512,13 @@ func isSameFieldMessageType(left, right *tableaupb.Field) bool {
 		}
 	}
 	return true
+}
+
+func ParseType(msgName string) (string, bool) {
+	if strings.Contains(msgName, ".") {
+		// This messge type is defined in imported proto
+		msgName = strings.TrimPrefix(msgName, ".")
+		return msgName, true
+	}
+	return msgName, false
 }

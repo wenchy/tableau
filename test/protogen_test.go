@@ -24,5 +24,10 @@ func Test_GenerateProtoconf(t *testing.T) {
 				Noterow: 3,
 				Datarow: 5,
 			}),
+		options.Imports(
+			[]string{
+				"common.proto",
+			},
+		),
 	)
 }

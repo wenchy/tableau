@@ -1,0 +1,10 @@
+syntax = "proto3";
+package test;
+option go_package = "github.com/Wenchy/tableau/cmd/test/testpb";
+
+import "tableau/protobuf/tableau.proto";
+
+message Item {
+  int32 id = 1 [(tableau.field).name = "Id"];
+  int32 num = 2 [(tableau.field).name = "Num"];
+}

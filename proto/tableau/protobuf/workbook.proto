@@ -23,9 +23,9 @@ message Field {
   string type = 3;
   string name = 4;
   //   uint32 tagid = 5;
-  repeated Field fields = 6;
-
+  repeated Field fields = 6; // map or list if fields's length is not 0.
   MapEntry map_entry = 7;
+  bool type_is_imported = 8; // message type is imported
 }
 
 message MapEntry {

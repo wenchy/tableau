@@ -16,6 +16,7 @@ type Options struct {
 	LogLevel     string        // Log level: debug, info, warn, error
 	Header       *HeaderOption // header rows of excel file.
 	Output       *OutputOption // output settings.
+	Imports      []string      // imported common proto file paths
 }
 
 type HeaderOption struct {
@@ -67,9 +68,15 @@ func LocationName(o string) Option {
 	}
 }
 
-func LogLevel(o string) Option {
+func LogLevel(level string) Option {
 	return func(opts *Options) {
-		opts.LogLevel = o
+		opts.LogLevel = level
+	}
+}
+
+func Imports(imports []string) Option {
+	return func(opts *Options) {
+		opts.Imports = imports
 	}
 }
 

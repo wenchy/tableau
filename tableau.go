@@ -44,6 +44,8 @@ func Xlsx2Protoconf(protoPackage, goPackage, indir, outdir string, setters ...op
 		InputDir:     indir,
 		OutputDir:    outdir,
 		Header:       opts.Header,
+		Imports:      opts.Imports,
 	}
+
 	g.Generate()
 }
