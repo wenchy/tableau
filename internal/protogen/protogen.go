@@ -11,6 +11,7 @@ import (
 	"github.com/Wenchy/tableau/internal/atom"
 	"github.com/Wenchy/tableau/options"
 	"github.com/Wenchy/tableau/proto/tableaupb"
+	"github.com/emirpasic/gods/sets/treeset"
 	"github.com/golang/protobuf/proto"
 	"github.com/iancoleman/strcase"
 	"github.com/xuri/excelize/v2"
@@ -79,7 +80,7 @@ func (gen *Generator) Generate() {
 			withNote: false,
 		}
 
-		for _, sheetName := range f.GetSheetMap() {
+		for _, sheetName := range f.GetSheetList() {
 			rows, err := f.GetRows(sheetName)
 			if err != nil {
 				atom.Log.Panic(err)
@@ -345,7 +346,13 @@ func (gen *Generator) exportWorkbook(wb *tableaupb.Workbook) error {
 	w.WriteString(fmt.Sprintf("package %s;\n", gen.ProtoPackage))
 	w.WriteString(fmt.Sprintf("option go_package = \"%s\";\n", gen.GoPackage))
 	w.WriteString("\n")
-	for key, _ := range wb.Imports {
+
+	// keep the elements ordered by sheet name
+	set := treeset.NewWithStringComparator()
+	for key := range wb.Imports {
+		set.Add(key)
+	}
+	for _, key := range set.Values() {
 		w.WriteString(fmt.Sprintf("import \"%s\";\n", key))
 	}
 	w.WriteString("\n")

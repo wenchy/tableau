@@ -3,6 +3,7 @@ module github.com/Wenchy/tableau
 go 1.14
 
 require (
+	github.com/emirpasic/gods v1.12.0
 	github.com/golang/protobuf v1.4.2
 	github.com/iancoleman/strcase v0.0.0-20191112232945-16388991a334
 	github.com/kr/text v0.2.0 // indirect
