@@ -8,14 +8,14 @@ A powerful configuration conversion tool based on Protobuf(proto3).
 - Support multiple programming languages, thanks to **protobuf**.
 
 ## Concepts
-- Importer: xlsx importer.
+- Importer: xlsx/xml importer.
 - IR: Intermediate Representation.
 - Filter: filter the IR.
-- Exporter: JSON, protowire, prototext, xml, yaml, and so on.
+- Exporter: JSON, protowire, prototext.
 - Protoconf: a configuration metadata format based on protobuf.
 
 ## Workflow
-xlsx -> Importer -> Protoconf -> Exporter -> JSON/protowire/prototext/xml/yaml
+xlsx -> Importer -> Protoconf -> Exporter -> JSON/protowire/prototext
 
 ## Types
 - Scalar
@@ -56,12 +56,11 @@ xlsx -> Importer -> Protoconf -> Exporter -> JSON/protowire/prototext/xml/yaml
 > [Mac OS X](https://www.oreilly.com/library/view/mac-os-x/0596004605/ch01s06.html)
 
 ### Generator
-- [x] generate xlsx template by proto: **proto -> xlsx**
-- [x] generated xlsx template caption row with style: font bold, backgroud color and so on. See [XLSX Styles](https://github.com/tealeg/xlsx/blob/master/tutorial/tutorial.adoc#styles)
-- [ ] generate proto by xlsx template: **xlsx -> proto**
+- [x] generate protoconf by xlsx(header): **xlsx -> protoconf**
+- [ ] generate xlsx(header) by protoconf: **protoconf -> xlsx**
 
 ### Conversion
-- [x] xlsx -> JSON(common format and human readable)
+- [x] xlsx -> JSON(default format and human readable)
 - [x] xlsx -> protowire(small size)
 - [x] xlsx -> prototext(human debugging)
 - [ ] JSON -> xlsx

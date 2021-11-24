@@ -1,8 +1,11 @@
 # Metadata Conversion
 
+## Notation
+The syntax is specified using [Extended Backus-Naur Form (EBNF)](https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_form).
+
 ## Workbook -> Protoconf
 
-### Fundamental
+### Basic
 
 workbook: `(AliasTest)DemoTest`, worksheet: `(AliasActivity)DemoActivity`
 
@@ -10,14 +13,14 @@ workbook: `(AliasTest)DemoTest`, worksheet: `(AliasActivity)DemoActivity`
 - configuration message name is `AliasActivity`. If with no `()`, name will be `DemoActivity`
 - list: `[ELEM-TYPE]COLUMN-TYPE`,  COLUMN-TYPE is column type, ELEM-TYPE is message name and list prefix (must not conflict with the protobuf keyword).
 - map: `map<KEY-TYPE,VALUE-TYPE>`, KEY-TYPE must be scalar types, and VALUE-TYPE is message name and map prefix (must not conflict with build-in scalar type).
-- import message types: `(IMPORT-MESSAGE-TYPE)COLUMN-TYPE`, e.g.: `Item` represents the message `Item` defined in `common.proto`. Whats' more is: `common.Item` represents the message `Item` defined in protobuf package `common`.
+- import message types: `.TYPE`, e.g.: `.Item` represents the message `Item` already defined in the same protobuf package, and should not redefine it.
 - well-known types
   - Timestamp: `google.protobuf.Timestamp`
   - Duration: `google.protobuf.Duration`
 
 | ActivityID           | ActivityName | ActivityBeginTime   | ActivityDuration | ChapterID           | ChapterName | SectionID       | SectionName | SectionItem1Id | SectionItem1Num | SectionItem2Id | SectionItem2Num |
 | -------------------- | ------------ | ------------------- | ---------------- | ------------------- | ----------- | --------------- | ----------- | -------------- | --------------- | -------------- | --------------- |
-| map<uint32,Activity> | string       | Timestamp           | Duration         | map<uint32,Chapter> | string      | [Section]uint32 | int32       | [Item]int32    | int32           | int32          | int32           |
+| map<uint32,Activity> | string       | Timestamp           | Duration         | map<uint32,Chapter> | string      | [Section]uint32 | int32       | [.Item]int32   | int32           | int32          | int32           |
 | 1                    | activity1    | 2020-01-01 05:00:00 | 72h              | 1                   | chapter1    | 1               | section1    | 1001           | 1               | 1002           | 2               |
 | 1                    | activity1    | 2020-01-01 05:00:00 | 72h              | 1                   | chapter1    | 2               | section2    | 1001           | 1               | 1002           | 2               |
 | 1                    | activity1    | 2020-01-01 05:00:00 | 72h              | 2                   | chapter2    | 1               | section1    | 1001           | 1               | 1002           | 2               |
@@ -31,9 +34,11 @@ message Item {
 }
 ```
 
-without prefix:
+#### Output without prefix
 ```
 // demo_test.proto
+import "common.proto"
+
 message DemoActivity{
 	map<uint32, Activity> activity_map = 1 [(key) = "ActivityID"];
 	message Activity {
@@ -54,7 +59,7 @@ message DemoActivity{
 }
 ```
 
-with prefix: 
+#### Output with prefix
 ```
 // demo_test.proto
 message DemoActivity{
@@ -81,27 +86,54 @@ message DemoActivity{
 
 workbook: `(AliasTest)DemoTest`, worksheet: `(Env)Environment`
 
-| ID     | Name   | IncellMessage                       | IncellList | IncellMap        | IncellMessageList            | IncellMessageMap                      |
-| ------ | ------ | ----------------------------------- | ---------- | ---------------- | ---------------------------- | ------------------------------------- |
-| uint32 | string | {int32 id,string desc,uint32 value} | []int32    | map[int32]string | []Elem{int32 id,string desc} | map[int32]Value{int32 id,string desc} |
-| 1      | Earth  | 1,desc,100                          | 1,2,3      | 1:hello,2:world  | {1,hello},{2,world}          | 1:{1,hello},2:{2,world}               |
+| ID     | Name   | IncellMessage                         | IncellList | IncellMap         | IncellMessageList            | IncellMessageMap                       |
+| ------ | ------ | ------------------------------------- | ---------- | ----------------- | ---------------------------- | -------------------------------------- |
+| uint32 | string | {int32 id,string desc,int32 value}Msg | []int32    | map<int32,string> | []{int32 id,string desc}Elem | map<int32,Value{int32 id,string desc}> |
+| 1      | Earth  | 1,desc,100                            | 1,2,3      | 1:hello,2:world   | {1,hello},{2,world}          | 1:{1,hello},2:{2,world}                |
 
+#### IncellMessage
+Syntax: *TODO: EBNF*
+Type: message type
+Value: comma seperated field values, e.g.: `1,desc,100`
+Rules:
+| Default Type | Value                      |
+| ------------ | -------------------------- |
+| int32        | can be parsed as number    |
+| string       | cannot be parsed as number |
+
+#### IncellList
+Syntax: `[]Type`
+Type: any scalar type
+Value: comma seperated list items, e.g.: `1,2,3`
+
+#### IncellMap
+Syntax: `map<Type,Type>`
+Type: any scalar type
+Value: comma seperated key-value pairs, and key-value is seperated by colon. e.g.: `1:hello,2:world`
+
+#### IncellMessageList
+*TODO*
+
+#### IncellMessageMap
+*TODO*
+
+#### Output
 ```
 // demo_test.proto
 message Env {
 	uint32 ID = 1 [(tableau.field).name = "ID"];
 	string name = 2 [(tableau.field).name = "Name"];
-	IncellMessage incell_message= 3 [(tableau.field).name = "IncellMessage"];
+	Msg incell_message= 3 [(tableau.field).name = "IncellMessage"];
 	repeated int32 incell_list= 4 [(tableau.field).name = "IncellList"];
 	map<int32, string> incell_map = 5 [(tableau.field).name = "IncellMap"];
 	repeated Elem incell_message_list= 6 [(tableau.field).name = "IncellMessageList"];
     map<int32, Value> incell_message_map = 7 [(tableau.field).name = "IncellMessageMap"];
 
     // defaut name: field + <tagid>
-	message IncellMessage {
+	message Msg {
 		int32 id = 1;
 		string desc= 2; 
-		uint32 value= 3;
+		int32 value= 3;
 	}
     message Elem {
 		int32 id = 1;

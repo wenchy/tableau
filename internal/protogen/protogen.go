@@ -10,6 +10,7 @@ import (
 
 	"github.com/Wenchy/tableau/internal/atom"
 	"github.com/Wenchy/tableau/internal/fs"
+	"github.com/Wenchy/tableau/internal/types"
 	"github.com/Wenchy/tableau/options"
 	"github.com/Wenchy/tableau/proto/tableaupb"
 	"github.com/emirpasic/gods/sets/treeset"
@@ -179,29 +180,38 @@ func (b *book) parseField(cursor int, namerow, typerow, noterow []string, field 
 		keyType := strings.TrimSpace(matches[1])
 		valueType := strings.TrimSpace(matches[2])
 
-		field.Name = strcase.ToSnake(valueType) + "_map"
-		field.Type, field.TypeIsImported = ParseType(typeCell)
-		field.MapEntry = &tableaupb.MapEntry{
-			KeyType:   keyType,
-			ValueType: valueType,
-		}
-		field.Options = &tableaupb.FieldOptions{
-			Key: nameCell,
-		}
-		field.Fields = append(field.Fields, b.parseScalarField(nameCell, keyType, noteCell))
-		for cursor++; cursor < len(namerow); cursor++ {
-			nameCell := strings.TrimSpace(namerow[cursor])
-			if nameCell == "" {
-				continue
+		if types.IsScalarType(valueType) {
+			field.Name = strcase.ToSnake(nameCell)
+			field.Type, field.TypeDefined = ParseType(typeCell)
+			field.Options = &tableaupb.FieldOptions{
+				Name: nameCell,
+				Type: tableaupb.Type_TYPE_INCELL_MAP,
 			}
-			subField := &tableaupb.Field{}
-			cursor, err = b.parseField(cursor, namerow, typerow, noterow, subField)
-			if err != nil {
-				atom.Log.Panic(err)
+		} else {
+			field.Name = strcase.ToSnake(valueType) + "_map"
+			field.Type, field.TypeDefined = ParseType(typeCell)
+			field.MapEntry = &tableaupb.MapEntry{
+				KeyType:   keyType,
+				ValueType: valueType,
 			}
-			field.Fields = append(field.Fields, subField)
+			field.Options = &tableaupb.FieldOptions{
+				Key: nameCell,
+			}
+			field.Fields = append(field.Fields, b.parseScalarField(nameCell, keyType, noteCell))
+			for cursor++; cursor < len(namerow); cursor++ {
+				nameCell := strings.TrimSpace(namerow[cursor])
+				if nameCell == "" {
+					continue
+				}
+				subField := &tableaupb.Field{}
+				cursor, err = b.parseField(cursor, namerow, typerow, noterow, subField)
+				if err != nil {
+					atom.Log.Panic(err)
+				}
+				field.Fields = append(field.Fields, subField)
+			}
+			return cursor, nil
 		}
-		return cursor, nil
 	} else if matches := listRegexp.FindStringSubmatch(typeCell); len(matches) > 0 {
 		// list
 		colType := strings.TrimSpace(matches[2])
@@ -218,13 +228,18 @@ func (b *book) parseField(cursor int, namerow, typerow, noterow []string, field 
 		index := -1
 		if index = strings.Index(nameCell, "1"); index > 0 {
 			layout = tableaupb.Layout_LAYOUT_HORIZONTAL
+		} else {
+			if isScalarType {
+				// incell list
+				layout = tableaupb.Layout_LAYOUT_DEFAULT
+			}
 		}
 
 		if layout == tableaupb.Layout_LAYOUT_VERTICAL {
 			// vertical list: all columns belong to this list after this cursor.
 			field.Card = "repeated"
 			field.Name = strcase.ToSnake(elemType) + "_list"
-			field.Type, field.TypeIsImported = ParseType(elemType)
+			field.Type, field.TypeDefined = ParseType(elemType)
 			field.Options = &tableaupb.FieldOptions{
 				Name:   "", // name is empty for vertical list
 				Layout: layout,
@@ -249,7 +264,7 @@ func (b *book) parseField(cursor int, namerow, typerow, noterow []string, field 
 					field.Fields = append(field.Fields, subField)
 				}
 			}
-		} else {
+		} else if layout == tableaupb.Layout_LAYOUT_HORIZONTAL {
 			// horizontal list: continuous N columns belong to this list after this cursor.
 			noteIndex := strings.Index(noteCell, "1")
 			note := noteCell[noteIndex+1:]
@@ -259,7 +274,7 @@ func (b *book) parseField(cursor int, namerow, typerow, noterow []string, field 
 
 			field.Card = "repeated"
 			field.Name = strcase.ToSnake(name) + "_list"
-			field.Type, field.TypeIsImported = ParseType(elemType)
+			field.Type, field.TypeDefined = ParseType(elemType)
 			field.Options = &tableaupb.FieldOptions{
 				Name:   prefix,
 				Layout: layout,
@@ -300,40 +315,68 @@ func (b *book) parseField(cursor int, namerow, typerow, noterow []string, field 
 					}
 				}
 			}
+		} else if layout == tableaupb.Layout_LAYOUT_DEFAULT {
+			// incell list
+			field.Card = "repeated"
+			field.Name = strcase.ToSnake(nameCell)
+			field.Type, field.TypeDefined = ParseType(elemType)
+			field.Options = &tableaupb.FieldOptions{
+				Name: nameCell,
+				Type: tableaupb.Type_TYPE_INCELL_LIST,
+			}
 		}
 	} else if matches := structRegexp.FindStringSubmatch(typeCell); len(matches) > 0 {
 		// struct
 		elemType := strings.TrimSpace(matches[1])
 		colType := strings.TrimSpace(matches[2])
 
-		index := len(elemType)
-		prefix := nameCell[:index]
+		fieldPairs := ParseIncellStruct(elemType)
+		if fieldPairs == nil {
+			// cross cell struct
+			index := len(elemType)
+			prefix := nameCell[:index]
 
-		field.Name = strcase.ToSnake(elemType)
-		field.Type, field.TypeIsImported = ParseType(elemType)
-		field.Options = &tableaupb.FieldOptions{
-			Name: prefix,
-		}
-		camelCaseName := nameCell[index:]
-		field.Fields = append(field.Fields, b.parseScalarField(camelCaseName, colType, noteCell))
+			field.Name = strcase.ToSnake(elemType)
+			field.Type, field.TypeDefined = ParseType(elemType)
+			field.Options = &tableaupb.FieldOptions{
+				Name: prefix,
+			}
+			camelCaseName := nameCell[index:]
+			field.Fields = append(field.Fields, b.parseScalarField(camelCaseName, colType, noteCell))
 
-		for cursor++; cursor < len(namerow); cursor++ {
-			nameCell := strings.TrimSpace(namerow[cursor])
-			typeCell := strings.TrimSpace(typerow[cursor])
-			noteCell := strings.TrimSpace(noterow[cursor])
-			if nameCell == "" {
-				continue
+			for cursor++; cursor < len(namerow); cursor++ {
+				nameCell := strings.TrimSpace(namerow[cursor])
+				typeCell := strings.TrimSpace(typerow[cursor])
+				noteCell := strings.TrimSpace(noterow[cursor])
+				if nameCell == "" {
+					continue
+				}
+				if strings.HasPrefix(nameCell, prefix) {
+					camelCaseName = nameCell[index:]
+					field.Fields = append(field.Fields, b.parseScalarField(camelCaseName, typeCell, noteCell))
+				} else if strings.HasPrefix(nameCell, prefix) {
+					continue
+				} else {
+					cursor--
+					break
+				}
 			}
-			if strings.HasPrefix(nameCell, prefix) {
-				camelCaseName = nameCell[index:]
-				field.Fields = append(field.Fields, b.parseScalarField(camelCaseName, typeCell, noteCell))
-			} else if strings.HasPrefix(nameCell, prefix) {
-				continue
-			} else {
-				cursor--
-				break
+		} else {
+			// incell struct
+			field.Name = strcase.ToSnake(nameCell)
+			field.Type, field.TypeDefined = ParseType(colType)
+			field.Options = &tableaupb.FieldOptions{
+				Name: nameCell,
+				Type: tableaupb.Type_TYPE_INCELL_STRUCT,
+			}
+
+			for i := 0; i < len(fieldPairs); i += 2 {
+				fieldType := fieldPairs[i]
+				fieldName := fieldPairs[i+1]
+				field.Fields = append(field.Fields, b.parseScalarField(fieldName, fieldType, ""))
 			}
 		}
+
 	} else {
 		// scalar
 		*field = *b.parseScalarField(nameCell, typeCell, noteCell)
@@ -459,7 +502,7 @@ func (s *sheet) exportField(depth int, tagid int, field *tableaupb.Field) error 
 	}
 	s.writer.WriteString(fmt.Sprintf(head+"%s %s = %d [(tableau.field) = {%s}];\n", indent(depth), field.Card, field.Type, field.Name, tagid, genPrototext(field.Options)))
 
-	if !field.TypeIsImported && field.Fields != nil {
+	if !field.TypeDefined && field.Fields != nil {
 		// iff field is a map or list and message type is not imported.
 		nestedMsgName := field.Type
 		if field.MapEntry != nil {
@@ -520,5 +563,29 @@ func ParseType(msgName string) (string, bool) {
 		msgName = strings.TrimPrefix(msgName, ".")
 		return msgName, true
 	}
+	// if matches := mapRegexp.FindStringSubmatch(msgName); len(matches) > 0 {
+	// 	// map
+	// 	keyType := strings.TrimSpace(matches[1])
+	// 	valueType := strings.TrimSpace(matches[2])
+	// 	return msgName, types.IsScalarType(keyType) && types.IsScalarType(valueType)
+	// }
 	return msgName, false
+}
+
+func ParseIncellStruct(elemType string) []string {
+	fields := strings.Split(elemType, ",")
+	if len(fields) == 1 && len(strings.Split(fields[0], " ")) == 1 {
+		// cross cell struct
+		return nil
+	}
+
+	fieldPairs := make([]string, 0)
+	for _, pair := range strings.Split(elemType, ",") {
+		kv := strings.Split(pair, " ")
+		if len(kv) != 2 {
+			atom.Log.Panicf("illegal type-variable pair: %v in incell struct: %s", pair, elemType)
+		}
+		fieldPairs = append(fieldPairs, kv...)
+	}
+	return fieldPairs
 }

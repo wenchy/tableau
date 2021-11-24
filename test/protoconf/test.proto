@@ -45,7 +45,16 @@ message Activity {
           int32 param_3 = 4 [(tableau.field) = {name:"Param3"}];
           int32 target = 5 [(tableau.field) = {name:"Target"}];
         }
-        repeated string client_param_list = 8 [(tableau.field) = {name:"ClientParam" layout:LAYOUT_HORIZONTAL}];
+        Info warn_info = 8 [(tableau.field) = {name:"WarnInfo" type:TYPE_INCELL_STRUCT}];
+
+        message Info {
+          int32 id = 1 [(tableau.field) = {name:"Id"}];
+          string desc = 2 [(tableau.field) = {name:"Desc"}];
+          int32 value = 3 [(tableau.field) = {name:"Value"}];
+        }
+        repeated int32 int_params = 9 [(tableau.field) = {name:"IntParams" type:TYPE_INCELL_LIST}];
+        map<int32,string> tips = 10 [(tableau.field) = {name:"Tips" type:TYPE_INCELL_MAP}];
+        repeated string client_param_list = 11 [(tableau.field) = {name:"ClientParam" layout:LAYOUT_HORIZONTAL}];
       }
     }
   }
@@ -64,13 +73,13 @@ message Reward {
 
     message Exchange {
       uint32 exchange_id = 1 [(tableau.field) = {name:"ExchangeId"}];
-      repeated Item input_item_list = 2 [(tableau.field) = {name:"InputItem" layout:LAYOUT_HORIZONTAL}];
-      repeated OutputItem output_item_list = 3 [(tableau.field) = {name:"OutputItem" layout:LAYOUT_HORIZONTAL}];
+      repeated ExchangeItem input_item_list = 2 [(tableau.field) = {name:"InputItem" layout:LAYOUT_HORIZONTAL}];
 
-      message OutputItem {
+      message ExchangeItem {
         int32 id = 1 [(tableau.field) = {name:"Id"}];
         int32 num = 2 [(tableau.field) = {name:"Num"}];
       }
+      repeated ExchangeItem output_item_list = 3 [(tableau.field) = {name:"OutputItem" layout:LAYOUT_HORIZONTAL}];
     }
   }
 }
