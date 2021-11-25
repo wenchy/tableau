@@ -142,19 +142,13 @@ func (gen *Generator) Generate() {
 			typerow := rows[1]
 			noterow := rows[2]
 
-			for i := 0; i < len(namerow); i++ {
-				nameCell := strings.TrimSpace(namerow[i])
-				// typeCell := strings.TrimSpace(typerow[i])
-				if nameCell == "" {
-					continue
-				}
+			var ok bool
+			for cursor := 0; cursor < len(namerow); cursor++ {
 				field := &tableaupb.Field{}
-				cursor, err := book.parseField(i, namerow, typerow, noterow, field)
-				if err != nil {
-					atom.Log.Panic(err)
+				cursor, ok = book.parseField(cursor, namerow, typerow, noterow, field, "")
+				if ok {
+					ws.Fields = append(ws.Fields, field)
 				}
-				i = cursor
-				ws.Fields = append(ws.Fields, field)
 			}
 			book.wb.Worksheets = append(book.wb.Worksheets, ws)
 		}
@@ -169,22 +163,28 @@ type book struct {
 	withNote bool
 }
 
-func (b *book) parseField(cursor int, namerow, typerow, noterow []string, field *tableaupb.Field) (int, error) {
+func (b *book) parseField(cursor int, namerow, typerow, noterow []string, field *tableaupb.Field, prefix string) (cur int, ok bool) {
 	nameCell := strings.TrimSpace(namerow[cursor])
 	typeCell := strings.TrimSpace(typerow[cursor])
 	noteCell := strings.TrimSpace(noterow[cursor])
 	atom.Log.Debugf("column|name: %s, type: %s", nameCell, typeCell)
-	var err error
+	if nameCell == "" || typeCell == "" {
+		atom.Log.Warnf("no need to parse column, as name(%s) or type(%s) is empty", nameCell, typeCell)
+		return cursor, false
+	}
+	trimmedNameCell := strings.TrimPrefix(nameCell, prefix)
+
 	if matches := mapRegexp.FindStringSubmatch(typeCell); len(matches) > 0 {
 		// map
 		keyType := strings.TrimSpace(matches[1])
 		valueType := strings.TrimSpace(matches[2])
 
 		if types.IsScalarType(valueType) {
-			field.Name = strcase.ToSnake(nameCell)
+			// incell map
+			field.Name = strcase.ToSnake(trimmedNameCell)
 			field.Type, field.TypeDefined = ParseType(typeCell)
 			field.Options = &tableaupb.FieldOptions{
-				Name: nameCell,
+				Name: trimmedNameCell,
 				Type: tableaupb.Type_TYPE_INCELL_MAP,
 			}
 		} else {
@@ -195,22 +195,12 @@ func (b *book) parseField(cursor int, namerow, typerow, noterow []string, field 
 				ValueType: valueType,
 			}
 			field.Options = &tableaupb.FieldOptions{
-				Key: nameCell,
+				Key: trimmedNameCell,
 			}
-			field.Fields = append(field.Fields, b.parseScalarField(nameCell, keyType, noteCell))
+			field.Fields = append(field.Fields, b.parseScalarField(trimmedNameCell, keyType, noteCell))
 			for cursor++; cursor < len(namerow); cursor++ {
-				nameCell := strings.TrimSpace(namerow[cursor])
-				if nameCell == "" {
-					continue
-				}
-				subField := &tableaupb.Field{}
-				cursor, err = b.parseField(cursor, namerow, typerow, noterow, subField)
-				if err != nil {
-					atom.Log.Panic(err)
-				}
-				field.Fields = append(field.Fields, subField)
+				cursor = b.parseSubField(cursor, namerow, typerow, noterow, field, prefix)
 			}
-			return cursor, nil
 		}
 	} else if matches := listRegexp.FindStringSubmatch(typeCell); len(matches) > 0 {
 		// list
@@ -226,7 +216,7 @@ func (b *book) parseField(cursor int, namerow, typerow, noterow []string, field 
 		// preprocess
 		layout := tableaupb.Layout_LAYOUT_VERTICAL // default layout is vertical.
 		index := -1
-		if index = strings.Index(nameCell, "1"); index > 0 {
+		if index = strings.Index(trimmedNameCell, "1"); index > 0 {
 			layout = tableaupb.Layout_LAYOUT_HORIZONTAL
 		} else {
 			if isScalarType {
@@ -249,34 +239,21 @@ func (b *book) parseField(cursor int, namerow, typerow, noterow []string, field 
 				// TODO: support list of scalar type when lyout is vertical?
 				// NOTE(wenchyzhu): we don't support list of scalar type when layout is vertical
 			} else {
-				field.Fields = append(field.Fields, b.parseScalarField(nameCell, colType, noteCell))
-
+				field.Fields = append(field.Fields, b.parseScalarField(trimmedNameCell, colType, noteCell))
 				for cursor++; cursor < len(namerow); cursor++ {
-					nameCell := strings.TrimSpace(namerow[cursor])
-					if nameCell == "" {
-						continue
-					}
-					subField := &tableaupb.Field{}
-					cursor, err = b.parseField(cursor, namerow, typerow, noterow, subField)
-					if err != nil {
-						atom.Log.Panic(err)
-					}
-					field.Fields = append(field.Fields, subField)
+					cursor = b.parseSubField(cursor, namerow, typerow, noterow, field, prefix)
 				}
 			}
 		} else if layout == tableaupb.Layout_LAYOUT_HORIZONTAL {
 			// horizontal list: continuous N columns belong to this list after this cursor.
-			noteIndex := strings.Index(noteCell, "1")
-			note := noteCell[noteIndex+1:]
-
-			prefix := nameCell[:index]
-			name := prefix
+			listName := trimmedNameCell[:index]
+			prefix += listName
 
 			field.Card = "repeated"
-			field.Name = strcase.ToSnake(name) + "_list"
+			field.Name = strcase.ToSnake(listName) + "_list"
 			field.Type, field.TypeDefined = ParseType(elemType)
 			field.Options = &tableaupb.FieldOptions{
-				Name:   prefix,
+				Name:   listName,
 				Layout: layout,
 			}
 			if isScalarType {
@@ -293,20 +270,12 @@ func (b *book) parseField(cursor int, namerow, typerow, noterow []string, field 
 					}
 				}
 			} else {
-				camelCaseName := nameCell[index+1:]
-				field.Fields = append(field.Fields, b.parseScalarField(camelCaseName, colType, note))
-
+				name := strings.TrimPrefix(nameCell, prefix+"1")
+				field.Fields = append(field.Fields, b.parseScalarField(name, colType, noteCell))
 				for cursor++; cursor < len(namerow); cursor++ {
 					nameCell := strings.TrimSpace(namerow[cursor])
-					typeCell := strings.TrimSpace(typerow[cursor])
-					noteCell := strings.TrimSpace(noterow[cursor])
-					if nameCell == "" {
-						continue
-					}
 					if strings.HasPrefix(nameCell, prefix+"1") {
-						camelCaseName = nameCell[index+1:]
-						note = noteCell[noteIndex+1:]
-						field.Fields = append(field.Fields, b.parseScalarField(camelCaseName, typeCell, note))
+						cursor = b.parseSubField(cursor, namerow, typerow, noterow, field, prefix+"1")
 					} else if strings.HasPrefix(nameCell, prefix) {
 						continue
 					} else {
@@ -318,10 +287,10 @@ func (b *book) parseField(cursor int, namerow, typerow, noterow []string, field 
 		} else if layout == tableaupb.Layout_LAYOUT_DEFAULT {
 			// incell list
 			field.Card = "repeated"
-			field.Name = strcase.ToSnake(nameCell)
+			field.Name = strcase.ToSnake(trimmedNameCell)
 			field.Type, field.TypeDefined = ParseType(elemType)
 			field.Options = &tableaupb.FieldOptions{
-				Name: nameCell,
+				Name: trimmedNameCell,
 				Type: tableaupb.Type_TYPE_INCELL_LIST,
 			}
 		}
@@ -333,40 +302,31 @@ func (b *book) parseField(cursor int, namerow, typerow, noterow []string, field 
 		fieldPairs := ParseIncellStruct(elemType)
 		if fieldPairs == nil {
 			// cross cell struct
-			index := len(elemType)
-			prefix := nameCell[:index]
-
-			field.Name = strcase.ToSnake(elemType)
 			field.Type, field.TypeDefined = ParseType(elemType)
+			field.Name = strcase.ToSnake(field.Type)
+			index := len(field.Type)
+			structName := trimmedNameCell[:index]
 			field.Options = &tableaupb.FieldOptions{
-				Name: prefix,
+				Name: structName,
 			}
-			camelCaseName := nameCell[index:]
-			field.Fields = append(field.Fields, b.parseScalarField(camelCaseName, colType, noteCell))
+			prefix += structName
 
+			name := strings.TrimPrefix(nameCell, prefix)
+			field.Fields = append(field.Fields, b.parseScalarField(name, colType, noteCell))
 			for cursor++; cursor < len(namerow); cursor++ {
 				nameCell := strings.TrimSpace(namerow[cursor])
-				typeCell := strings.TrimSpace(typerow[cursor])
-				noteCell := strings.TrimSpace(noterow[cursor])
-				if nameCell == "" {
-					continue
-				}
 				if strings.HasPrefix(nameCell, prefix) {
-					camelCaseName = nameCell[index:]
-					field.Fields = append(field.Fields, b.parseScalarField(camelCaseName, typeCell, noteCell))
-				} else if strings.HasPrefix(nameCell, prefix) {
-					continue
+					cursor = b.parseSubField(cursor, namerow, typerow, noterow, field, prefix)
 				} else {
-					cursor--
 					break
 				}
 			}
 		} else {
 			// incell struct
-			field.Name = strcase.ToSnake(nameCell)
+			field.Name = strcase.ToSnake(trimmedNameCell)
 			field.Type, field.TypeDefined = ParseType(colType)
 			field.Options = &tableaupb.FieldOptions{
-				Name: nameCell,
+				Name: trimmedNameCell,
 				Type: tableaupb.Type_TYPE_INCELL_STRUCT,
 			}
 
@@ -379,10 +339,19 @@ func (b *book) parseField(cursor int, namerow, typerow, noterow []string, field 
 
 	} else {
 		// scalar
-		*field = *b.parseScalarField(nameCell, typeCell, noteCell)
+		*field = *b.parseScalarField(trimmedNameCell, typeCell, noteCell)
 	}
 
-	return cursor, nil
+	return cursor, true
+}
+
+func (b *book) parseSubField(cursor int, namerow, typerow, noterow []string, field *tableaupb.Field, prefix string) int {
+	subField := &tableaupb.Field{}
+	cursor, ok := b.parseField(cursor, namerow, typerow, noterow, subField, prefix)
+	if ok {
+		field.Fields = append(field.Fields, subField)
+	}
+	return cursor
 }
 
 func (b *book) genNote(note string) string {
@@ -400,7 +369,6 @@ func (b *book) parseScalarField(name, typ, note string) *tableaupb.Field {
 		typ = "google.protobuf.Duration"
 		b.wb.Imports[durationProtoPath] = 1
 	}
-
 	return &tableaupb.Field{
 		Name: strcase.ToSnake(name),
 		Type: typ,
