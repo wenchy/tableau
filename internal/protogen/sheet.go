@@ -1,8 +1,6 @@
 package protogen
 
 import (
-	"bufio"
-	"fmt"
 	"strings"
 
 	"github.com/Wenchy/tableau/proto/tableaupb"
@@ -31,17 +29,17 @@ func (sh *sheetHeader) getNoteCell(cursor int) string {
 	return getCell(sh.noterow, cursor)
 }
 
-type sheet struct {
+type sheetExporter struct {
 	ws             *tableaupb.Worksheet
-	writer         *bufio.Writer
+	w              *Writer
 	isLastSheet    bool
 	nestedMessages map[string]*tableaupb.Field // type name -> field
 }
 
-func (s *sheet) export() error {
-	s.writer.WriteString(fmt.Sprintf("message %s {\n", s.ws.Name))
-	s.writer.WriteString(fmt.Sprintf("  option (tableau.worksheet) = {%s};\n", genPrototext(s.ws.Options)))
-	s.writer.WriteString("\n")
+func (s *sheetExporter) export() error {
+	s.w.P("message %s {", s.ws.Name)
+	s.w.P("  option (tableau.worksheet) = {%s};", genPrototext(s.ws.Options))
+	s.w.P("")
 	// generate the fields
 	depth := 1
 	for i, field := range s.ws.Fields {
@@ -50,19 +48,19 @@ func (s *sheet) export() error {
 			return err
 		}
 	}
-	s.writer.WriteString("}\n")
+	s.w.P("}")
 	if !s.isLastSheet {
-		s.writer.WriteString("\n")
+		s.w.P("")
 	}
 	return nil
 }
 
-func (s *sheet) exportField(depth int, tagid int, field *tableaupb.Field) error {
+func (s *sheetExporter) exportField(depth int, tagid int, field *tableaupb.Field) error {
 	head := "%s%s"
 	if field.Card != "" {
 		head += " " // cardinality exists
 	}
-	s.writer.WriteString(fmt.Sprintf(head+"%s %s = %d [(tableau.field) = {%s}];\n", indent(depth), field.Card, field.Type, field.Name, tagid, genPrototext(field.Options)))
+	s.w.P(head+"%s %s = %d [(tableau.field) = {%s}];", indent(depth), field.Card, field.Type, field.Name, tagid, genPrototext(field.Options))
 
 	if !field.TypeDefined && field.Fields != nil {
 		// iff field is a map or list and message type is not imported.
@@ -80,15 +78,15 @@ func (s *sheet) exportField(depth int, tagid int, field *tableaupb.Field) error 
 		// bookkeeping this nested msessage, so we can check if we can reuse it later.
 		s.nestedMessages[nestedMsgName] = field
 
-		s.writer.WriteString("\n")
-		s.writer.WriteString(fmt.Sprintf("%smessage %s {\n", indent(depth), nestedMsgName))
+		s.w.P("")
+		s.w.P("%smessage %s {", indent(depth), nestedMsgName)
 		for i, f := range field.Fields {
 			tagid := i + 1
 			if err := s.exportField(depth+1, tagid, f); err != nil {
 				return err
 			}
 		}
-		s.writer.WriteString(fmt.Sprintf("%s}\n", indent(depth)))
+		s.w.P("%s}", indent(depth))
 	}
 	return nil
 }
