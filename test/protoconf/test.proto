@@ -9,7 +9,7 @@ import "tableau/protobuf/tableau.proto";
 option (tableau.workbook) = {name:"Test.xlsx"};
 
 message Activity {
-  option (tableau.worksheet) = {name:"Activity"  namerow:1  typerow:2  noterow:3  datarow:5};
+  option (tableau.worksheet) = {name:"Activity" namerow:1 typerow:2 noterow:3 datarow:5};
 
   map<uint32, Activity> activity_map = 1 [(tableau.field) = {key:"ActivityID"}];
 
@@ -26,7 +26,7 @@ message Activity {
       message Section {
         uint32 section_id = 1 [(tableau.field) = {name:"SectionID"}];
         string section_name = 2 [(tableau.field) = {name:"SectionName"}];
-        repeated Item section_item_list = 3 [(tableau.field) = {name:"SectionItem"  layout:LAYOUT_HORIZONTAL}];
+        repeated Item section_item_list = 3 [(tableau.field) = {name:"SectionItem" layout:LAYOUT_HORIZONTAL}];
 
         message Item {
           int32 id = 1 [(tableau.field) = {name:"Id"}];
@@ -38,7 +38,7 @@ message Activity {
           int32 type = 1 [(tableau.field) = {name:"Type"}];
           google.protobuf.Timestamp begin_time = 2 [(tableau.field) = {name:"BeginTime"}];
           google.protobuf.Timestamp end_time = 3 [(tableau.field) = {name:"EndTime"}];
-          repeated int32 params = 4 [(tableau.field) = {name:"Params"  type:TYPE_INCELL_LIST}];
+          repeated int32 params = 4 [(tableau.field) = {name:"Params" type:TYPE_INCELL_LIST}];
         }
         Task task = 5 [(tableau.field) = {name:"Task"}];
 
@@ -49,40 +49,40 @@ message Activity {
           int32 param_3 = 4 [(tableau.field) = {name:"Param3"}];
           int32 target = 5 [(tableau.field) = {name:"Target"}];
         }
-        Info incell_struct = 6 [(tableau.field) = {name:"IncellStruct"  type:TYPE_INCELL_STRUCT}];
+        Info incell_struct = 6 [(tableau.field) = {name:"IncellStruct" type:TYPE_INCELL_STRUCT}];
 
         message Info {
           int32 id = 1 [(tableau.field) = {name:"Id"}];
           string desc = 2 [(tableau.field) = {name:"Desc"}];
         }
-        repeated int32 int_params = 7 [(tableau.field) = {name:"IntParams"  type:TYPE_INCELL_LIST}];
-        map<int32,string> tips = 8 [(tableau.field) = {name:"Tips"  type:TYPE_INCELL_MAP}];
-        repeated string client_param_list = 9 [(tableau.field) = {name:"ClientParam"  layout:LAYOUT_HORIZONTAL}];
+        repeated int32 int_params = 7 [(tableau.field) = {name:"IntParams" type:TYPE_INCELL_LIST}];
+        map<int32,string> tips = 8 [(tableau.field) = {name:"Tips" type:TYPE_INCELL_MAP}];
+        repeated string client_param_list = 9 [(tableau.field) = {name:"ClientParam" layout:LAYOUT_HORIZONTAL}];
       }
     }
   }
 }
 
 message Reward {
-  option (tableau.worksheet) = {name:"Reward"  namerow:1  typerow:2  noterow:3  datarow:5};
+  option (tableau.worksheet) = {name:"Reward" namerow:1 typerow:2 noterow:3 datarow:5};
 
   map<uint32, Reward> reward_map = 1 [(tableau.field) = {key:"ID"}];
 
   message Reward {
     uint32 id = 1 [(tableau.field) = {name:"ID"}];
     string desc = 2 [(tableau.field) = {name:"Desc"}];
-    repeated Item reward_item_list = 3 [(tableau.field) = {name:"RewardItem"  layout:LAYOUT_HORIZONTAL}];
+    repeated Item reward_item_list = 3 [(tableau.field) = {name:"RewardItem" layout:LAYOUT_HORIZONTAL}];
     repeated Exchange exchange_list = 4 [(tableau.field) = {layout:LAYOUT_VERTICAL}];
 
     message Exchange {
       uint32 exchange_id = 1 [(tableau.field) = {name:"ExchangeId"}];
-      repeated ExchangeItem input_item_list = 2 [(tableau.field) = {name:"InputItem"  layout:LAYOUT_HORIZONTAL}];
+      repeated ExchangeItem input_item_list = 2 [(tableau.field) = {name:"InputItem" layout:LAYOUT_HORIZONTAL}];
 
       message ExchangeItem {
         int32 id = 1 [(tableau.field) = {name:"Id"}];
         int32 num = 2 [(tableau.field) = {name:"Num"}];
       }
-      repeated ExchangeItem output_item_list = 3 [(tableau.field) = {name:"OutputItem"  layout:LAYOUT_HORIZONTAL}];
+      repeated ExchangeItem output_item_list = 3 [(tableau.field) = {name:"OutputItem" layout:LAYOUT_HORIZONTAL}];
     }
   }
 }
