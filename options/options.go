@@ -5,8 +5,8 @@ type Format int
 // file format
 const (
 	JSON      Format = 0
-	Protowire        = 1
-	Prototext        = 2
+	Protowire Format = 1
+	Prototext Format = 2
 )
 
 // Options is the wrapper of tableau params.
@@ -19,6 +19,7 @@ type Options struct {
 	Imports      []string      // imported common proto file paths
 	Workbook     string        // workbook path or name
 	Worksheet    string        // worksheet name
+	Xml          *XmlOption    // xml generation settings.
 }
 
 type HeaderOption struct {
@@ -55,6 +56,15 @@ type OutputOption struct {
 	//  ║ {}    │ map fields                 ║
 	//  ╚═══════╧════════════════════════════╝
 	EmitUnpopulated bool // default true
+}
+
+type XmlOption struct {
+}
+
+func Xml(o *XmlOption) Option {
+	return func(opts *Options) {
+		opts.Xml = o
+	}
 }
 
 // Option is the functional option type.
@@ -119,6 +129,7 @@ func newDefaultOptions() *Options {
 			Pretty:                   true,
 			EmitUnpopulated:          true,
 		},
+		Xml: &XmlOption{},
 	}
 }
 
