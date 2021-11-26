@@ -8,35 +8,26 @@ import (
 	"github.com/Wenchy/tableau/options"
 )
 
-// NewTableaux creates a new Tableaux with specified options.
-func NewTableaux(protoPackage, indir, outdir string, setters ...options.Option) *confgen.Tableaux {
+// Xlsx2Conf converts xlsx files (with meta header) to different formatted configuration files.
+// Supported formats: json, prototext, and protowire.
+func Xlsx2Conf(protoPackage, indir, outdir string, setters ...options.Option) {
 	opts := options.ParseOptions(setters...)
-	tbx := confgen.Tableaux{
+	g := confgen.Generator{
 		ProtoPackage: protoPackage,
+		LocationName: opts.LocationName,
 		InputDir:     indir,
 		OutputDir:    outdir,
-
-		LocationName: opts.LocationName,
-
-		Output: opts.Output,
+		Output:       opts.Output,
 	}
 	atom.InitZap(opts.LogLevel)
 	atom.Log.Infof("options inited: %+v", opts)
-	return &tbx
-}
-
-// Protoconf2Xlsx converts protoconf files to xlsx files (with meta header).
-func Protoconf2Xlsx(protoPackage, indir, outdir string) {
-	g := xlsxgen.Generator{
-		ProtoPackage: protoPackage,
-		InputDir:     indir,
-		OutputDir:    outdir,
+	if err := g.Generate(); err != nil {
+		atom.Log.Panic(err)
 	}
-	g.Generate()
 }
 
-// Xlsx2Protoconf converts xlsx files (with meta header) to protoconf files.
-func Xlsx2Protoconf(protoPackage, goPackage, indir, outdir string, setters ...options.Option) {
+// Xlsx2Proto converts xlsx files (with meta header) to protoconf files.
+func Xlsx2Proto(protoPackage, goPackage, indir, outdir string, setters ...options.Option) {
 	opts := options.ParseOptions(setters...)
 	g := protogen.Generator{
 		ProtoPackage: protoPackage,
@@ -50,4 +41,14 @@ func Xlsx2Protoconf(protoPackage, goPackage, indir, outdir string, setters ...op
 	if err := g.Generate(); err != nil {
 		atom.Log.Panic(err)
 	}
+}
+
+// Proto2Xlsx converts protoconf files to xlsx files (with meta header).
+func Proto2Xlsx(protoPackage, indir, outdir string) {
+	g := xlsxgen.Generator{
+		ProtoPackage: protoPackage,
+		InputDir:     indir,
+		OutputDir:    outdir,
+	}
+	g.Generate()
 }
