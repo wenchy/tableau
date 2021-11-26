@@ -1,4 +1,4 @@
-package converter
+package confgen
 
 import (
 	"bytes"

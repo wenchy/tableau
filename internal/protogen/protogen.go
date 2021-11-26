@@ -9,11 +9,11 @@ import (
 	"strings"
 
 	"github.com/Wenchy/tableau/internal/atom"
+	"github.com/Wenchy/tableau/internal/excel"
 	"github.com/Wenchy/tableau/internal/fs"
 	"github.com/Wenchy/tableau/options"
 	"github.com/Wenchy/tableau/proto/tableaupb"
 	"github.com/pkg/errors"
-	"github.com/xuri/excelize/v2"
 )
 
 var mapRegexp *regexp.Regexp
@@ -58,17 +58,13 @@ func (gen *Generator) Generate() error {
 		}
 		wbPath := filepath.Join(gen.InputDir, wbFile.Name())
 		atom.Log.Debugf("workbook: %s", wbPath)
-		f, err := excelize.OpenFile(wbPath)
+		book, err := excel.NewBook(wbPath)
 		if err != nil {
-			return errors.Wrapf(err, "failed to open workbook: %s", wbPath)
+			return errors.Wrapf(err, "failed to create new workbook: %s", wbPath)
 		}
 		// creat a book parser
 		bp := newBookParser(wbFile.Name(), gen.Imports)
-		for _, sheetName := range f.GetSheetList() {
-			rows, err := f.GetRows(sheetName)
-			if err != nil {
-				errors.Wrapf(err, "failed to get rows of sheet: %s@%s", wbFile.Name(), sheetName)
-			}
+		for sheetName, sheet := range book.Sheets {
 			// parse sheet header
 			ws := &tableaupb.Worksheet{
 				Options: &tableaupb.WorksheetOptions{
@@ -84,9 +80,9 @@ func (gen *Generator) Generate() error {
 				Name:   sheetName,
 			}
 			shHeader := &sheetHeader{
-				namerow: rows[gen.Header.Namerow-1],
-				typerow: rows[gen.Header.Typerow-1],
-				noterow: rows[gen.Header.Noterow-1],
+				namerow: sheet.Rows[gen.Header.Namerow-1],
+				typerow: sheet.Rows[gen.Header.Typerow-1],
+				noterow: sheet.Rows[gen.Header.Noterow-1],
 			}
 
 			var ok bool

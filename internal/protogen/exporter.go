@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Wenchy/tableau/internal/atom"
+	"github.com/Wenchy/tableau/internal/printer"
 	"github.com/Wenchy/tableau/proto/tableaupb"
 	"github.com/emirpasic/gods/sets/treeset"
 	"github.com/golang/protobuf/proto"
@@ -112,8 +113,8 @@ func (x *sheetExporter) exportField(depth int, tagid int, field *tableaupb.Field
 		// head += " " // cardinality exists
 		cardTypeSep = " "
 	}
-	// x.g.P(head+"%x %x = %d [(tableau.field) = {%x}];", indent(depth), field.Card, field.Type, field.Name, tagid, genPrototext(field.Options))
-	x.g.P(indent(depth), field.Card, cardTypeSep, field.Type, " ", field.Name, " = ", tagid, " [(tableau.field) = {", genPrototext(field.Options), "}];")
+	// x.g.P(head+"%x %x = %d [(tableau.field) = {%x}];", printer.Indent(depth), field.Card, field.Type, field.Name, tagid, genPrototext(field.Options))
+	x.g.P(printer.Indent(depth), field.Card, cardTypeSep, field.Type, " ", field.Name, " = ", tagid, " [(tableau.field) = {", genPrototext(field.Options), "}];")
 
 	if !field.TypeDefined && field.Fields != nil {
 		// iff field is a map or list and message type is not imported.
@@ -132,14 +133,14 @@ func (x *sheetExporter) exportField(depth int, tagid int, field *tableaupb.Field
 		x.nestedMessages[nestedMsgName] = field
 
 		x.g.P("")
-		x.g.P(indent(depth), "message ", nestedMsgName, " {")
+		x.g.P(printer.Indent(depth), "message ", nestedMsgName, " {")
 		for i, f := range field.Fields {
 			tagid := i + 1
 			if err := x.exportField(depth+1, tagid, f); err != nil {
 				return err
 			}
 		}
-		x.g.P(indent(depth), "}")
+		x.g.P(printer.Indent(depth), "}")
 	}
 	return nil
 }
@@ -156,9 +157,7 @@ func genPrototext(m protoreflect.ProtoMessage) string {
 	return text
 }
 
-func indent(depth int) string {
-	return strings.Repeat("  ", depth)
-}
+
 
 func isSameFieldMessageType(left, right *tableaupb.Field) bool {
 	if left == nil || right == nil {

@@ -1,7 +1,6 @@
-package converter
+package confgen
 
 import (
-	"io/ioutil"
 	"math"
 	"os"
 	"regexp"
@@ -11,12 +10,13 @@ import (
 	"unicode"
 
 	"github.com/Wenchy/tableau/internal/atom"
+	"github.com/Wenchy/tableau/internal/confgen/mexporter"
+	"github.com/Wenchy/tableau/internal/excel"
+	"github.com/Wenchy/tableau/internal/printer"
 	"github.com/Wenchy/tableau/options"
 	"github.com/Wenchy/tableau/proto/tableaupb"
 	"github.com/iancoleman/strcase"
-	"github.com/tealeg/xlsx/v3"
-	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/encoding/prototext"
+	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
@@ -25,6 +25,16 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+var newlineRegex *regexp.Regexp
+
+func init() {
+	newlineRegex = regexp.MustCompile(`\r?\n?`)
+}
+
+func clearNewline(s string) string {
+	return newlineRegex.ReplaceAllString(s, "")
+}
 
 type metasheet struct {
 	worksheet string // worksheet name
@@ -51,245 +61,114 @@ var specialMessageMap = map[string]int{
 	"google.protobuf.Duration":  1,
 }
 
-func (tbx *Tableaux) Convert() {
-	// parseActivity()
-	// parseItem()
-	// numFiles := protoregistry.GlobalFiles.NumFiles()
-	// atom.Log.Debug("numFiles", numFiles)
-	// protoregistry.GlobalFiles.RangeFiles(func(fd protoreflect.FileDescriptor) bool {
-	// 	atom.Log.Debugf("filepath: %s", fd.Path())
-	// 	return true
-	// })
-	// atom.Log.Debug("====================")
-
-	// create oupput dir
+func (tbx *Tableaux) Convert() error {
+	// create output dir
 	err := os.MkdirAll(tbx.OutputDir, 0700)
 	if err != nil {
-		panic(err)
+		return errors.Wrapf(err, "failed to create output dir: %s", tbx.OutputDir)
 	}
 
-	protoPackage := protoreflect.FullName(tbx.ProtoPackage)
-	protoregistry.GlobalFiles.RangeFilesByPackage(protoPackage, func(fd protoreflect.FileDescriptor) bool {
-		atom.Log.Debugf("filepath: %s", fd.Path())
-		opts := fd.Options().(*descriptorpb.FileOptions)
-		workbook := proto.GetExtension(opts, tableaupb.E_Workbook).(*tableaupb.WorkbookOptions)
-		if workbook == nil {
-			return true
-		}
-
-		atom.Log.Debugf("proto: %s, workbook %s", fd.Path(), workbook)
-		msgs := fd.Messages()
-		for i := 0; i < msgs.Len(); i++ {
-			md := msgs.Get(i)
-			// atom.Log.Debugf("%s", md.FullName())
-			opts := md.Options().(*descriptorpb.MessageOptions)
-			worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(*tableaupb.WorksheetOptions)
-			if worksheet == nil {
-				continue
+	protoregistry.GlobalFiles.RangeFilesByPackage(
+		protoreflect.FullName(tbx.ProtoPackage),
+		func(fd protoreflect.FileDescriptor) bool {
+			atom.Log.Debugf("filepath: %s", fd.Path())
+			opts := fd.Options().(*descriptorpb.FileOptions)
+			workbook := proto.GetExtension(opts, tableaupb.E_Workbook).(*tableaupb.WorkbookOptions)
+			if workbook == nil {
+				return true
 			}
-			atom.Log.Infof("generate: %s, message: %s@%s, worksheet: %s@%s", md.Name(), fd.Path(), md.Name(), workbook.Name, worksheet.Name)
-			newMsg := dynamicpb.NewMessage(md)
-			tbx.Export(newMsg)
-		}
-		return true
-	})
+
+			atom.Log.Debugf("proto: %s, workbook %s", fd.Path(), workbook)
+			msgs := fd.Messages()
+			for i := 0; i < msgs.Len(); i++ {
+				md := msgs.Get(i)
+				// atom.Log.Debugf("%s", md.FullName())
+				opts := md.Options().(*descriptorpb.MessageOptions)
+				worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(*tableaupb.WorksheetOptions)
+				if worksheet == nil {
+					continue
+				}
+				atom.Log.Infof("generate: %s, message: %s@%s, worksheet: %s@%s", md.Name(), fd.Path(), md.Name(), workbook.Name, worksheet.Name)
+				newMsg := dynamicpb.NewMessage(md)
+				tbx.export(newMsg)
+			}
+			return true
+		})
+	return nil
 }
 
-// Export the protomsg message.
-func (tbx *Tableaux) Export(protomsg proto.Message) {
+// export the protomsg message.
+func (tbx *Tableaux) export(protomsg proto.Message) error {
 	md := protomsg.ProtoReflect().Descriptor()
 	msg := protomsg.ProtoReflect()
-	_, workbook := TestParseFileOptions(md.ParentFile())
-	atom.Log.Debug("==================")
-	msgName, worksheetName, namerow, noterow, datarow, transpose := TestParseMessageOptions(md)
+	_, workbook := parseFileOptions(md.ParentFile())
+	msgName, worksheetName, namerow, noterow, datarow, transpose := parseMessageOptions(md)
 	tbx.metasheet.worksheet = worksheetName
 	tbx.metasheet.namerow = namerow
 	tbx.metasheet.noterow = noterow
 	tbx.metasheet.datarow = datarow
 	tbx.metasheet.transpose = transpose
 
-	atom.Log.Debug("==================")
-	sheet := ReadSheet(tbx.InputDir+workbook.Name, worksheetName)
+	wbPath := tbx.InputDir + workbook.Name
+	book, err := excel.NewBook(wbPath)
+	if err != nil {
+		return errors.Wrapf(err, "failed to create new workbook: %s", wbPath)
+	}
+
+	sheet, ok := book.Sheets[worksheetName]
+	if !ok {
+		return errors.Wrapf(err, "not found worksheet: %s", worksheetName)
+	}
+
 	if transpose {
 		// col caprow: name row
 		// col [datarow, MaxRow]: data
-		for ncol := 0; ncol < sheet.MaxCol; ncol++ {
-			if ncol >= int(datarow)-1 {
-				// row, err := sheet.Row(nrow)
-				// if err != nil {
-				// 	panic(err)
-				// }
+		for col := 0; col < sheet.MaxCol; col++ {
+			if col >= int(datarow)-1 {
 				kv := make(map[string]string)
-				for i := 0; i < sheet.MaxRow; i++ {
-					captionCell, err := sheet.Cell(i, int(namerow)-1)
+				for row := 0; row < sheet.MaxRow; row++ {
+					name, err := sheet.Cell(row, int(namerow)-1)
 					if err != nil {
 						panic(err)
 					}
-					key := captionCell.Value
-					dataCell, err := sheet.Cell(i, ncol)
+					name = clearNewline(name)
+					data, err := sheet.Cell(row, col)
 					if err != nil {
 						panic(err)
 					}
-					value := dataCell.Value
-					re := regexp.MustCompile(`\r?\n?`)
-					key = re.ReplaceAllString(key, "")
-					kv[key] = value
+					kv[name] = data
 				}
-				tbx.TestParseFieldOptions(msg, kv, 0, "")
+				tbx.parseFieldOptions(msg, kv, 0, "")
 			}
 		}
-
 	} else {
 		// row namerow: name row
 		// row [datarow, MaxRow]: data row
-		for nrow := 0; nrow < sheet.MaxRow; nrow++ {
-			if nrow >= int(datarow)-1 {
-				// row, err := sheet.Row(nrow)
-				// if err != nil {
-				// 	panic(err)
-				// }
+		for row := 0; row < sheet.MaxRow; row++ {
+			if row >= int(datarow)-1 {
 				kv := make(map[string]string)
-				for i := 0; i < sheet.MaxCol; i++ {
-					captionCell, err := sheet.Cell(int(namerow)-1, i)
+				for col := 0; col < sheet.MaxCol; col++ {
+					name, err := sheet.Cell(int(namerow)-1, col)
 					if err != nil {
 						panic(err)
 					}
-					key := captionCell.Value
-					dataCell, err := sheet.Cell(nrow, i)
+					name = clearNewline(name)
+					data, err := sheet.Cell(row, col)
 					if err != nil {
 						panic(err)
 					}
-					value := dataCell.Value
-					re := regexp.MustCompile(`\r?\n?`)
-					key = re.ReplaceAllString(key, "")
-					kv[key] = value
+					kv[name] = data
 				}
-				tbx.TestParseFieldOptions(msg, kv, 0, "")
+				tbx.parseFieldOptions(msg, kv, 0, "")
 			}
 		}
 	}
-	atom.Log.Debug("==================")
-	filename := msgName
-	if tbx.Output.FilenameAsSnakeCase {
-		filename = strcase.ToSnake(msgName)
-	}
-	filePath := tbx.OutputDir + filename
-	switch tbx.Output.Format {
-	case options.JSON:
-		exportJSON(protomsg, filePath, tbx.Output.Pretty, tbx.Output.EmitUnpopulated)
-	case options.Protowire:
-		exportProtowire(protomsg, filePath)
-	case options.Prototext:
-		exportPrototext(protomsg, filePath, tbx.Output.Pretty)
-	default:
-		atom.Log.Debugf("unknown format, default to JSON")
-		exportJSON(protomsg, filePath, tbx.Output.Pretty, tbx.Output.EmitUnpopulated)
-	}
+	x := mexporter.New(msgName, protomsg, tbx.OutputDir, tbx.Output)
+	return x.Export()
 }
 
-func exportJSON(protomsg proto.Message, filePath string, pretty bool, emitUnpopulated bool) {
-	var out []byte
-	var err error
-	if pretty {
-		opts := protojson.MarshalOptions{
-			Multiline:       true,
-			Indent:          "    ",
-			EmitUnpopulated: emitUnpopulated,
-		}
-		out, err = opts.Marshal(protomsg)
-		if err != nil {
-			atom.Log.Panicf("Failed to marshal protomsg as JSON: %v", err)
-		}
-	} else {
-		out, err = protojson.Marshal(protomsg)
-		if err != nil {
-			panic(err)
-		}
-	}
-	err = ioutil.WriteFile(filePath+".json", out, 0644)
-	if err != nil {
-		panic(err)
-	}
-	// out.WriteTo(os.Stdout)
-}
-
-func exportProtowire(protomsg proto.Message, filePath string) {
-	out, err := proto.Marshal(protomsg)
-	if err != nil {
-		atom.Log.Panicf("Failed to encode protomsg: %v", err)
-	}
-	if err := ioutil.WriteFile(filePath+".protowire", out, 0644); err != nil {
-		atom.Log.Panicf("Failed to write file: %v", err)
-	}
-	// out.WriteTo(os.Stdout)
-}
-
-func exportPrototext(protomsg proto.Message, filePath string, pretty bool) {
-	var out []byte
-	var err error
-	if pretty {
-		opts := prototext.MarshalOptions{
-			Multiline: true,
-			Indent:    "    ",
-		}
-		out, err = opts.Marshal(protomsg)
-		if err != nil {
-			atom.Log.Panicf("failed to encode protomsg: %v", err)
-		}
-	} else {
-		out, err = prototext.Marshal(protomsg)
-		if err != nil {
-			panic(err)
-		}
-	}
-	if err := ioutil.WriteFile(filePath+".prototext", out, 0644); err != nil {
-		atom.Log.Panicf("failed to write file: %v", err)
-	}
-	// out.WriteTo(os.Stdout)
-}
-
-func getTabStr(depth int) string {
-	tab := ""
-	for i := 0; i < depth; i++ {
-		tab += "\t"
-	}
-	return tab
-}
-
-// ReadSheet read a sheet from specified workbook.
-func ReadSheet(workbookName string, worksheetName string) *xlsx.Sheet {
-	// open an existing file
-	wb, err := xlsx.OpenFile(workbookName)
-	if err != nil {
-		panic(err)
-	}
-	sh, ok := wb.Sheet[worksheetName]
-	if !ok {
-		atom.Log.Panicf("Sheet %s does not exist in %s", worksheetName, workbookName)
-	}
-	exportSheet(sh)
-	atom.Log.Debug("----")
-	return sh
-}
-
-func exportSheet(sheet *xlsx.Sheet) {
-	atom.Log.Debugf("MaxCol: %d, MaxRow: %d", sheet.MaxCol, sheet.MaxRow)
-	// row 0: namerow
-	// row 1 - MaxRow: datarow
-	for nrow := 0; nrow < sheet.MaxRow; nrow++ {
-		for ncol := 0; ncol < sheet.MaxCol; ncol++ {
-			// get the Cell in D1, which is row 0, column 3
-			cell, err := sheet.Cell(nrow, ncol)
-			if err != nil {
-				panic(err)
-			}
-			atom.Log.Debugf("%s ", cell.Value)
-		}
-	}
-}
-
-// TestParseFileOptions is aimed to parse the options of a protobuf definition file.
-func TestParseFileOptions(fd protoreflect.FileDescriptor) (string, *tableaupb.WorkbookOptions) {
+// parseFileOptions is aimed to parse the options of a protobuf definition file.
+func parseFileOptions(fd protoreflect.FileDescriptor) (string, *tableaupb.WorkbookOptions) {
 	opts := fd.Options().(*descriptorpb.FileOptions)
 	protofile := string(fd.FullName())
 	workbook := proto.GetExtension(opts, tableaupb.E_Workbook).(*tableaupb.WorkbookOptions)
@@ -297,8 +176,8 @@ func TestParseFileOptions(fd protoreflect.FileDescriptor) (string, *tableaupb.Wo
 	return protofile, workbook
 }
 
-// TestParseMessageOptions is aimed to parse the options of a protobuf message.
-func TestParseMessageOptions(md protoreflect.MessageDescriptor) (string, string, int32, int32, int32, bool) {
+// parseMessageOptions is aimed to parse the options of a protobuf message.
+func parseMessageOptions(md protoreflect.MessageDescriptor) (string, string, int32, int32, int32, bool) {
 	opts := md.Options().(*descriptorpb.MessageOptions)
 	msgName := string(md.Name())
 	worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(*tableaupb.WorksheetOptions)
@@ -320,8 +199,8 @@ func TestParseMessageOptions(md protoreflect.MessageDescriptor) (string, string,
 	return msgName, worksheetName, namerow, noterow, datarow, transpose
 }
 
-// TestParseFieldOptions is aimed to parse the options of all the fields of a protobuf message.
-func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[string]string, depth int, prefix string) {
+// parseFieldOptions is aimed to parse the options of all the fields of a protobuf message.
+func (tbx *Tableaux) parseFieldOptions(msg protoreflect.Message, row map[string]string, depth int, prefix string) {
 	md := msg.Descriptor()
 	opts := md.Options().(*descriptorpb.MessageOptions)
 	worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(*tableaupb.WorksheetOptions)
@@ -331,11 +210,11 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 	}
 
 	pkg := md.ParentFile().Package()
-	atom.Log.Debugf("%s// %s, '%s', %v, %v, %v", getTabStr(depth), md.FullName(), worksheetName, md.IsMapEntry(), prefix, pkg)
+	atom.Log.Debugf("%s// %s, '%s', %v, %v, %v", printer.Indent(depth), md.FullName(), worksheetName, md.IsMapEntry(), prefix, pkg)
 	for i := 0; i < md.Fields().Len(); i++ {
 		fd := md.Fields().Get(i)
 		if string(pkg) != tbx.ProtoPackage && pkg != "google.protobuf" {
-			atom.Log.Debugf("%s// no need to proces package: %v", getTabStr(depth), pkg)
+			atom.Log.Debugf("%s// no need to proces package: %v", printer.Indent(depth), pkg)
 			return
 		}
 		msgName := ""
@@ -386,7 +265,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 			subsep = ":"
 		}
 		atom.Log.Debugf("%s%s(%v) %s(%s) %s = %d [(name) = \"%s\", (type) = %s, (key) = \"%s\", (layout) = \"%s\", (sep) = \"%s\"];",
-			getTabStr(depth), fd.Cardinality().String(), fd.IsMap(), fd.Kind().String(), msgName, fd.FullName().Name(), fd.Number(), prefix+name, etype.String(), key, layout.String(), sep)
+			printer.Indent(depth), fd.Cardinality().String(), fd.IsMap(), fd.Kind().String(), msgName, fd.FullName().Name(), fd.Number(), prefix+name, etype.String(), key, layout.String(), sep)
 		atom.Log.Debugw("field metadata",
 			"tabs", depth,
 			"cardinality", fd.Cardinality().String(),
@@ -441,7 +320,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 			keyFd := fd.MapKey()
 			valueFd := fd.MapValue()
 			// newKey := protoreflect.ValueOf(int32(1)).MapKey()
-			// newKey := tbx.getFieldValue(keyFd, "1111001").MapKey()
+			// newKey := tbx.parseFieldValue(keyFd, "1111001").MapKey()
 			if etype == tableaupb.Type_TYPE_INCELL_MAP {
 				if valueFd.Kind() == protoreflect.MessageKind {
 					atom.Log.Panicf("in-cell map do not support value as message type")
@@ -459,9 +338,9 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 						if len(kv) != 2 {
 							atom.Log.Panicf("illegal key-value pair: %v, %v", prefix+name, pair)
 						}
-						key := tbx.getFieldValue(keyFd, kv[0]).MapKey()
+						key := tbx.parseFieldValue(keyFd, kv[0]).MapKey()
 						val := reflectMap.NewValue()
-						val = tbx.getFieldValue(valueFd, kv[1])
+						val = tbx.parseFieldValue(valueFd, kv[1])
 						reflectMap.Set(key, val)
 					}
 				}
@@ -477,14 +356,14 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 							if !ok {
 								atom.Log.Panicf("key not found: %s", prefix+name+key)
 							}
-							newMapKey = tbx.getFieldValue(keyFd, cellValue).MapKey()
+							newMapKey = tbx.parseFieldValue(keyFd, cellValue).MapKey()
 							var newMapValue protoreflect.Value
 							if reflectMap.Has(newMapKey) {
 								newMapValue = reflectMap.Mutable(newMapKey)
 							} else {
 								newMapValue = reflectMap.NewValue()
 							}
-							tbx.TestParseFieldOptions(newMapValue.Message(), row, depth+1, prefix+name+strconv.Itoa(i))
+							tbx.parseFieldOptions(newMapValue.Message(), row, depth+1, prefix+name+strconv.Itoa(i))
 							if !MessageValueEqual(emptyMapValue, newMapValue) {
 								reflectMap.Set(newMapKey, newMapValue)
 							}
@@ -495,14 +374,14 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 						if !ok {
 							atom.Log.Panicf("key not found: %s", prefix+name+key)
 						}
-						newMapKey = tbx.getFieldValue(keyFd, cellValue).MapKey()
+						newMapKey = tbx.parseFieldValue(keyFd, cellValue).MapKey()
 						var newMapValue protoreflect.Value
 						if reflectMap.Has(newMapKey) {
 							newMapValue = reflectMap.Mutable(newMapKey)
 						} else {
 							newMapValue = reflectMap.NewValue()
 						}
-						tbx.TestParseFieldOptions(newMapValue.Message(), row, depth+1, prefix+name)
+						tbx.parseFieldOptions(newMapValue.Message(), row, depth+1, prefix+name)
 						if !MessageValueEqual(emptyMapValue, newMapValue) {
 							reflectMap.Set(newMapKey, newMapValue)
 						}
@@ -517,7 +396,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 					if !ok {
 						atom.Log.Panicf("key not found: %s", prefix+name+key)
 					}
-					newMapKey = tbx.getFieldValue(keyFd, cellValue).MapKey()
+					newMapKey = tbx.parseFieldValue(keyFd, cellValue).MapKey()
 					var newMapValue protoreflect.Value
 					if reflectMap.Has(newMapKey) {
 						newMapValue = reflectMap.Mutable(newMapKey)
@@ -529,7 +408,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 					if !ok {
 						atom.Log.Panicf("value not found: %s", prefix+name+value)
 					}
-					newMapValue = tbx.getFieldValue(fd, cellValue)
+					newMapValue = tbx.parseFieldValue(fd, cellValue)
 					if !reflectMap.Has(newMapKey) {
 						reflectMap.Set(newMapKey, newMapValue)
 					}
@@ -554,7 +433,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 					// slice of length 1 whose only element is s.
 					splits := strings.Split(cellValue, sep)
 					for _, v := range splits {
-						value := tbx.getFieldValue(fd, v)
+						value := tbx.parseFieldValue(fd, v)
 						reflectList.Append(value)
 					}
 				}
@@ -563,7 +442,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 				if layout == tableaupb.Layout_LAYOUT_VERTICAL {
 					newListValue := reflectList.NewElement()
 					if fd.Kind() == protoreflect.MessageKind {
-						tbx.TestParseFieldOptions(newListValue.Message(), row, depth+1, prefix+name)
+						tbx.parseFieldOptions(newListValue.Message(), row, depth+1, prefix+name)
 						if !MessageValueEqual(emptyListValue, newListValue) {
 							reflectList.Append(newListValue)
 						}
@@ -577,7 +456,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 					for i := 1; i <= size; i++ {
 						newListValue := reflectList.NewElement()
 						if fd.Kind() == protoreflect.MessageKind {
-							tbx.TestParseFieldOptions(newListValue.Message(), row, depth+1, prefix+name+strconv.Itoa(i))
+							tbx.parseFieldOptions(newListValue.Message(), row, depth+1, prefix+name+strconv.Itoa(i))
 							if !MessageValueEqual(emptyListValue, newListValue) {
 								reflectList.Append(newListValue)
 							}
@@ -586,7 +465,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 							if !ok {
 								atom.Log.Panicf("not found column name: %v", prefix+name)
 							}
-							newListValue = tbx.getFieldValue(fd, cellValue)
+							newListValue = tbx.parseFieldValue(fd, cellValue)
 							reflectList.Append(newListValue)
 						}
 					}
@@ -610,7 +489,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 						for i := 0; i < subMd.Fields().Len() && i < len(splits); i++ {
 							fd := subMd.Fields().Get(i)
 							// atom.Log.Debugf("fd.FullName().Name(): ", fd.FullName().Name())
-							value := tbx.getFieldValue(fd, splits[i])
+							value := tbx.parseFieldValue(fd, splits[i])
 							newValue.Message().Set(fd, value)
 						}
 					}
@@ -622,13 +501,13 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 						if !ok {
 							atom.Log.Panicf("not found column name: %v", prefix+name)
 						}
-						newValue = tbx.getFieldValue(fd, cellValue)
+						newValue = tbx.parseFieldValue(fd, cellValue)
 					} else {
 						pkgName := newValue.Message().Descriptor().ParentFile().Package()
 						if string(pkgName) != tbx.ProtoPackage {
 							atom.Log.Panicf("unknown message %v in package %v", subMsgName, pkgName)
 						}
-						tbx.TestParseFieldOptions(newValue.Message(), row, depth+1, prefix+name)
+						tbx.parseFieldOptions(newValue.Message(), row, depth+1, prefix+name)
 					}
 				}
 				if !MessageValueEqual(emptyValue, newValue) {
@@ -639,7 +518,7 @@ func (tbx *Tableaux) TestParseFieldOptions(msg protoreflect.Message, row map[str
 				if !ok {
 					atom.Log.Panicf("not found column name: %v", prefix+name)
 				}
-				newValue = tbx.getFieldValue(fd, cellValue)
+				newValue = tbx.parseFieldValue(fd, cellValue)
 				msg.Set(fd, newValue)
 			}
 		}
@@ -676,7 +555,7 @@ func getPrefixSize(row map[string]string, prefix string) int {
 	return size
 }
 
-func (tbx *Tableaux) getFieldValue(fd protoreflect.FieldDescriptor, cellValue string) protoreflect.Value {
+func (tbx *Tableaux) parseFieldValue(fd protoreflect.FieldDescriptor, cellValue string) protoreflect.Value {
 	switch fd.Kind() {
 	case protoreflect.Int32Kind:
 		var val int64 // default

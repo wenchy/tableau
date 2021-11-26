@@ -2,16 +2,16 @@ package tableau
 
 import (
 	"github.com/Wenchy/tableau/internal/atom"
-	"github.com/Wenchy/tableau/internal/converter"
+	"github.com/Wenchy/tableau/internal/confgen"
 	"github.com/Wenchy/tableau/internal/protogen"
 	"github.com/Wenchy/tableau/internal/xlsxgen"
 	"github.com/Wenchy/tableau/options"
 )
 
 // NewTableaux creates a new Tableaux with specified options.
-func NewTableaux(protoPackage, indir, outdir string, setters ...options.Option) *converter.Tableaux {
+func NewTableaux(protoPackage, indir, outdir string, setters ...options.Option) *confgen.Tableaux {
 	opts := options.ParseOptions(setters...)
-	tbx := converter.Tableaux{
+	tbx := confgen.Tableaux{
 		ProtoPackage: protoPackage,
 		InputDir:     indir,
 		OutputDir:    outdir,
