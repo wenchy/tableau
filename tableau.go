@@ -47,5 +47,7 @@ func Xlsx2Protoconf(protoPackage, goPackage, indir, outdir string, setters ...op
 		Imports:      opts.Imports,
 	}
 
-	g.Generate()
+	if err := g.Generate(); err != nil {
+		atom.Log.Panic(err)
+	}
 }
