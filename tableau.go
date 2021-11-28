@@ -73,3 +73,18 @@ func ParseMeta(indir, relWorkbookPath string) importer.Importer {
 		importer.Parser(parser),
 	)
 }
+
+// Xml2Protoconf converts xml files to protoconf files.
+func Xml2Protoconf(protoPackage, goPackage, indir, outdir string, setters ...options.Option) {
+	opts := options.ParseOptions(setters...)
+	g := protogen.XmlGenerator{
+		ProtoPackage: protoPackage,
+		GoPackage:    goPackage,
+		InputDir:     indir,
+		OutputDir:    outdir,
+		Xml:          opts.Xml,
+		Imports:      opts.Imports,
+	}
+
+	g.Generate()
+}

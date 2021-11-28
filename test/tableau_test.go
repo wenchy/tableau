@@ -104,3 +104,19 @@ func Test_CSV2Excel(t *testing.T) {
 		}
 	}
 }
+
+func Test_GenerateXmlProtoconf(t *testing.T) {
+	tableau.Xml2Protoconf(
+		"test",
+		"github.com/Wenchy/tableau/cmd/test/testpb",
+		"./testdata/xml",
+		"./protoconf/xml",
+		options.Xml(
+			&options.XmlOption{}),
+		options.Imports(
+			[]string{
+				"cs_com_def.proto",
+			},
+		),
+	)
+}

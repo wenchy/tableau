@@ -3,6 +3,8 @@ module github.com/Wenchy/tableau
 go 1.14
 
 require (
+	github.com/antchfx/xmlquery v1.3.8 // indirect
+	github.com/antchfx/xpath v1.2.0 // indirect
 	github.com/emirpasic/gods v1.12.0
 	github.com/golang/protobuf v1.5.2
 	github.com/iancoleman/strcase v0.2.0

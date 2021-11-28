@@ -1,18 +1,26 @@
 package protogen
 
 import (
-	"bufio"
+	// "github.com/antchfx/xpath"
+	// "bufio"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
+
+	// "io"
 
 	"github.com/Wenchy/tableau/internal/atom"
 	"github.com/Wenchy/tableau/options"
 	"github.com/Wenchy/tableau/proto/tableaupb"
-	"google.golang.org/protobuf/proto"
+
+	// "google.golang.org/protobuf/proto"
+	"github.com/antchfx/xmlquery"
+	"github.com/antchfx/xpath"
+
+	// "github.com/antchfx/xpath"
 	"github.com/iancoleman/strcase"
-	"github.com/xuri/excelize/v2"
 )
 
 type XmlGenerator struct {
@@ -20,8 +28,19 @@ type XmlGenerator struct {
 	GoPackage    string // golang package name.
 	InputDir     string // input dir of workbooks.
 	OutputDir    string // output dir of generated protoconf files.
+	Imports      []string // imported common proto file paths
 
 	Xml *options.XmlOption // xml generation settings
+}
+
+type xml struct {
+	xml *tableaupb.Xml
+}
+
+var numRegex *regexp.Regexp
+
+func init() {
+	numRegex = regexp.MustCompile(`[0-9]+`) // e.g.: Item1ID
 }
 
 func (gen *XmlGenerator) Generate() {
@@ -40,358 +59,144 @@ func (gen *XmlGenerator) Generate() {
 		atom.Log.Fatal(err)
 	}
 	for _, xmlFile := range files {
+		// ignore temp file named with prefix "~$"
 		if strings.HasPrefix(xmlFile.Name(), "~$") {
-			// ignore temp file named with prefix "~$"
 			continue
 		}
+		// open xml file and parse the document
 		xmlPath := filepath.Join(gen.InputDir, xmlFile.Name())
 		atom.Log.Debugf("xml: %s", xmlPath)
-		f, err := excelize.OpenFile(xmlPath)
+		f, err := os.Open(xmlPath)
 		if err != nil {
 			atom.Log.Panic(err)
-			return
+			continue
 		}
-		wbProtoName := strcase.ToSnake(strings.TrimSuffix(xmlFile.Name(), filepath.Ext(xmlFile.Name())))
+		p, err := xmlquery.CreateStreamParser(f, "/")
+		if err != nil {
+			atom.Log.Panic(err)
+			continue
+		}
+		// create xml proto meta struct
+		xmlProtoName := strcase.ToSnake(strings.TrimSuffix(xmlFile.Name(), filepath.Ext(xmlFile.Name())))
 		xml := &xml{
-			wb: &tableaupb.Workbook{
-				Options: &tableaupb.WorkbookOptions{
+			xml: &tableaupb.Xml{
+				Options: &tableaupb.XmlOptions{
 					Name: xmlFile.Name(),
 				},
-				Worksheets: []*tableaupb.Worksheet{},
-				Name:       wbProtoName,
+				Root: &tableaupb.Element{},
+				Name:       xmlProtoName,
 				Imports: map[string]int32{
-					"tableau/protobuf/options.proto": 1, // default import
+					tableauProtoPath: 1, // default import
 				},
 			},
-			withNote: false,
 		}
-
-		for _, sheetName := range f.GetSheetMap() {
-			rows, err := f.GetRows(sheetName)
-			if err != nil {
-				atom.Log.Panic(err)
-			}
-			ws := &tableaupb.Worksheet{
-				Options: &tableaupb.WorksheetOptions{
-					Name:      sheetName,
-					Namerow:   gen.Header.Namerow,
-					Typerow:   gen.Header.Typerow,
-					Noterow:   gen.Header.Noterow,
-					Datarow:   gen.Header.Datarow,
-					Transpose: false,
-					Tags:      "",
-				},
-				Fields: []*tableaupb.Field{},
-				Name:   sheetName,
-			}
-			namerow := rows[0]
-			typerow := rows[1]
-			noterow := rows[2]
-
-			for i := 0; i < len(namerow); i++ {
-				nameCell := strings.TrimSpace(namerow[i])
-				// typeCell := strings.TrimSpace(typerow[i])
-				if nameCell == "" {
-					continue
-				}
-				field := &tableaupb.Field{}
-				cursor, err := xml.parseField(i, namerow, typerow, noterow, field)
-				if err != nil {
-					atom.Log.Panic(err)
-				}
-				i = cursor
-				ws.Fields = append(ws.Fields, field)
-			}
-			xml.wb.Worksheets = append(xml.wb.Worksheets, ws)
+		for _, path := range gen.Imports {
+			xml.xml.Imports[path] = 1 // custom imports
 		}
-		if err := gen.exportWorkbook(xml.wb); err != nil {
+		n, err := p.Read()
+		if err != nil {
 			atom.Log.Panic(err)
 		}
+		gen.parseNode(xmlquery.CreateXPathNavigator(n), xml.xml.Root)
 	}
 }
 
-type xml struct {
-	wb       *tableaupb.Workbook
-	withNote bool
-}
-
-func (b *xml) parseField(cursor int, namerow, typerow, noterow []string, field *tableaupb.Field) (int, error) {
-	nameCell := strings.TrimSpace(namerow[cursor])
-	typeCell := strings.TrimSpace(typerow[cursor])
-	noteCell := strings.TrimSpace(noterow[cursor])
-	atom.Log.Debugf("column|name: %s, type: %s", nameCell, typeCell)
-	var err error
-	if matches := mapRegexp.FindStringSubmatch(typeCell); len(matches) > 0 {
-		// map
-		keyType := strings.TrimSpace(matches[1])
-		valueType := strings.TrimSpace(matches[2])
-
-		field.Name = strcase.ToSnake(valueType) + "_map"
-		field.Type = typeCell
-		field.MapEntry = &tableaupb.MapEntry{
-			KeyType:   keyType,
-			ValueType: valueType,
-		}
-		field.Options = &tableaupb.FieldOptions{
-			Key: nameCell,
-		}
-		field.Fields = append(field.Fields, b.parseScalarField(nameCell, keyType, noteCell))
-		for cursor++; cursor < len(namerow); cursor++ {
-			nameCell := strings.TrimSpace(namerow[cursor])
-			if nameCell == "" {
-				continue
+func (gen *XmlGenerator) parseNode(nav *xmlquery.NodeNavigator, element *tableaupb.Element) error {	
+	element.Options = &tableaupb.ElementOptions{
+		Name: nav.LocalName(),
+	}
+	// iterate over attributes
+	for _, attr := range nav.Current().Attr {
+		switch strings.ToLower(attr.Name.Local) {
+		case "keycol":
+			tagName := strings.Split(attr.Value, ".")[0]
+			attrName := strings.Split(attr.Value, ".")[1]
+			if xmlquery.FindOne(nav.Current(), fmt.Sprintf("%s/@%s", tagName, attrName)) == nil {
+				atom.Log.Panic(fmt.Sprintf("KeyCol:%s not found in the immediately following nodes of %s", attr.Value, nav.LocalName()))
 			}
-			subField := &tableaupb.Field{}
-			cursor, err = b.parseField(cursor, namerow, typerow, noterow, subField)
-			if err != nil {
-				atom.Log.Panic(err)
+			element.Options.Key = attrName
+		case "desc":
+		default:
+			attrName := attr.Name.Local
+			// attrValue := attr.Value
+			newAttr := &tableaupb.Attr{
+				Options: &tableaupb.AttrOptions{
+					Name: attrName,
+					Default: "", //TODO
+				},
+				Type: "", //TODO
+				Name: strcase.ToSnake(attrName),
 			}
-			field.Fields = append(field.Fields, subField)
-		}
-		return cursor, nil
-	} else if matches := listRegexp.FindStringSubmatch(typeCell); len(matches) > 0 {
-		// list
-		colType := strings.TrimSpace(matches[2])
-		var isScalarType bool
-		elemType := strings.TrimSpace(matches[1])
-		if elemType == "" {
-			// scalar type, such as int32, string, etc.
-			elemType = colType
-			isScalarType = true
-		}
-
-		// preprocess
-		layout := tableaupb.Layout_LAYOUT_VERTICAL // default layout is vertical.
-		index := -1
-		if index = strings.Index(nameCell, "1"); index > 0 {
-			layout = tableaupb.Layout_LAYOUT_HORIZONTAL
-		}
-
-		if layout == tableaupb.Layout_LAYOUT_VERTICAL {
-			// vertical list: all columns belong to this list after this cursor.
-			field.Card = "repeated"
-			field.Name = strcase.ToSnake(elemType) + "_list"
-			field.Type = elemType
-			field.Options = &tableaupb.FieldOptions{
-				Name:   "", // name is empty for vertical list
-				Layout: layout,
-			}
-
-			if isScalarType {
-				// TODO: support list of scalar type when lyout is vertical?
-				// NOTE(wenchyzhu): we don't support list of scalar type when layout is vertical
-			} else {
-				field.Fields = append(field.Fields, b.parseScalarField(nameCell, colType, noteCell))
-
-				for cursor++; cursor < len(namerow); cursor++ {
-					nameCell := strings.TrimSpace(namerow[cursor])
-					if nameCell == "" {
-						continue
-					}
-					subField := &tableaupb.Field{}
-					cursor, err = b.parseField(cursor, namerow, typerow, noterow, subField)
-					if err != nil {
-						atom.Log.Panic(err)
-					}
-					field.Fields = append(field.Fields, subField)
+			if matches := numRegex.FindStringSubmatch(attrName); len(matches) > 0 {
+				if matches[0] != "1" {
+					break
 				}
+				newAttr.Card = "repeated"
+				newAttr.Options.Name = strings.ReplaceAll(newAttr.Options.Name, matches[0], "")
+				newAttr.Name = strcase.ToSnake(newAttr.Options.Name)
 			}
-		} else {
-			// horizontal list: continuous N columns belong to this list after this cursor.
-			noteIndex := strings.Index(noteCell, "1")
-			note := noteCell[noteIndex+1:]
-
-			prefix := nameCell[:index]
-			name := prefix
-
-			field.Card = "repeated"
-			field.Name = strcase.ToSnake(name) + "_list"
-			field.Type = elemType
-			field.Options = &tableaupb.FieldOptions{
-				Name:   prefix,
-				Layout: layout,
-			}
-			if isScalarType {
-				for cursor++; cursor < len(namerow); cursor++ {
-					nameCell := strings.TrimSpace(namerow[cursor])
-					if nameCell == "" {
-						continue
-					}
-					if strings.HasPrefix(nameCell, prefix) {
-						continue
-					} else {
-						cursor--
-						break
-					}
-				}
-			} else {
-				camelCaseName := nameCell[index+1:]
-				field.Fields = append(field.Fields, b.parseScalarField(camelCaseName, colType, note))
-
-				for cursor++; cursor < len(namerow); cursor++ {
-					nameCell := strings.TrimSpace(namerow[cursor])
-					typeCell := strings.TrimSpace(typerow[cursor])
-					noteCell := strings.TrimSpace(noterow[cursor])
-					if nameCell == "" {
-						continue
-					}
-					if strings.HasPrefix(nameCell, prefix+"1") {
-						camelCaseName = nameCell[index+1:]
-						note = noteCell[noteIndex+1:]
-						field.Fields = append(field.Fields, b.parseScalarField(camelCaseName, typeCell, note))
-					} else if strings.HasPrefix(nameCell, prefix) {
-						continue
-					} else {
-						cursor--
-						break
-					}
-				}
-			}
-		}
-	} else if matches := structRegexp.FindStringSubmatch(typeCell); len(matches) > 0 {
-		// struct
-		elemType := strings.TrimSpace(matches[1])
-		colType := strings.TrimSpace(matches[2])
-
-		index := len(elemType)
-		prefix := nameCell[:index]
-
-		field.Name = strcase.ToSnake(elemType)
-		field.Type = elemType
-		field.Options = &tableaupb.FieldOptions{
-			Name: prefix,
-		}
-		camelCaseName := nameCell[index:]
-		field.Fields = append(field.Fields, b.parseScalarField(camelCaseName, colType, noteCell))
-
-		for cursor++; cursor < len(namerow); cursor++ {
-			nameCell := strings.TrimSpace(namerow[cursor])
-			typeCell := strings.TrimSpace(typerow[cursor])
-			noteCell := strings.TrimSpace(noterow[cursor])
-			if nameCell == "" {
-				continue
-			}
-			if strings.HasPrefix(nameCell, prefix) {
-				camelCaseName = nameCell[index:]
-				field.Fields = append(field.Fields, b.parseScalarField(camelCaseName, typeCell, noteCell))
-			} else if strings.HasPrefix(nameCell, prefix) {
-				continue
-			} else {
-				cursor--
-				break
-			}
-		}
-	} else {
-		// scalar
-		*field = *b.parseScalarField(nameCell, typeCell, noteCell)
-	}
-
-	return cursor, nil
-}
-
-func (b *xml) genNote(note string) string {
-	if b.withNote {
-		return note
-	}
-	return ""
-}
-
-func (b *xml) parseScalarField(name, typ, note string) *tableaupb.Field {
-	if typ == "timestamp" {
-		typ = "google.protobuf.Timestamp"
-		b.wb.Imports["google/protobuf/timestamp.proto"] = 1
-	} else if typ == "duration" {
-		typ = "google.protobuf.Duration"
-		b.wb.Imports["google/protobuf/duration.proto"] = 1
-	}
-
-	return &tableaupb.Field{
-		Name: strcase.ToSnake(name),
-		Type: typ,
-		Options: &tableaupb.FieldOptions{
-			Name: name,
-			Note: b.genNote(note),
-		},
-	}
-}
-
-func (gen *XmlGenerator) exportWorkbook(wb *tableaupb.Workbook) error {
-	atom.Log.Debug(proto.Marshal(wb))
-	path := filepath.Join(gen.OutputDir, wb.Name+".proto")
-	atom.Log.Debugf("output: %s", path)
-	f, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	w := bufio.NewWriter(f)
-	defer w.Flush()
-
-	w.WriteString("syntax = \"proto3\";\n")
-	w.WriteString(fmt.Sprintf("package %s;\n", gen.ProtoPackage))
-	w.WriteString(fmt.Sprintf("option go_package = \"%s\";\n", gen.GoPackage))
-	w.WriteString("\n")
-	for key := range wb.Imports {
-		w.WriteString(fmt.Sprintf("import \"%s\";\n", key))
-	}
-	w.WriteString("\n")
-	w.WriteString(fmt.Sprintf("option (tableau.workbook) = {%s};\n", genPrototext(wb.Options)))
-	w.WriteString("\n")
-
-	for i, ws := range wb.Worksheets {
-		isLastSheet := false
-		if i == len(wb.Worksheets)-1 {
-			isLastSheet = true
-		}
-		if err := gen.exportWorksheet(w, ws, isLastSheet); err != nil {
-			return err
+			element.Attrs = append(element.Attrs, newAttr)
 		}
 	}
-
-	return nil
-}
-
-func (gen *XmlGenerator) exportWorksheet(w *bufio.Writer, ws *tableaupb.Worksheet, isLastSheet bool) error {
-	w.WriteString(fmt.Sprintf("message %s {\n", ws.Name))
-	w.WriteString(fmt.Sprintf("  option (tableau.worksheet) = {%s};\n", genPrototext(ws.Options)))
-	w.WriteString("\n")
-
-	depth := 1
-	for i, f := range ws.Fields {
-		tagid := i + 1
-		if err := gen.exportField(depth, w, tagid, f); err != nil {
-			return err
+	fmt.Println(element)
+	// `StructSupplement` defines the meta struct of one tag
+	tagMap := make(map[string]bool)
+	if metaNode := xmlquery.FindOne(nav.Current(), "StructSupplement"); metaNode != nil {		
+		metaNav := xmlquery.CreateXPathNavigator(metaNode.FirstChild)
+		for metaNav.NodeType() != xpath.ElementNode {
+			metaNav.MoveToNext()
+		}
+		newChild := &tableaupb.Child{
+			Options: &tableaupb.ChildOptions{
+				Name: metaNav.LocalName(),
+			},
+			Card: "repeated",
+			Type: metaNav.LocalName(),
+			Name: strcase.ToSnake(metaNav.LocalName()) + "_list",
+			Element: &tableaupb.Element{},
+		}
+		element.Children = append(element.Children, newChild)
+		gen.parseNode(metaNav, newChild.Element)
+		tagMap = map[string]bool{
+			"StructSupplement": true,
+			metaNav.LocalName(): true,
 		}
 	}
-	w.WriteString("}\n")
-	if !isLastSheet {
-		w.WriteString("\n")
-	}
-	return nil
-}
-
-func (gen *XmlGenerator) exportField(depth int, w *bufio.Writer, tagid int, field *tableaupb.Field) error {
-	head := "%s%s"
-	if field.Card != "" {
-		head += " " // cardinality exists
-	}
-	w.WriteString(fmt.Sprintf(head+"%s %s = %d [(tableau.field) = {%s}];\n", indent(depth), field.Card, field.Type, field.Name, tagid, genPrototext(field.Options)))
-
-	if field.Fields != nil { // iff field is a map or list.
-		nestedMsgName := field.Type
-		if field.MapEntry != nil {
-			nestedMsgName = field.MapEntry.ValueType
+	// iterate over child nodes
+	navCopy := *nav
+	for flag := navCopy.MoveToChild(); flag; flag = navCopy.MoveToNext() {
+		// context node must be the leaf node
+		if content := strings.TrimSpace(navCopy.LocalName()); navCopy.NodeType() == xpath.TextNode && content != "" {
+			element.Children = append(element.Children, &tableaupb.Child{
+				Options: &tableaupb.ChildOptions{},
+				Type: "", //TODO
+				Name: "content",			
+			})
+			continue
 		}
-		w.WriteString("\n")
-		w.WriteString(fmt.Sprintf("%smessage %s {\n", indent(depth), nestedMsgName))
-		for i, f := range field.Fields {
-			tagid := i + 1
-			if err := gen.exportField(depth+1, w, tagid, f); err != nil {
-				return err
-			}
+		// commentNode, documentNode and other meaningless nodes should be filtered
+		if navCopy.NodeType() != xpath.ElementNode {
+			continue
 		}
-		w.WriteString(fmt.Sprintf("%s}\n", indent(depth)))
+		tagName := navCopy.LocalName()
+		if _, exist := tagMap[tagName]; exist {
+			continue
+		}
+		tagMap[tagName] = true
+		newChild := &tableaupb.Child{
+			Options: &tableaupb.ChildOptions{
+				Name: tagName,
+			},
+			Type: tagName,
+			Name: strcase.ToSnake(tagName),
+			Element: &tableaupb.Element{},
+		}
+		if childList := xmlquery.Find(nav.Current(), tagName); len(childList) > 1 {
+			newChild.Card = "repeated"
+			newChild.Name = newChild.Name + "_list"
+		}
+		element.Children = append(element.Children, newChild)
+		gen.parseNode(&navCopy, newChild.Element)
 	}
 	return nil
 }
