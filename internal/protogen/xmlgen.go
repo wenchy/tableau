@@ -1,26 +1,22 @@
 package protogen
 
 import (
-	// "github.com/antchfx/xpath"
-	// "bufio"
+	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 
-	// "io"
-
 	"github.com/Wenchy/tableau/internal/atom"
 	"github.com/Wenchy/tableau/options"
 	"github.com/Wenchy/tableau/proto/tableaupb"
 
-	// "google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 	"github.com/antchfx/xmlquery"
 	"github.com/antchfx/xpath"
-
-	// "github.com/antchfx/xpath"
 	"github.com/iancoleman/strcase"
+	"github.com/emirpasic/gods/sets/treeset"
 )
 
 type XmlGenerator struct {
@@ -31,6 +27,8 @@ type XmlGenerator struct {
 	Imports      []string // imported common proto file paths
 
 	Xml *options.XmlOption // xml generation settings
+	writer *bufio.Writer
+	childMap map[string]*tableaupb.Child
 }
 
 type xml struct {
@@ -97,24 +95,34 @@ func (gen *XmlGenerator) Generate() {
 		if err != nil {
 			atom.Log.Panic(err)
 		}
-		gen.parseNode(xmlquery.CreateXPathNavigator(n), xml.xml.Root)
+		gen.childMap = make(map[string]*tableaupb.Child)
+		gen.parseNode(xmlquery.CreateXPathNavigator(n), xml.xml.Root, "")
+		if err := gen.exportXml(xml.xml); err != nil {
+			atom.Log.Panic(err)
+		}
 	}
 }
 
-func (gen *XmlGenerator) parseNode(nav *xmlquery.NodeNavigator, element *tableaupb.Element) error {	
+func (gen *XmlGenerator) parseNode(nav *xmlquery.NodeNavigator, element *tableaupb.Element, prefix string) error {	
 	element.Options = &tableaupb.ElementOptions{
 		Name: nav.LocalName(),
 	}
+	element.Name = nav.LocalName()
 	// iterate over attributes
 	for _, attr := range nav.Current().Attr {
 		switch strings.ToLower(attr.Name.Local) {
 		case "keycol":
 			tagName := strings.Split(attr.Value, ".")[0]
 			attrName := strings.Split(attr.Value, ".")[1]
-			if xmlquery.FindOne(nav.Current(), fmt.Sprintf("%s/@%s", tagName, attrName)) == nil {
+			keyNode := xmlquery.FindOne(nav.Current(), fmt.Sprintf("%s/@%s", tagName, attrName))
+			if keyNode == nil {
 				atom.Log.Panic(fmt.Sprintf("KeyCol:%s not found in the immediately following nodes of %s", attr.Value, nav.LocalName()))
+				continue
 			}
-			element.Options.Key = attrName
+			keyValue := keyNode.InnerText()
+			fmt.Println(keyValue)
+			element.Options.Key = attr.Value
+			element.KeyType = "uint32" //TODO
 		case "desc":
 		default:
 			attrName := attr.Name.Local
@@ -122,9 +130,9 @@ func (gen *XmlGenerator) parseNode(nav *xmlquery.NodeNavigator, element *tableau
 			newAttr := &tableaupb.Attr{
 				Options: &tableaupb.AttrOptions{
 					Name: attrName,
-					Default: "", //TODO
+					Default: "0", //TODO
 				},
-				Type: "", //TODO
+				Type: "int", //TODO
 				Name: strcase.ToSnake(attrName),
 			}
 			if matches := numRegex.FindStringSubmatch(attrName); len(matches) > 0 {
@@ -138,10 +146,11 @@ func (gen *XmlGenerator) parseNode(nav *xmlquery.NodeNavigator, element *tableau
 			element.Attrs = append(element.Attrs, newAttr)
 		}
 	}
-	fmt.Println(element)
-	// `StructSupplement` defines the meta struct of one tag
+	// fmt.Println(element)
+
+	// createMetaStruct create a meta struct by some pre-defined tag
 	tagMap := make(map[string]bool)
-	if metaNode := xmlquery.FindOne(nav.Current(), "StructSupplement"); metaNode != nil {		
+	createMetaStruct := func(metaNode *xmlquery.Node) {
 		metaNav := xmlquery.CreateXPathNavigator(metaNode.FirstChild)
 		for metaNav.NodeType() != xpath.ElementNode {
 			metaNav.MoveToNext()
@@ -156,24 +165,30 @@ func (gen *XmlGenerator) parseNode(nav *xmlquery.NodeNavigator, element *tableau
 			Element: &tableaupb.Element{},
 		}
 		element.Children = append(element.Children, newChild)
-		gen.parseNode(metaNav, newChild.Element)
-		tagMap = map[string]bool{
-			"StructSupplement": true,
-			metaNav.LocalName(): true,
-		}
+		gen.parseNode(metaNav, newChild.Element, fmt.Sprintf("%s/%s", prefix, metaNode.Parent.Data))
+		gen.childMap[fmt.Sprintf("%s/%s/%s", prefix, metaNode.Parent.Data, metaNav.LocalName())] = newChild
+		tagMap[metaNode.Data] = true
+	}
+	// `StructSupplement` defines the default values of one tag
+	if metaNode := xmlquery.FindOne(nav.Current(), "StructSupplement"); metaNode != nil {		
+		createMetaStruct(metaNode)
+	}
+	// `StructFormatSupplement` defines a meta struct
+	if metaNode := xmlquery.FindOne(nav.Current(), "StructFormatSupplement"); metaNode != nil {		
+		createMetaStruct(metaNode)
 	}
 	// iterate over child nodes
 	navCopy := *nav
+	// flag := navCopy.MoveToChild()
+	// if !flag {
+	// 	element.Children = append(element.Children, &tableaupb.Child{
+	// 		Options: &tableaupb.ChildOptions{},
+	// 		Type: "string", //TODO
+	// 		Name: "content",
+	// 	})
+	// 	return nil
+	// }
 	for flag := navCopy.MoveToChild(); flag; flag = navCopy.MoveToNext() {
-		// context node must be the leaf node
-		if content := strings.TrimSpace(navCopy.LocalName()); navCopy.NodeType() == xpath.TextNode && content != "" {
-			element.Children = append(element.Children, &tableaupb.Child{
-				Options: &tableaupb.ChildOptions{},
-				Type: "", //TODO
-				Name: "content",			
-			})
-			continue
-		}
 		// commentNode, documentNode and other meaningless nodes should be filtered
 		if navCopy.NodeType() != xpath.ElementNode {
 			continue
@@ -182,7 +197,6 @@ func (gen *XmlGenerator) parseNode(nav *xmlquery.NodeNavigator, element *tableau
 		if _, exist := tagMap[tagName]; exist {
 			continue
 		}
-		tagMap[tagName] = true
 		newChild := &tableaupb.Child{
 			Options: &tableaupb.ChildOptions{
 				Name: tagName,
@@ -191,12 +205,125 @@ func (gen *XmlGenerator) parseNode(nav *xmlquery.NodeNavigator, element *tableau
 			Name: strcase.ToSnake(tagName),
 			Element: &tableaupb.Element{},
 		}
-		if childList := xmlquery.Find(nav.Current(), tagName); len(childList) > 1 {
+		if keyTag, childList := strings.Split(element.Options.Key, ".")[0], xmlquery.Find(nav.Current(), tagName); len(childList) > 1 || tagName == keyTag {			
 			newChild.Card = "repeated"
 			newChild.Name = newChild.Name + "_list"
 		}
-		element.Children = append(element.Children, newChild)
-		gen.parseNode(&navCopy, newChild.Element)
+		fatherPath := fmt.Sprintf("%s/%s", prefix, nav.Current().Data)
+		gen.parseNode(&navCopy, newChild.Element, fatherPath)
+		
+		// overwrite previous meta struct if necessary
+		curPath := fatherPath + "/" + tagName
+		if child, exist := gen.childMap[curPath]; exist {
+			if child.Card == "" && newChild.Card == "repeated" {
+				child.Card = "repeated"
+				child.Name = child.Name + "_list"
+			}
+			if newChild.Element != nil {
+				if child.Element == nil {
+					child.Element = newChild.Element					
+				} else {
+					attrMap := make(map[string]bool)
+					for _, attr := range child.Element.Attrs {
+						attrMap[attr.Name] = true
+					}
+					for _, attr := range newChild.Element.Attrs {
+						if _, exist := attrMap[attr.Name]; !exist {
+							child.Element.Attrs = append(child.Element.Attrs, attr)
+						}
+					}
+					childMap := make(map[string]bool)
+					for _, c := range child.Element.Children {
+						childMap[c.Options.Name] = true
+					}
+					for _, c := range newChild.Element.Children {
+						if _, exist := childMap[c.Options.Name]; !exist {
+							child.Element.Children = append(child.Element.Children, c)
+						}
+					}
+				}
+			}
+		} else {
+			gen.childMap[curPath] = newChild
+			element.Children = append(element.Children, newChild)
+		}
 	}
+	return nil
+}
+
+func (gen *XmlGenerator) exportXml(xml *tableaupb.Xml) error {
+	atom.Log.Debug(proto.Marshal(xml))
+	path := filepath.Join(gen.OutputDir, xml.Name+".proto")
+	atom.Log.Debugf("output: %s", path)
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	gen.writer = bufio.NewWriter(f)
+	defer gen.writer.Flush()
+
+	gen.writer.WriteString("syntax = \"proto3\";\n")
+	gen.writer.WriteString(fmt.Sprintf("package %s;\n", gen.ProtoPackage))
+	gen.writer.WriteString(fmt.Sprintf("option go_package = \"%s\";\n", gen.GoPackage))
+	gen.writer.WriteString("\n")
+
+	// keep the elements ordered by sheet name
+	set := treeset.NewWithStringComparator()
+	for key := range xml.Imports {
+		set.Add(key)
+	}
+	for _, key := range set.Values() {
+		gen.writer.WriteString(fmt.Sprintf("import \"%s\";\n", key))
+	}
+	gen.writer.WriteString("\n")
+	gen.writer.WriteString(fmt.Sprintf("option (tableau.xml) = {%s};\n", genPrototext(xml.Options)))
+	gen.writer.WriteString("\n")
+
+	gen.exportElement(xml.Root, 0)
+
+	return nil
+}
+
+func (gen *XmlGenerator) exportElement(element *tableaupb.Element, depth int) error {
+	gen.writer.WriteString(indent(depth) + fmt.Sprintf("message %s {\n", element.Name))
+	gen.writer.WriteString(indent(depth) + fmt.Sprintf("  option (tableau.element) = {%s};\n", genPrototext(element.Options)))
+	gen.writer.WriteString("\n")
+	tagid := 0
+	// generate attributes
+	for _, attr := range element.Attrs {
+		tagid++
+		attrLine := fmt.Sprintf("%s %s = %d [(tableau.attr) = {%s}];\n", attr.Type, attr.Name, tagid, genPrototext(attr.Options))
+		if attr.Card == "repeated" {
+			attrLine = "repeated " + attrLine
+		}
+		gen.writer.WriteString(indent(depth) + "  " + attrLine)
+	}
+	if len(element.Attrs) > 0 {
+		gen.writer.WriteString("\n")
+	}
+	// generate child elements
+	if element.Options.Key != "" {
+		tagid++
+		gen.writer.WriteString(indent(depth) + fmt.Sprintf("  map<%s, int32> %s_map = %d;\n", element.KeyType, strcase.ToSnake(strings.Split(element.Options.Key, ".")[0]), tagid))
+	}
+	for _, child := range element.Children {
+		tagid++
+		childLine := fmt.Sprintf("%s %s = %d [(tableau.child) = {%s}];\n", child.Type, child.Name, tagid, genPrototext(child.Options))
+		if child.Card == "repeated" {
+			childLine = "repeated " + childLine
+		}
+		gen.writer.WriteString(indent(depth) + "  " + childLine)
+	}
+	// generate child messages
+	for _, child := range element.Children {
+		if child.Element != nil {
+			gen.writer.WriteString("\n")
+			gen.exportElement(child.Element, depth + 1)
+		}		
+	}
+	gen.writer.WriteString(indent(depth) + "}\n")
+	
 	return nil
 }

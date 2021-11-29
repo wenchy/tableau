@@ -1,0 +1,41 @@
+syntax = "proto3";
+package test;
+option go_package = "github.com/Wenchy/tableau/cmd/test/testpb";
+
+import "cs_com_def.proto";
+import "tableau/protobuf/tableau.proto";
+
+option (tableau.xml) = {name:"FeatureToggle.xml"};
+
+message ToggleCfg {
+  option (tableau.element) = {name:"ToggleCfg" key:"FeatureToggle.EnvID"};
+
+  map<uint32, int32> feature_toggle_map = 1;
+  repeated FeatureToggle feature_toggle_list = 2 [(tableau.child) = {name:"FeatureToggle"}];
+
+  message FeatureToggle {
+    option (tableau.element) = {name:"FeatureToggle"};
+
+    int env_id = 1 [(tableau.attr) = {name:"EnvID" default:"0"}];
+
+    repeated Toggle toggle_list = 2 [(tableau.child) = {name:"Toggle"}];
+
+    message Toggle {
+      option (tableau.element) = {name:"Toggle"};
+
+      int id = 1 [(tableau.attr) = {name:"ID" default:"0"}];
+      int open_rate = 2 [(tableau.attr) = {name:"OpenRate" default:"0"}];
+      int world_id = 3 [(tableau.attr) = {name:"WorldID" default:"0"}];
+      int zone_id = 4 [(tableau.attr) = {name:"ZoneID" default:"0"}];
+      int open_time = 5 [(tableau.attr) = {name:"OpenTime" default:"0"}];
+      int close_time = 6 [(tableau.attr) = {name:"CloseTime" default:"0"}];
+      int user_limit_type = 7 [(tableau.attr) = {name:"UserLimitType" default:"0"}];
+      int user_source_type = 8 [(tableau.attr) = {name:"UserSourceType" default:"0"}];
+      repeated int sys_key = 9 [(tableau.attr) = {name:"SysKey" default:"0"}];
+      int notify_closed = 10 [(tableau.attr) = {name:"NotifyClosed" default:"0"}];
+      int err_code = 11 [(tableau.attr) = {name:"ErrCode" default:"0"}];
+      int name = 12 [(tableau.attr) = {name:"name" default:"0"}];
+
+    }
+  }
+}
