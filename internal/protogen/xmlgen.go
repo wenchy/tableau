@@ -179,15 +179,6 @@ func (gen *XmlGenerator) parseNode(nav *xmlquery.NodeNavigator, element *tableau
 	}
 	// iterate over child nodes
 	navCopy := *nav
-	// flag := navCopy.MoveToChild()
-	// if !flag {
-	// 	element.Children = append(element.Children, &tableaupb.Child{
-	// 		Options: &tableaupb.ChildOptions{},
-	// 		Type: "string", //TODO
-	// 		Name: "content",
-	// 	})
-	// 	return nil
-	// }
 	for flag := navCopy.MoveToChild(); flag; flag = navCopy.MoveToNext() {
 		// commentNode, documentNode and other meaningless nodes should be filtered
 		if navCopy.NodeType() != xpath.ElementNode {
