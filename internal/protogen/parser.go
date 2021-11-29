@@ -243,6 +243,7 @@ func (p *bookParser) parseStructField(field *tableaupb.Field, header *sheetHeade
 			if strings.HasPrefix(nameCell, prefix) {
 				cursor = p.parseSubField(field, header, cursor, prefix)
 			} else {
+				cursor--
 				break
 			}
 		}

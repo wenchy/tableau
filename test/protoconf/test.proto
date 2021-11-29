@@ -4,6 +4,7 @@ package test;
 option go_package = "github.com/Wenchy/tableau/cmd/test/testpb";
 
 import "common.proto";
+import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 import "tableau/protobuf/tableau.proto";
 
@@ -41,7 +42,8 @@ message Activity {
           google.protobuf.Timestamp end_time = 3 [(tableau.field) = {name:"EndTime"}];
           repeated int32 params = 4 [(tableau.field) = {name:"Params" type:TYPE_INCELL_LIST}];
         }
-        Task task = 5 [(tableau.field) = {name:"Task"}];
+        google.protobuf.Duration timespan = 5 [(tableau.field) = {name:"Timespan"}];
+        Task task = 6 [(tableau.field) = {name:"Task"}];
 
         message Task {
           int32 type = 1 [(tableau.field) = {name:"Type"}];
@@ -50,15 +52,17 @@ message Activity {
           int32 param_3 = 4 [(tableau.field) = {name:"Param3"}];
           int32 target = 5 [(tableau.field) = {name:"Target"}];
         }
-        Info incell_struct = 6 [(tableau.field) = {name:"IncellStruct" type:TYPE_INCELL_STRUCT}];
+        Info warn_info = 7 [(tableau.field) = {name:"WarnInfo" type:TYPE_INCELL_STRUCT}];
 
         message Info {
           int32 id = 1 [(tableau.field) = {name:"Id"}];
           string desc = 2 [(tableau.field) = {name:"Desc"}];
+          int32 value = 3 [(tableau.field) = {name:"Value"}];
         }
-        repeated int32 int_params = 7 [(tableau.field) = {name:"IntParams" type:TYPE_INCELL_LIST}];
-        map<int32,string> tips = 8 [(tableau.field) = {name:"Tips" type:TYPE_INCELL_MAP}];
-        repeated string client_param_list = 9 [(tableau.field) = {name:"ClientParam" layout:LAYOUT_HORIZONTAL}];
+        Info incell_struct = 8 [(tableau.field) = {name:"IncellStruct" type:TYPE_INCELL_STRUCT}];
+        repeated int32 int_params = 9 [(tableau.field) = {name:"IntParams" type:TYPE_INCELL_LIST}];
+        map<int32,string> tips = 10 [(tableau.field) = {name:"Tips" type:TYPE_INCELL_MAP}];
+        repeated string client_param_list = 11 [(tableau.field) = {name:"ClientParam" layout:LAYOUT_HORIZONTAL}];
       }
     }
   }
