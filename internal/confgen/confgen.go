@@ -81,6 +81,7 @@ func (gen *Generator) Generate() (err error) {
 				err = x.Export()
 				if err != nil {
 					// Due to closure, this err will be returned by func Generate().
+					atom.Log.Panic(err)
 					return false
 				}
 			}

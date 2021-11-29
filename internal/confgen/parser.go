@@ -31,14 +31,14 @@ type sheetParser struct {
 }
 
 // export the protomsg message.
-func (sh *sheetParser) Export() error {
-	md := sh.protomsg.ProtoReflect().Descriptor()
-	msg := sh.protomsg.ProtoReflect()
+func (sp *sheetParser) Export() error {
+	md := sp.protomsg.ProtoReflect().Descriptor()
+	msg := sp.protomsg.ProtoReflect()
 	_, workbook := parseFileOptions(md.ParentFile())
 	msgName, worksheetName, namerow, _, datarow, transpose := parseMessageOptions(md)
 	// msgName, worksheetName, namerow, noterow, datarow, transpose := parseMessageOptions(md)
 
-	wbPath := sh.InputDir + workbook.Name
+	wbPath := sp.InputDir + workbook.Name
 	book, err := excel.NewBook(wbPath)
 	if err != nil {
 		return errors.Wrapf(err, "failed to create new workbook: %s", wbPath)
@@ -69,7 +69,10 @@ func (sh *sheetParser) Export() error {
 				}
 				rc.SetCell(name, row, data)
 			}
-			sh.parseFieldOptions(msg, rc, 0, "")
+			sp.parseFieldOptions(msg, rc, 0, "")
+			if err != nil {
+				return err
+			}
 		}
 	} else {
 		// namerow: name row
@@ -89,15 +92,23 @@ func (sh *sheetParser) Export() error {
 				}
 				rc.SetCell(name, col, data)
 			}
-			sh.parseFieldOptions(msg, rc, 0, "")
+			err := sp.parseFieldOptions(msg, rc, 0, "")
+			if err != nil {
+				return err
+			}
 		}
 	}
-	x := mexporter.New(msgName, sh.protomsg, sh.OutputDir, sh.Output)
+	x := mexporter.New(msgName, sp.protomsg, sp.OutputDir, sp.Output)
 	return x.Export()
 }
 
+type Field struct {
+	fd   protoreflect.FieldDescriptor
+	opts *tableaupb.FieldOptions
+}
+
 // parseFieldOptions is aimed to parse the options of all the fields of a protobuf message.
-func (sh *sheetParser) parseFieldOptions(msg protoreflect.Message, rc *excel.RowCells, depth int, prefix string) (err error) {
+func (sp *sheetParser) parseFieldOptions(msg protoreflect.Message, rc *excel.RowCells, depth int, prefix string) (err error) {
 	md := msg.Descriptor()
 	opts := md.Options().(*descriptorpb.MessageOptions)
 	worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(*tableaupb.WorksheetOptions)
@@ -110,24 +121,18 @@ func (sh *sheetParser) parseFieldOptions(msg protoreflect.Message, rc *excel.Row
 	atom.Log.Debugf("%s// %s, '%s', %v, %v, %v", printer.Indent(depth), md.FullName(), worksheetName, md.IsMapEntry(), prefix, pkg)
 	for i := 0; i < md.Fields().Len(); i++ {
 		fd := md.Fields().Get(i)
-		if string(pkg) != sh.ProtoPackage && pkg != "google.protobuf" {
+		if string(pkg) != sp.ProtoPackage && pkg != "google.protobuf" {
 			atom.Log.Debugf("%s// no need to proces package: %v", printer.Indent(depth), pkg)
 			return nil
 		}
 		msgName := ""
 		if fd.Kind() == protoreflect.MessageKind {
 			msgName = string(fd.Message().FullName())
-			// atom.Log.Debug(fd.Cardinality().String(), fd.Kind().String(), fd.FullName(), fd.Number())
-			// ParseFieldOptions(fd.Message(), depth+1)
 		}
-
-		// if fd.IsList() {
-		// 	atom.Log.Debug("repeated", fd.Kind().String(), fd.FullName().Name())
-		// 	// Redact(fd.Options().ProtoReflect().Interface())
-		// }
 
 		// default value
 		name := strcase.ToCamel(string(fd.FullName().Name()))
+		note := ""
 		etype := tableaupb.Type_TYPE_DEFAULT
 		key := ""
 		layout := tableaupb.Layout_LAYOUT_DEFAULT
@@ -135,14 +140,15 @@ func (sh *sheetParser) parseFieldOptions(msg protoreflect.Message, rc *excel.Row
 		subsep := ""
 
 		opts := fd.Options().(*descriptorpb.FieldOptions)
-		field := proto.GetExtension(opts, tableaupb.E_Field).(*tableaupb.FieldOptions)
-		if field != nil {
-			name = field.Name
-			etype = field.Type
-			key = field.Key
-			layout = field.Layout
-			sep = field.Sep
-			subsep = field.Subsep
+		fieldOpts := proto.GetExtension(opts, tableaupb.E_Field).(*tableaupb.FieldOptions)
+		if fieldOpts != nil {
+			name = fieldOpts.Name
+			note = fieldOpts.Note
+			etype = fieldOpts.Type
+			key = fieldOpts.Key
+			layout = fieldOpts.Layout
+			sep = fieldOpts.Sep
+			subsep = fieldOpts.Subsep
 		} else {
 			// default processing
 			if fd.IsList() {
@@ -172,310 +178,363 @@ func (sh *sheetParser) parseFieldOptions(msg protoreflect.Message, rc *excel.Row
 			"fullName", fd.FullName(),
 			"number", fd.Number(),
 			"name", prefix+name,
+			"note", note,
 			"type", etype.String(),
 			"key", key,
 			"layout", layout.String(),
 			"sep", sep,
 		)
 
-		// atom.Log.Debug(fd.ContainingMessage().FullName())
+		field := &Field{
+			fd: fd,
+			opts: &tableaupb.FieldOptions{
+				Name:   name,
+				Note:   note,
+				Type:   etype,
+				Key:    key,
+				Layout: layout,
+				Sep:    sep,
+				Subsep: subsep,
+			},
+		}
+		err = sp.parseField(field, msg, rc, depth, prefix)
+		if err != nil {
+			return errors.Wrapf(err, "failed to parse field: %s, opts: %v", fd.FullName().Name(), field.opts)
+		}
+	}
+	return nil
+}
 
-		// if fd.Cardinality() == protoreflect.Repeated && fd.Kind() == protoreflect.MessageKind {
-		// 	msg := fd.Message().New()
-		// }
+func (sp *sheetParser) parseField(field *Field, msg protoreflect.Message, rc *excel.RowCells, depth int, prefix string) (err error) {
+	// atom.Log.Debug(field.fd.ContainingMessage().FullName())
+	if field.fd.IsMap() {
+		return sp.parseMapField(field, msg, rc, depth, prefix)
+	} else if field.fd.IsList() {
+		return sp.parseListField(field, msg, rc, depth, prefix)
+	} else if field.fd.Kind() == protoreflect.MessageKind {
+		return sp.parseStructField(field, msg, rc, depth, prefix)
+	} else {
+		return sp.parseScalarField(field, msg, rc, depth, prefix)
+	}
+}
 
-		// NOTE(wenchy): `proto.Equal` treats a nil message as not equal to an empty one.
-		// doc: [Equal](https://pkg.go.dev/google.golang.org/protobuf/proto?tab=doc#Equal)
-		// issue: [APIv2: protoreflect: consider Message nilness test](https://github.com/golang/protobuf/issues/966)
-		// ```
-		// nilMessage = (*MyMessage)(nil)
-		// emptyMessage = new(MyMessage)
-		//
-		// Equal(nil, nil)                   // true
-		// Equal(nil, nilMessage)            // false
-		// Equal(nil, emptyMessage)          // false
-		// Equal(nilMessage, nilMessage)     // true
-		// Equal(nilMessage, emptyMessage)   // ??? false
-		// Equal(emptyMessage, emptyMessage) // true
-		// ```
-		//
-		// Case: `subMsg := msg.Mutable(fd).Message()`
-		// `Message.Mutable` will allocate new "empty message", and is not equal to "nil"
-		//
-		// Solution:
-		// 1. spawn two values: `emptyValue` and `newValue`
-		// 2. set `newValue` back to field if `newValue` is not equal to `emptyValue`
-		emptyValue := msg.NewField(fd)
-		newValue := msg.NewField(fd)
-		if fd.IsMap() {
-			// Mutable returns a mutable reference to a composite type.
-			if msg.Has(fd) {
-				newValue = msg.Mutable(fd)
+func (sp *sheetParser) parseMapField(field *Field, msg protoreflect.Message, rc *excel.RowCells, depth int, prefix string) (err error) {
+	// Mutable returns a mutable reference to a composite type.
+	newValue := msg.Mutable(field.fd)
+	reflectMap := newValue.Map()
+	// reflectMap := msg.Mutable(field.fd).Map()
+	keyFd := field.fd.MapKey()
+	valueFd := field.fd.MapValue()
+	// newKey := protoreflect.ValueOf(int32(1)).MapKey()
+	// newKey := sp.parseFieldValue(keyFd, "1111001").MapKey()
+	if field.opts.Type == tableaupb.Type_TYPE_INCELL_MAP {
+		colName := prefix + field.opts.Name
+		cell := rc.Cell(colName)
+		if cell == nil {
+			return errors.Errorf("%s|column not found", rc.CellDebugString(colName))
+		}
+		if valueFd.Kind() == protoreflect.MessageKind {
+			return errors.Errorf("%s|incell map: message type not supported", rc.CellDebugString(colName))
+		}
+
+		if cell.Data != "" {
+			// If s does not contain sep and sep is not empty, Split returns a
+			// slice of length 1 whose only element is s.
+			splits := strings.Split(cell.Data, field.opts.Sep)
+			for _, pair := range splits {
+				kv := strings.Split(pair, field.opts.Subsep)
+				if len(kv) != 2 {
+					return errors.Errorf("%s|incell map: illegal key-value pair: %s", rc.CellDebugString(colName), pair)
+				}
+				key, value := kv[0], kv[1]
+
+				fieldValue, err := sp.parseFieldValue(keyFd, key)
+				if err != nil {
+					return errors.Wrapf(err, "%s|incell map: failed to parse field value: %s", rc.CellDebugString(colName), key)
+				}
+				newMapKey := fieldValue.MapKey()
+
+				fieldValue, err = sp.parseFieldValue(valueFd, value)
+				if err != nil {
+					return errors.Wrapf(err, "%s|incell map: failed to parse field value: %s", rc.CellDebugString(colName), value)
+				}
+				newMapValue := reflectMap.NewValue()
+				newMapValue = fieldValue
+
+				reflectMap.Set(newMapKey, newMapValue)
 			}
-			reflectMap := newValue.Map()
-			// reflectMap := msg.Mutable(fd).Map()
-			keyFd := fd.MapKey()
-			valueFd := fd.MapValue()
-			// newKey := protoreflect.ValueOf(int32(1)).MapKey()
-			// newKey := sh.parseFieldValue(keyFd, "1111001").MapKey()
-			if etype == tableaupb.Type_TYPE_INCELL_MAP {
-				colName := prefix + name
-				cell := rc.Cell(colName)
-				if cell == nil {
-					return errors.Errorf("%s|column not found", rc.CellDebugString(colName))
-				}
-				if valueFd.Kind() == protoreflect.MessageKind {
-					return errors.Errorf("%s|incell map: message type not supported", rc.CellDebugString(colName))
-				}
-
-				if cell.Data != "" {
-					// If s does not contain sep and sep is not empty, Split returns a
-					// slice of length 1 whose only element is s.
-					splits := strings.Split(cell.Data, sep)
-					for _, pair := range splits {
-						kv := strings.Split(pair, subsep)
-						if len(kv) != 2 {
-							return errors.Errorf("%s|incell map: illegal key-value pair: %s", rc.CellDebugString(colName), pair)
-						}
-						key, value := kv[0], kv[1]
-
-						fieldValue, err := sh.parseFieldValue(keyFd, key)
-						if err != nil {
-							return errors.Wrapf(err, "%s|incell map: failed to parse field value: %s", rc.CellDebugString(colName), key)
-						}
-						newMapKey := fieldValue.MapKey()
-
-						fieldValue, err = sh.parseFieldValue(valueFd, value)
-						if err != nil {
-							return errors.Wrapf(err, "%s|incell map: failed to parse field value: %s", rc.CellDebugString(colName), value)
-						}
-						newMapValue := reflectMap.NewValue()
-						newMapValue = fieldValue
-
-						reflectMap.Set(newMapKey, newMapValue)
-					}
-				}
-			} else {
-				emptyMapValue := reflectMap.NewValue()
-				if valueFd.Kind() == protoreflect.MessageKind {
-					if layout == tableaupb.Layout_LAYOUT_HORIZONTAL {
-						size := rc.GetCellCountWithPrefix(prefix + name)
-						// atom.Log.Debug("prefix size: ", size)
-						for i := 1; i <= size; i++ {
-							keyColName := prefix + name + strconv.Itoa(i) + key
-							cell := rc.Cell(keyColName)
-							if cell == nil {
-								return errors.Errorf("%s|horizontal map: key column not found", rc.CellDebugString(keyColName))
-							}
-							fieldValue, err := sh.parseFieldValue(keyFd, cell.Data)
-							if err != nil {
-								return errors.Wrapf(err, "%s|horizontal map: failed to parse field value: %s", rc.CellDebugString(keyColName), cell.Data)
-							}
-							newMapKey := fieldValue.MapKey()
-
-							var newMapValue protoreflect.Value
-							if reflectMap.Has(newMapKey) {
-								newMapValue = reflectMap.Mutable(newMapKey)
-							} else {
-								newMapValue = reflectMap.NewValue()
-							}
-							sh.parseFieldOptions(newMapValue.Message(), rc, depth+1, prefix+name+strconv.Itoa(i))
-							if !MessageValueEqual(emptyMapValue, newMapValue) {
-								reflectMap.Set(newMapKey, newMapValue)
-							}
-						}
-					} else {
-						keyColName := prefix + name + key
-						cell := rc.Cell(keyColName)
-						if cell == nil {
-							return errors.Errorf("%s|vertical map: key column not found", rc.CellDebugString(keyColName))
-						}
-						fieldValue, err := sh.parseFieldValue(keyFd, cell.Data)
-						if err != nil {
-							return errors.Wrapf(err, "%s|vertical map: failed to parse field value: %s", rc.CellDebugString(keyColName), cell.Data)
-						}
-						newMapKey := fieldValue.MapKey()
-
-						var newMapValue protoreflect.Value
-						if reflectMap.Has(newMapKey) {
-							newMapValue = reflectMap.Mutable(newMapKey)
-						} else {
-							newMapValue = reflectMap.NewValue()
-						}
-						sh.parseFieldOptions(newMapValue.Message(), rc, depth+1, prefix+name)
-						if !MessageValueEqual(emptyMapValue, newMapValue) {
-							reflectMap.Set(newMapKey, newMapValue)
-						}
-					}
-				} else {
-					// value is scalar type
-					key := "Key"     // default key name
-					value := "Value" // default value name
-					// key cell
-					keyColName := prefix + name + key
+		}
+	} else {
+		emptyMapValue := reflectMap.NewValue()
+		if valueFd.Kind() == protoreflect.MessageKind {
+			if field.opts.Layout == tableaupb.Layout_LAYOUT_HORIZONTAL {
+				size := rc.GetCellCountWithPrefix(prefix + field.opts.Name)
+				// atom.Log.Debug("prefix size: ", size)
+				for i := 1; i <= size; i++ {
+					keyColName := prefix + field.opts.Name + strconv.Itoa(i) + field.opts.Key
 					cell := rc.Cell(keyColName)
 					if cell == nil {
-						return errors.Errorf("%s|vertical map(scalar): key column not found", rc.CellDebugString(keyColName))
+						return errors.Errorf("%s|horizontal map: key column not found", rc.CellDebugString(keyColName))
 					}
-					fieldValue, err := sh.parseFieldValue(keyFd, cell.Data)
+					fieldValue, err := sp.parseFieldValue(keyFd, cell.Data)
 					if err != nil {
-						return errors.Wrapf(err, "%s|failed to parse field value: %s", rc.CellDebugString(keyColName), cell.Data)
+						return errors.Wrapf(err, "%s|horizontal map: failed to parse field value: %s", rc.CellDebugString(keyColName), cell.Data)
 					}
 					newMapKey := fieldValue.MapKey()
+
 					var newMapValue protoreflect.Value
 					if reflectMap.Has(newMapKey) {
 						newMapValue = reflectMap.Mutable(newMapKey)
 					} else {
 						newMapValue = reflectMap.NewValue()
 					}
-					// value cell
-					valueColName := prefix + name + value
-					cell = rc.Cell(valueColName)
-					if cell == nil {
-						return errors.Errorf("%s|vertical map(scalar): value colum not found", rc.CellDebugString(valueColName))
-					}
-					newMapValue, err = sh.parseFieldValue(fd, cell.Data)
+					err = sp.parseFieldOptions(newMapValue.Message(), rc, depth+1, prefix+field.opts.Name+strconv.Itoa(i))
 					if err != nil {
-						return errors.Wrapf(err, "%s|vertical map(scalar): failed to parse field value: %s", rc.CellDebugString(valueColName), cell.Data)
+						return errors.Wrapf(err, "%s|horizontal map: failed to parse field options with prefix: %s", rc.CellDebugString(keyColName), prefix+field.opts.Name+strconv.Itoa(i))
 					}
-					if !reflectMap.Has(newMapKey) {
+					if !MessageValueEqual(emptyMapValue, newMapValue) {
 						reflectMap.Set(newMapKey, newMapValue)
 					}
 				}
-			}
-			if !msg.Has(fd) && reflectMap.Len() != 0 {
-				msg.Set(fd, newValue)
-			}
-		} else if fd.IsList() {
-			// Mutable returns a mutable reference to a composite type.
-			if msg.Has(fd) {
-				newValue = msg.Mutable(fd)
-			}
-			reflectList := newValue.List()
-			colName := prefix + name
-			if etype == tableaupb.Type_TYPE_INCELL_LIST {
-				cell := rc.Cell(colName)
-				if cell == nil {
-					return errors.Errorf("%s|incell list: column not found", rc.CellDebugString(colName))
-				}
-				if cell.Data != "" {
-					// If s does not contain sep and sep is not empty, Split returns a
-					// slice of length 1 whose only element is s.
-					splits := strings.Split(cell.Data, sep)
-					for _, incell := range splits {
-						value, err := sh.parseFieldValue(fd, incell)
-						if err != nil {
-							return errors.Wrapf(err, "%s|incell list: failed to parse field value: %s", rc.CellDebugString(colName), incell)
-						}
-						reflectList.Append(value)
-					}
-				}
 			} else {
-				emptyListValue := reflectList.NewElement()
-				if layout == tableaupb.Layout_LAYOUT_VERTICAL {
-					newListValue := reflectList.NewElement()
-					if fd.Kind() == protoreflect.MessageKind {
-						sh.parseFieldOptions(newListValue.Message(), rc, depth+1, prefix+name)
-						if !MessageValueEqual(emptyListValue, newListValue) {
-							reflectList.Append(newListValue)
-						}
-					} else {
-						// TODO: support list of scalar type when layout is vertical?
-						// NOTE(wenchyzhu): we don't support list of scalar type when layout is vertical
-					}
-				} else {
-					size := rc.GetCellCountWithPrefix(prefix + name)
-					// atom.Log.Debug("prefix size: ", size)
-					for i := 1; i <= size; i++ {
-						newListValue := reflectList.NewElement()
-						if fd.Kind() == protoreflect.MessageKind {
-							sh.parseFieldOptions(newListValue.Message(), rc, depth+1, prefix+name+strconv.Itoa(i))
-							if !MessageValueEqual(emptyListValue, newListValue) {
-								reflectList.Append(newListValue)
-							}
-						} else {
-							colName := prefix + name + strconv.Itoa(i)
-							cell := rc.Cell(colName)
-							if cell == nil {
-								errors.Errorf("%s|horizontal list(scalar): column not found", rc.CellDebugString(colName))
-							}
-							newListValue, err = sh.parseFieldValue(fd, cell.Data)
-							if err != nil {
-								return errors.Wrapf(err, "%s|horizontal list(scalar): failed to parse field value: %s", rc.CellDebugString(colName), cell.Data)
-							}
-							reflectList.Append(newListValue)
-						}
-					}
+				keyColName := prefix + field.opts.Name + field.opts.Key
+				cell := rc.Cell(keyColName)
+				if cell == nil {
+					return errors.Errorf("%s|vertical map: key column not found", rc.CellDebugString(keyColName))
 				}
-			}
-			if !msg.Has(fd) && reflectList.Len() != 0 {
-				msg.Set(fd, newValue)
+				fieldValue, err := sp.parseFieldValue(keyFd, cell.Data)
+				if err != nil {
+					return errors.Wrapf(err, "%s|vertical map: failed to parse field value: %s", rc.CellDebugString(keyColName), cell.Data)
+				}
+				newMapKey := fieldValue.MapKey()
+
+				var newMapValue protoreflect.Value
+				if reflectMap.Has(newMapKey) {
+					newMapValue = reflectMap.Mutable(newMapKey)
+				} else {
+					newMapValue = reflectMap.NewValue()
+				}
+				err = sp.parseFieldOptions(newMapValue.Message(), rc, depth+1, prefix+field.opts.Name)
+				if err != nil {
+					return errors.Wrapf(err, "%s|vertical map: failed to parse field options with prefix: %s", rc.CellDebugString(keyColName), prefix+field.opts.Name)
+				}
+				if !MessageValueEqual(emptyMapValue, newMapValue) {
+					reflectMap.Set(newMapKey, newMapValue)
+				}
 			}
 		} else {
-			if fd.Kind() == protoreflect.MessageKind {
-				colName := prefix + name
-				if etype == tableaupb.Type_TYPE_INCELL_STRUCT {
-					cell := rc.Cell(colName)
-					if cell == nil {
-						errors.Errorf("%s|incell struct: column not found", rc.CellDebugString(colName))
-					}
-					if cell.Data != "" {
-						// If s does not contain sep and sep is not empty, Split returns a
-						// slice of length 1 whose only element is s.
-						splits := strings.Split(cell.Data, sep)
-						subMd := newValue.Message().Descriptor()
-						for i := 0; i < subMd.Fields().Len() && i < len(splits); i++ {
-							fd := subMd.Fields().Get(i)
-							// atom.Log.Debugf("fd.FullName().Name(): ", fd.FullName().Name())
-							incell := splits[i]
-							value, err := sh.parseFieldValue(fd, incell)
-							if err != nil {
-								return errors.Wrapf(err, "%s|incell struct: failed to parse field value: %s", rc.CellDebugString(colName), incell)
-							}
-							newValue.Message().Set(fd, value)
-						}
-					}
-				} else {
-					subMsgName := string(fd.Message().FullName())
-					_, found := specialMessageMap[subMsgName]
-					if found {
-						cell := rc.Cell(colName)
-						if cell == nil {
-							errors.Errorf("%s|builtin type: column not found", rc.CellDebugString(colName))
-						}
-						newValue, err = sh.parseFieldValue(fd, cell.Data)
-						if err != nil {
-							return errors.Wrapf(err, "%s|builtin type: failed to parse field value: %s", rc.CellDebugString(colName), cell.Data)
-						}
-					} else {
-						pkgName := newValue.Message().Descriptor().ParentFile().Package()
-						if string(pkgName) != sh.ProtoPackage {
-							errors.Errorf("%s|builtin type: unknown message %v in package %s", rc.CellDebugString(colName), subMsgName, pkgName)
-						}
-						sh.parseFieldOptions(newValue.Message(), rc, depth+1, prefix+name)
-					}
-				}
-				if !MessageValueEqual(emptyValue, newValue) {
-					msg.Set(fd, newValue)
-				}
+			// value is scalar type
+			key := "Key"     // default key name
+			value := "Value" // default value name
+			// key cell
+			keyColName := prefix + field.opts.Name + key
+			cell := rc.Cell(keyColName)
+			if cell == nil {
+				return errors.Errorf("%s|vertical map(scalar): key column not found", rc.CellDebugString(keyColName))
+			}
+			fieldValue, err := sp.parseFieldValue(keyFd, cell.Data)
+			if err != nil {
+				return errors.Wrapf(err, "%s|failed to parse field value: %s", rc.CellDebugString(keyColName), cell.Data)
+			}
+			newMapKey := fieldValue.MapKey()
+			var newMapValue protoreflect.Value
+			if reflectMap.Has(newMapKey) {
+				newMapValue = reflectMap.Mutable(newMapKey)
 			} else {
-				colName := prefix + name
-				cell := rc.Cell(colName)
-				if cell == nil {
-					errors.Errorf("%s|scalar: column not found", rc.CellDebugString(colName))
-				}
-				newValue, err = sh.parseFieldValue(fd, cell.Data)
-				if err != nil {
-					return errors.Wrapf(err, "%s|scalar: failed to parse field value: %s", rc.CellDebugString(colName), cell)
-				}
-				msg.Set(fd, newValue)
+				newMapValue = reflectMap.NewValue()
+			}
+			// value cell
+			valueColName := prefix + field.opts.Name + value
+			cell = rc.Cell(valueColName)
+			if cell == nil {
+				return errors.Errorf("%s|vertical map(scalar): value colum not found", rc.CellDebugString(valueColName))
+			}
+			newMapValue, err = sp.parseFieldValue(field.fd, cell.Data)
+			if err != nil {
+				return errors.Wrapf(err, "%s|vertical map(scalar): failed to parse field value: %s", rc.CellDebugString(valueColName), cell.Data)
+			}
+			if !reflectMap.Has(newMapKey) {
+				reflectMap.Set(newMapKey, newMapValue)
 			}
 		}
+	}
+	if !msg.Has(field.fd) && reflectMap.Len() != 0 {
+		msg.Set(field.fd, newValue)
 	}
 	return nil
 }
 
-func (sh *sheetParser) parseFieldValue(fd protoreflect.FieldDescriptor, value string) (protoreflect.Value, error) {
+func (sp *sheetParser) parseListField(field *Field, msg protoreflect.Message, rc *excel.RowCells, depth int, prefix string) (err error) {
+	// Mutable returns a mutable reference to a composite type.
+	newValue := msg.Mutable(field.fd)
+	reflectList := newValue.List()
+	if field.opts.Type == tableaupb.Type_TYPE_INCELL_LIST {
+		// incell list
+		colName := prefix + field.opts.Name
+		cell := rc.Cell(colName)
+		if cell == nil {
+			return errors.Errorf("%s|incell list: column not found", rc.CellDebugString(colName))
+		}
+		if cell.Data != "" {
+			// If s does not contain sep and sep is not empty, Split returns a
+			// slice of length 1 whose only element is s.
+			splits := strings.Split(cell.Data, field.opts.Sep)
+			for _, incell := range splits {
+				value, err := sp.parseFieldValue(field.fd, incell)
+				if err != nil {
+					return errors.Wrapf(err, "%s|incell list: failed to parse field value: %s", rc.CellDebugString(colName), incell)
+				}
+				reflectList.Append(value)
+			}
+		}
+	} else {
+		emptyListValue := reflectList.NewElement()
+		if field.opts.Layout == tableaupb.Layout_LAYOUT_VERTICAL {
+			newListValue := reflectList.NewElement()
+			if field.fd.Kind() == protoreflect.MessageKind {
+				// struct list
+				err = sp.parseFieldOptions(newListValue.Message(), rc, depth+1, prefix+field.opts.Name)
+				if err != nil {
+					return errors.Wrapf(err, "...|vertical list: failed to parse field options with prefix: %s", prefix+field.opts.Name)
+				}
+				if !MessageValueEqual(emptyListValue, newListValue) {
+					reflectList.Append(newListValue)
+				}
+			} else {
+				// TODO: support list of scalar type when layout is vertical?
+				// NOTE(wenchyzhu): we don't support list of scalar type when layout is vertical
+			}
+		} else {
+			size := rc.GetCellCountWithPrefix(prefix + field.opts.Name)
+			// atom.Log.Debug("prefix size: ", size)
+			for i := 1; i <= size; i++ {
+				newListValue := reflectList.NewElement()
+				if field.fd.Kind() == protoreflect.MessageKind {
+					// struct list
+					err = sp.parseFieldOptions(newListValue.Message(), rc, depth+1, prefix+field.opts.Name+strconv.Itoa(i))
+					if err != nil {
+						return errors.Wrapf(err, "...|vertical list: failed to parse field options with prefix: %s", prefix+field.opts.Name+strconv.Itoa(i))
+					}
+					if !MessageValueEqual(emptyListValue, newListValue) {
+						reflectList.Append(newListValue)
+					}
+				} else {
+					// scalar list
+					colName := prefix + field.opts.Name + strconv.Itoa(i)
+					cell := rc.Cell(colName)
+					if cell == nil {
+						return errors.Errorf("%s|horizontal list(scalar): column not found", rc.CellDebugString(colName))
+					}
+					newListValue, err = sp.parseFieldValue(field.fd, cell.Data)
+					if err != nil {
+						return errors.Wrapf(err, "%s|horizontal list(scalar): failed to parse field value: %s", rc.CellDebugString(colName), cell.Data)
+					}
+					reflectList.Append(newListValue)
+				}
+			}
+		}
+	}
+	if !msg.Has(field.fd) && reflectList.Len() != 0 {
+		msg.Set(field.fd, newValue)
+	}
+
+	return nil
+}
+
+func (sp *sheetParser) parseStructField(field *Field, msg protoreflect.Message, rc *excel.RowCells, depth int, prefix string) (err error) {
+	// NOTE(wenchy): `proto.Equal` treats a nil message as not equal to an empty one.
+	// doc: [Equal](https://pkg.go.dev/google.golang.org/protobuf/proto?tab=doc#Equal)
+	// issue: [APIv2: protoreflect: consider Message nilness test](https://github.com/golang/protobuf/issues/966)
+	// ```
+	// nilMessage = (*MyMessage)(nil)
+	// emptyMessage = new(MyMessage)
+	//
+	// Equal(nil, nil)                   // true
+	// Equal(nil, nilMessage)            // false
+	// Equal(nil, emptyMessage)          // false
+	// Equal(nilMessage, nilMessage)     // true
+	// Equal(nilMessage, emptyMessage)   // ??? false
+	// Equal(emptyMessage, emptyMessage) // true
+	// ```
+	//
+	// Case: `subMsg := msg.Mutable(fd).Message()`
+	// `Message.Mutable` will allocate new "empty message", and is not equal to "nil"
+	//
+	// Solution:
+	// 1. spawn two values: `emptyValue` and `newValue`
+	// 2. set `newValue` back to field if `newValue` is not equal to `emptyValue`
+	emptyValue := msg.NewField(field.fd)
+	newValue := msg.NewField(field.fd)
+
+	colName := prefix + field.opts.Name
+	if field.opts.Type == tableaupb.Type_TYPE_INCELL_STRUCT {
+		// incell struct
+		cell := rc.Cell(colName)
+		if cell == nil {
+			return errors.Errorf("%s|incell struct: column not found", rc.CellDebugString(colName))
+		}
+		if cell.Data != "" {
+			// If s does not contain sep and sep is not empty, Split returns a
+			// slice of length 1 whose only element is s.
+			splits := strings.Split(cell.Data, field.opts.Sep)
+			subMd := newValue.Message().Descriptor()
+			for i := 0; i < subMd.Fields().Len() && i < len(splits); i++ {
+				fd := subMd.Fields().Get(i)
+				// atom.Log.Debugf("fd.FullName().Name(): ", fd.FullName().Name())
+				incell := splits[i]
+				value, err := sp.parseFieldValue(fd, incell)
+				if err != nil {
+					return errors.Wrapf(err, "%s|incell struct: failed to parse field value: %s", rc.CellDebugString(colName), incell)
+				}
+				newValue.Message().Set(fd, value)
+			}
+		}
+	} else {
+		// built-in struct
+		subMsgName := string(field.fd.Message().FullName())
+		_, found := specialMessageMap[subMsgName]
+		if found {
+			cell := rc.Cell(colName)
+			if cell == nil {
+				return errors.Errorf("%s|builtin type: column not found", rc.CellDebugString(colName))
+			}
+			newValue, err = sp.parseFieldValue(field.fd, cell.Data)
+			if err != nil {
+				return errors.Wrapf(err, "%s|builtin type: failed to parse field value: %s", rc.CellDebugString(colName), cell.Data)
+			}
+		} else {
+			pkgName := newValue.Message().Descriptor().ParentFile().Package()
+			if string(pkgName) != sp.ProtoPackage {
+				return errors.Errorf("%s|builtin type: unknown message %v in package %s", rc.CellDebugString(colName), subMsgName, pkgName)
+			}
+			err = sp.parseFieldOptions(newValue.Message(), rc, depth+1, prefix+field.opts.Name)
+			if err != nil {
+				return errors.Wrapf(err, "%s|builtin type: failed to parse field options with prefix: %s", rc.CellDebugString(colName), prefix+field.opts.Name)
+			}
+		}
+	}
+	if !MessageValueEqual(emptyValue, newValue) {
+		msg.Set(field.fd, newValue)
+	}
+	return nil
+}
+
+func (sp *sheetParser) parseScalarField(field *Field, msg protoreflect.Message, rc *excel.RowCells, depth int, prefix string) (err error) {
+	newValue := msg.NewField(field.fd)
+	colName := prefix + field.opts.Name
+	cell := rc.Cell(colName)
+	if cell == nil {
+		return errors.Errorf("%s|scalar: column not found", rc.CellDebugString(colName))
+	}
+	newValue, err = sp.parseFieldValue(field.fd, cell.Data)
+	if err != nil {
+		return errors.Wrapf(err, "%s|scalar: failed to parse field value: %s", rc.CellDebugString(colName), cell.Data)
+	}
+	msg.Set(field.fd, newValue)
+	return nil
+}
+
+func (sp *sheetParser) parseFieldValue(fd protoreflect.FieldDescriptor, value string) (protoreflect.Value, error) {
 	switch fd.Kind() {
 	case protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Sfixed32Kind:
 		if value != "" {
@@ -537,7 +596,7 @@ func (sh *sheetParser) parseFieldValue(fd protoreflect.FieldDescriptor, value st
 			if value != "" {
 				// location name: "Asia/Shanghai" or "Asia/Chongqing".
 				// NOTE(wenchy): There is no "Asia/Beijing" location name. Whoa!!! Big surprize?
-				t, err := parseTimeWithLocation(sh.LocationName, value)
+				t, err := parseTimeWithLocation(sp.LocationName, value)
 				if err != nil {
 					return protoreflect.ValueOf(ts.ProtoReflect()), errors.Wrapf(err, "illegal timestamp string format: %v", value)
 				}
