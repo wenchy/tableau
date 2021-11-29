@@ -20,7 +20,7 @@ message MatchCfg {
   message MatchMode {
     option (tableau.element) = {name:"MatchMode"};
 
-    int mission_type = 1 [(tableau.attr) = {name:"MissionType" default:"0"}];
+    string mission_type = 1 [(tableau.attr) = {name:"MissionType"}];
 
     Time time = 2 [(tableau.child) = {name:"Time"}];
     Open open = 3 [(tableau.child) = {name:"Open"}];
@@ -35,52 +35,52 @@ message MatchCfg {
     message Time {
       option (tableau.element) = {name:"Time"};
 
-      int min_time = 1 [(tableau.attr) = {name:"MinTime" default:"0"}];
-      int max_time = 2 [(tableau.attr) = {name:"MaxTime" default:"0"}];
-      int freq = 3 [(tableau.attr) = {name:"Freq" default:"0"}];
-      int confirm_time = 4 [(tableau.attr) = {name:"ConfirmTime" default:"0"}];
+      int32 min_time = 1 [(tableau.attr) = {name:"MinTime" default:"0"}];
+      int32 max_time = 2 [(tableau.attr) = {name:"MaxTime" default:"0"}];
+      int32 freq = 3 [(tableau.attr) = {name:"Freq" default:"0"}];
+      int32 confirm_time = 4 [(tableau.attr) = {name:"ConfirmTime" default:"0"}];
 
     }
 
     message Open {
       option (tableau.element) = {name:"Open"};
 
-      int begin_date = 1 [(tableau.attr) = {name:"BeginDate" default:"0"}];
-      int begin_time = 2 [(tableau.attr) = {name:"BeginTime" default:"0"}];
-      int end_date = 3 [(tableau.attr) = {name:"EndDate" default:"0"}];
-      int end_time = 4 [(tableau.attr) = {name:"EndTime" default:"0"}];
+      int32 begin_date = 1 [(tableau.attr) = {name:"BeginDate" default:"0"}];
+      int32 begin_time = 2 [(tableau.attr) = {name:"BeginTime" default:"0"}];
+      int32 end_date = 3 [(tableau.attr) = {name:"EndDate" default:"0"}];
+      int32 end_time = 4 [(tableau.attr) = {name:"EndTime" default:"0"}];
 
     }
 
     message Camp {
       option (tableau.element) = {name:"Camp"};
 
-      int camp_id = 1 [(tableau.attr) = {name:"CampID" default:"0"}];
-      int player_num = 2 [(tableau.attr) = {name:"PlayerNum" default:"0"}];
+      int32 camp_id = 1 [(tableau.attr) = {name:"CampID" default:"0"}];
+      int32 player_num = 2 [(tableau.attr) = {name:"PlayerNum" default:"0"}];
 
     }
 
     message Strategy {
       option (tableau.element) = {name:"Strategy"};
 
-      int strategy_id = 1 [(tableau.attr) = {name:"StrategyID" default:"0"}];
+      string strategy_id = 1 [(tableau.attr) = {name:"StrategyID"}];
 
     }
 
     message Scope {
       option (tableau.element) = {name:"Scope"};
 
-      int scope_id = 1 [(tableau.attr) = {name:"ScopeID" default:"0"}];
+      string scope_id = 1 [(tableau.attr) = {name:"ScopeID"}];
 
     }
 
     message Filter {
       option (tableau.element) = {name:"Filter"};
 
-      int filter_id = 1 [(tableau.attr) = {name:"FilterID" default:"0"}];
-      int open = 2 [(tableau.attr) = {name:"Open" default:"0"}];
-      int value = 3 [(tableau.attr) = {name:"Value" default:"0"}];
-      int upd_interval = 4 [(tableau.attr) = {name:"UpdInterval" default:"0"}];
+      string filter_id = 1 [(tableau.attr) = {name:"FilterID"}];
+      int32 open = 2 [(tableau.attr) = {name:"Open" default:"0"}];
+      int32 value = 3 [(tableau.attr) = {name:"Value" default:"0"}];
+      int32 upd_interval = 4 [(tableau.attr) = {name:"UpdInterval" default:"0"}];
 
       repeated Param param_list = 5 [(tableau.child) = {name:"Param"}];
       repeated Power power_list = 6 [(tableau.child) = {name:"Power"}];
@@ -88,22 +88,22 @@ message MatchCfg {
       message Param {
         option (tableau.element) = {name:"Param"};
 
-        int rank_limit = 1 [(tableau.attr) = {name:"RankLimit" default:"0"}];
-        int value = 2 [(tableau.attr) = {name:"Value" default:"0"}];
+        int32 rank_limit = 1 [(tableau.attr) = {name:"RankLimit" default:"0"}];
+        int32 value = 2 [(tableau.attr) = {name:"Value" default:"0"}];
 
       }
 
       message Power {
         option (tableau.element) = {name:"Power"};
 
-        int hornor_power = 1 [(tableau.attr) = {name:"HornorPower" default:"0"}];
+        int32 hornor_power = 1 [(tableau.attr) = {name:"HornorPower" default:"0"}];
 
         repeated Param param_list = 2 [(tableau.child) = {name:"Param"}];
 
         message Param {
           option (tableau.element) = {name:"Param"};
 
-          int value = 1 [(tableau.attr) = {name:"Value" default:"0"}];
+          int32 value = 1 [(tableau.attr) = {name:"Value" default:"0"}];
 
         }
       }
@@ -112,26 +112,26 @@ message MatchCfg {
     message Route {
       option (tableau.element) = {name:"Route"};
 
-      int key = 1 [(tableau.attr) = {name:"Key" default:"0"}];
+      int32 key = 1 [(tableau.attr) = {name:"Key" default:"0"}];
 
     }
 
     message MatchAI {
       option (tableau.element) = {name:"MatchAI"};
 
-      int is_open = 1 [(tableau.attr) = {name:"IsOpen" default:"0"}];
-      int player_only_one_camp = 2 [(tableau.attr) = {name:"PlayerOnlyOneCamp" default:"0"}];
-      int guarantee_ai_ratio = 3 [(tableau.attr) = {name:"GuaranteeAIRatio" default:"0"}];
+      int32 is_open = 1 [(tableau.attr) = {name:"IsOpen" default:"0"}];
+      int32 player_only_one_camp = 2 [(tableau.attr) = {name:"PlayerOnlyOneCamp" default:"0"}];
+      int32 guarantee_ai_ratio = 3 [(tableau.attr) = {name:"GuaranteeAIRatio" default:"0"}];
 
       repeated AI ai_list = 4 [(tableau.child) = {name:"AI"}];
 
       message AI {
         option (tableau.element) = {name:"AI"};
 
-        int type = 1 [(tableau.attr) = {name:"Type" default:"0"}];
-        int is_open = 2 [(tableau.attr) = {name:"IsOpen" default:"0"}];
-        int min_time = 3 [(tableau.attr) = {name:"MinTime" default:"0"}];
-        int max_time = 4 [(tableau.attr) = {name:"MaxTime" default:"0"}];
+        string type = 1 [(tableau.attr) = {name:"Type"}];
+        int32 is_open = 2 [(tableau.attr) = {name:"IsOpen" default:"0"}];
+        int32 min_time = 3 [(tableau.attr) = {name:"MinTime" default:"0"}];
+        int32 max_time = 4 [(tableau.attr) = {name:"MaxTime" default:"0"}];
 
       }
     }
@@ -139,8 +139,8 @@ message MatchCfg {
     message Random {
       option (tableau.element) = {name:"Random"};
 
-      int mission_type = 1 [(tableau.attr) = {name:"MissionType" default:"0"}];
-      int priority = 2 [(tableau.attr) = {name:"Priority" default:"0"}];
+      string mission_type = 1 [(tableau.attr) = {name:"MissionType"}];
+      int32 priority = 2 [(tableau.attr) = {name:"Priority" default:"0"}];
 
     }
   }
@@ -148,28 +148,28 @@ message MatchCfg {
   message ConfirmTimeOutPunish {
     option (tableau.element) = {name:"ConfirmTimeOutPunish"};
 
-    int time = 1 [(tableau.attr) = {name:"Time" default:"0"}];
+    int32 time = 1 [(tableau.attr) = {name:"Time" default:"0"}];
 
   }
 
   message MatchRoom {
     option (tableau.element) = {name:"MatchRoom"};
 
-    int max_loop = 1 [(tableau.attr) = {name:"MaxLoop" default:"0"}];
+    int32 max_loop = 1 [(tableau.attr) = {name:"MaxLoop" default:"0"}];
 
   }
 
   message MatchPlayer {
     option (tableau.element) = {name:"MatchPlayer"};
 
-    int max_loop = 1 [(tableau.attr) = {name:"MaxLoop" default:"0"}];
+    int32 max_loop = 1 [(tableau.attr) = {name:"MaxLoop" default:"0"}];
 
   }
 
   message MatchStatInfo {
     option (tableau.element) = {name:"MatchStatInfo"};
 
-    int report_interval = 1 [(tableau.attr) = {name:"ReportInterval" default:"0"}];
+    int32 report_interval = 1 [(tableau.attr) = {name:"ReportInterval" default:"0"}];
 
   }
 
@@ -181,14 +181,14 @@ message MatchCfg {
     message Weight {
       option (tableau.element) = {name:"Weight"};
 
-      int num = 1 [(tableau.attr) = {name:"Num" default:"0"}];
+      int32 num = 1 [(tableau.attr) = {name:"Num" default:"0"}];
 
       repeated Param param_list = 2 [(tableau.child) = {name:"Param"}];
 
       message Param {
         option (tableau.element) = {name:"Param"};
 
-        int value = 1 [(tableau.attr) = {name:"Value" default:"0"}];
+        int32 value = 1 [(tableau.attr) = {name:"Value" default:"0"}];
 
       }
     }

@@ -6,17 +6,18 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/Wenchy/tableau/internal/atom"
 	"github.com/Wenchy/tableau/options"
 	"github.com/Wenchy/tableau/proto/tableaupb"
 
-	"google.golang.org/protobuf/proto"
 	"github.com/antchfx/xmlquery"
 	"github.com/antchfx/xpath"
-	"github.com/iancoleman/strcase"
 	"github.com/emirpasic/gods/sets/treeset"
+	"github.com/iancoleman/strcase"
+	"google.golang.org/protobuf/proto"
 )
 
 type XmlGenerator struct {
@@ -29,6 +30,7 @@ type XmlGenerator struct {
 	Xml *options.XmlOption // xml generation settings
 	writer *bufio.Writer
 	childMap map[string]*tableaupb.Child
+	nav *xmlquery.NodeNavigator
 }
 
 type xml struct {
@@ -104,6 +106,7 @@ func (gen *XmlGenerator) Generate() {
 }
 
 func (gen *XmlGenerator) parseNode(nav *xmlquery.NodeNavigator, element *tableaupb.Element, prefix string) error {	
+	gen.nav = nav
 	element.Options = &tableaupb.ElementOptions{
 		Name: nav.LocalName(),
 	}
@@ -119,20 +122,20 @@ func (gen *XmlGenerator) parseNode(nav *xmlquery.NodeNavigator, element *tableau
 				atom.Log.Panic(fmt.Sprintf("KeyCol:%s not found in the immediately following nodes of %s", attr.Value, nav.LocalName()))
 				continue
 			}
-			keyValue := keyNode.InnerText()
-			fmt.Println(keyValue)
+			keyType, _ := gen.guessType(keyNode.InnerText())
 			element.Options.Key = attr.Value
-			element.KeyType = "uint32" //TODO
+			element.KeyType = keyType
 		case "desc":
 		default:
 			attrName := attr.Name.Local
-			// attrValue := attr.Value
+			attrValue := attr.Value
+			t, d := gen.guessType(attrValue)
 			newAttr := &tableaupb.Attr{
 				Options: &tableaupb.AttrOptions{
 					Name: attrName,
-					Default: "0", //TODO
+					Default: d,
 				},
-				Type: "int", //TODO
+				Type: t,
 				Name: strcase.ToSnake(attrName),
 			}
 			if matches := numRegex.FindStringSubmatch(attrName); len(matches) > 0 {
@@ -240,6 +243,21 @@ func (gen *XmlGenerator) parseNode(nav *xmlquery.NodeNavigator, element *tableau
 		}
 	}
 	return nil
+}
+
+func (gen *XmlGenerator) guessType(value string) (string, string) {
+	var t, d string
+	if _, err := strconv.Atoi(value); err == nil {
+		t, d = "int32", "0"
+	} else if _, err := strconv.ParseInt(value, 10, 64); err == nil {
+		t, d = "int64", "0"
+	} else {
+		t, d = "string", ""
+	}
+	if gen.nav.Current().Parent.Data == "StructSupplement" {
+		d = value
+	}
+	return t, d
 }
 
 func (gen *XmlGenerator) exportXml(xml *tableaupb.Xml) error {
