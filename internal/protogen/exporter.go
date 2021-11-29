@@ -157,8 +157,6 @@ func genPrototext(m protoreflect.ProtoMessage) string {
 	return text
 }
 
-
-
 func isSameFieldMessageType(left, right *tableaupb.Field) bool {
 	if left == nil || right == nil {
 		return false

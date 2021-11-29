@@ -1,6 +1,11 @@
 package excel
 
 import (
+	"fmt"
+	"math"
+	"strings"
+	"unicode"
+
 	"github.com/pkg/errors"
 	"github.com/xuri/excelize/v2"
 )
@@ -86,4 +91,62 @@ func (b *Book) parse() error {
 		b.Sheets[sheetName] = s
 	}
 	return nil
+}
+
+type RowCells struct {
+	Row   int                 // row number
+	cells map[string]*RowCell // name row -> data row cell
+}
+
+func NewRowCells(row int) *RowCells {
+	return &RowCells{
+		Row:   row,
+		cells: make(map[string]*RowCell),
+	}
+}
+
+type RowCell struct {
+	Col  int    // colum number
+	Data string // cell data
+}
+
+func (r *RowCells) Cell(name string) *RowCell {
+	return r.cells[name]
+}
+
+func (r *RowCells) CellDebugString(name string) string {
+	rc := r.Cell(name)
+	if rc == nil {
+		return fmt.Sprintf("(%d,%d)%s:%s", r.Row, 0, name, "")
+	}
+	return fmt.Sprintf("(%d,%d)%s:%s", r.Row, rc.Col, name, rc.Data)
+}
+
+func (r *RowCells) SetCell(name string, col int, data string) {
+	r.cells[name] = &RowCell{
+		Col:  col,
+		Data: data,
+	}
+}
+
+func (r *RowCells) GetCellCountWithPrefix(prefix string) int {
+	// atom.Log.Debug("name prefix: ", prefix)
+	size := 0
+	for name := range r.cells {
+		if strings.HasPrefix(name, prefix) {
+			num := 0
+			// atom.Log.Debug("name: ", name)
+			colSuffix := name[len(prefix):]
+			// atom.Log.Debug("name: suffix ", colSuffix)
+			for _, r := range colSuffix {
+				if unicode.IsDigit(r) {
+					num = num*10 + int(r-'0')
+				} else {
+					break
+				}
+			}
+			size = int(math.Max(float64(size), float64(num)))
+		}
+	}
+	return size
 }
