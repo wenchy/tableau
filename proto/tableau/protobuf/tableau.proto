@@ -19,6 +19,14 @@ extend google.protobuf.FieldOptions {
   FieldOptions field = 50000;
 }
 
+extend google.protobuf.EnumOptions {
+  EnumOptions enum = 50000;
+}
+
+extend google.protobuf.EnumValueOptions {
+  EnumValueOptions evalue = 50000;
+}
+
 message WorkbookOptions {
   string name = 1;  // workbook name
 }
@@ -53,6 +61,13 @@ message FieldOptions {
   int32 min = 11;     // min value
   int32 max = 12;     // max value
   string range = 13;  // format like set description: [1,10], (1,10], [1,10), [1,~]
+}
+
+message EnumOptions {
+  string name = 1;  // alias name
+}
+message EnumValueOptions {
+  string name = 1;  // alias name
 }
 
 // field type.

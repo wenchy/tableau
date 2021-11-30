@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/Wenchy/tableau/internal/atom"
@@ -16,22 +15,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-var mapRegexp *regexp.Regexp
-var listRegexp *regexp.Regexp
-var structRegexp *regexp.Regexp
-
 const (
-	tableauProtoPath   = "tableau/protobuf/tableau.proto"
-	timestampProtoPath = "google/protobuf/timestamp.proto"
-	durationProtoPath  = "google/protobuf/duration.proto"
-	version            = "v0.1.0"
+	version = "v0.1.0"
 )
-
-func init() {
-	mapRegexp = regexp.MustCompile(`^map<(.+),(.+)>`)  // e.g.: map<uint32,Element>
-	listRegexp = regexp.MustCompile(`^\[(.*)\](.+)`)   // e.g.: [Element]uint32
-	structRegexp = regexp.MustCompile(`^\{(.+)\}(.+)`) // e.g.: {Element}uint32
-}
 
 type Generator struct {
 	ProtoPackage string   // protobuf package name.
@@ -97,7 +83,7 @@ func (gen *Generator) Generate() error {
 			bp.wb.Worksheets = append(bp.wb.Worksheets, ws)
 		}
 		// export book
-		be := newBookExporter(gen.ProtoPackage, gen.GoPackage, gen.OutputDir, bp.wb)
+		be := newBookExporter(gen.ProtoPackage, gen.GoPackage, gen.OutputDir, gen.Imports, bp.wb)
 		if err := be.export(); err != nil {
 			return errors.Wrapf(err, "failed to export workbook: %s", wbPath)
 		}
@@ -165,22 +151,19 @@ func (sh *sheetHeader) getNoteCell(cursor int) string {
 	return getCell(sh.noterow, cursor)
 }
 
-type GeneratedFile struct {
-	filename string
-	buf      bytes.Buffer
+type GeneratedBuf struct {
+	buf bytes.Buffer
 }
 
 // NewGeneratedFile creates a new generated file with the given filename.
-func NewGeneratedFile(filename string) *GeneratedFile {
-	return &GeneratedFile{
-		filename: filename,
-	}
+func NewGeneratedBuf() *GeneratedBuf {
+	return &GeneratedBuf{}
 }
 
 // P prints a line to the generated output. It converts each parameter to a
 // string following the same rules as fmt.Print. It never inserts spaces
 // between parameters.
-func (g *GeneratedFile) P(v ...interface{}) {
+func (g *GeneratedBuf) P(v ...interface{}) {
 	for _, x := range v {
 		fmt.Fprint(&g.buf, x)
 	}
@@ -188,6 +171,6 @@ func (g *GeneratedFile) P(v ...interface{}) {
 }
 
 // Content returns the contents of the generated file.
-func (g *GeneratedFile) Content() []byte {
+func (g *GeneratedBuf) Content() []byte {
 	return g.buf.Bytes()
 }

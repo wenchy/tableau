@@ -110,24 +110,19 @@ type Field struct {
 // parseFieldOptions is aimed to parse the options of all the fields of a protobuf message.
 func (sp *sheetParser) parseFieldOptions(msg protoreflect.Message, rc *excel.RowCells, depth int, prefix string) (err error) {
 	md := msg.Descriptor()
-	opts := md.Options().(*descriptorpb.MessageOptions)
-	worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(*tableaupb.WorksheetOptions)
-	worksheetName := ""
-	if worksheet != nil {
-		worksheetName = worksheet.Name
-	}
-
 	pkg := md.ParentFile().Package()
-	atom.Log.Debugf("%s// %s, '%s', %v, %v, %v", printer.Indent(depth), md.FullName(), worksheetName, md.IsMapEntry(), prefix, pkg)
+	// opts := md.Options().(*descriptorpb.MessageOptions)
+	// worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(*tableaupb.WorksheetOptions)
+	// worksheetName := ""
+	// if worksheet != nil {
+	// 	worksheetName = worksheet.Name
+	// }
+	// atom.Log.Debugf("%s// %s, '%s', %v, %v, %v", printer.Indent(depth), md.FullName(), worksheetName, md.IsMapEntry(), prefix, pkg)
 	for i := 0; i < md.Fields().Len(); i++ {
 		fd := md.Fields().Get(i)
 		if string(pkg) != sp.ProtoPackage && pkg != "google.protobuf" {
 			atom.Log.Debugf("%s// no need to proces package: %v", printer.Indent(depth), pkg)
 			return nil
-		}
-		msgName := ""
-		if fd.Kind() == protoreflect.MessageKind {
-			msgName = string(fd.Message().FullName())
 		}
 
 		// default value
@@ -167,23 +162,28 @@ func (sp *sheetParser) parseFieldOptions(msg protoreflect.Message, rc *excel.Row
 		if subsep == "" {
 			subsep = ":"
 		}
-		atom.Log.Debugf("%s%s(%v) %s(%s) %s = %d [(name) = \"%s\", (type) = %s, (key) = \"%s\", (layout) = \"%s\", (sep) = \"%s\"];",
-			printer.Indent(depth), fd.Cardinality().String(), fd.IsMap(), fd.Kind().String(), msgName, fd.FullName().Name(), fd.Number(), prefix+name, etype.String(), key, layout.String(), sep)
-		atom.Log.Debugw("field metadata",
-			"tabs", depth,
-			"cardinality", fd.Cardinality().String(),
-			"isMap", fd.IsMap(),
-			"kind", fd.Kind().String(),
-			"msgName", msgName,
-			"fullName", fd.FullName(),
-			"number", fd.Number(),
-			"name", prefix+name,
-			"note", note,
-			"type", etype.String(),
-			"key", key,
-			"layout", layout.String(),
-			"sep", sep,
-		)
+
+		// msgName := ""
+		// if fd.Kind() == protoreflect.MessageKind {
+		// 	msgName = string(fd.Message().FullName())
+		// }
+		// atom.Log.Debugf("%s%s(%v) %s(%s) %s = %d [(name) = \"%s\", (type) = %s, (key) = \"%s\", (layout) = \"%s\", (sep) = \"%s\"];",
+		// 	printer.Indent(depth), fd.Cardinality().String(), fd.IsMap(), fd.Kind().String(), msgName, fd.FullName().Name(), fd.Number(), prefix+name, etype.String(), key, layout.String(), sep)
+		// atom.Log.Debugw("field metadata",
+		// 	"tabs", depth,
+		// 	"cardinality", fd.Cardinality().String(),
+		// 	"isMap", fd.IsMap(),
+		// 	"kind", fd.Kind().String(),
+		// 	"msgName", msgName,
+		// 	"fullName", fd.FullName(),
+		// 	"number", fd.Number(),
+		// 	"name", prefix+name,
+		// 	"note", note,
+		// 	"type", etype.String(),
+		// 	"key", key,
+		// 	"layout", layout.String(),
+		// 	"sep", sep,
+		// )
 
 		field := &Field{
 			fd: fd,
@@ -213,6 +213,8 @@ func (sp *sheetParser) parseField(field *Field, msg protoreflect.Message, rc *ex
 		return sp.parseListField(field, msg, rc, depth, prefix)
 	} else if field.fd.Kind() == protoreflect.MessageKind {
 		return sp.parseStructField(field, msg, rc, depth, prefix)
+	} else if field.fd.Kind() == protoreflect.EnumKind {
+		return sp.parseEnumField(field, msg, rc, depth, prefix)
 	} else {
 		return sp.parseScalarField(field, msg, rc, depth, prefix)
 	}
@@ -519,6 +521,58 @@ func (sp *sheetParser) parseStructField(field *Field, msg protoreflect.Message, 
 	return nil
 }
 
+func (sp *sheetParser) parseEnumField(field *Field, msg protoreflect.Message, rc *excel.RowCells, depth int, prefix string) (err error) {
+	newValue := msg.NewField(field.fd)
+	colName := prefix + field.opts.Name
+	cell := rc.Cell(colName)
+	if cell == nil {
+		return errors.Errorf("%s|enum: column not found", rc.CellDebugString(colName))
+	}
+	newValue, err = func() (protoreflect.Value, error) {
+		// default enum value
+		defaultValue := protoreflect.ValueOfEnum(protoreflect.EnumNumber(0))
+		if cell.Data == "" {
+			return defaultValue, nil
+		}
+		ed := field.fd.Enum() // get enum descriptor
+		// try enum value number
+		val, err := strconv.ParseInt(cell.Data, 10, 32)
+		if err == nil {
+			evd := ed.Values().ByNumber(protoreflect.EnumNumber(val))
+			if evd != nil {
+				return protoreflect.ValueOfEnum(evd.Number()), nil
+			}
+			return defaultValue, errors.Errorf("%s|enum: enum type(%s) has no enum value name: %s", rc.CellDebugString(colName), field.opts.Type, cell.Data)
+		}
+
+		// try enum value name
+		evd := ed.Values().ByName(protoreflect.Name(cell.Data))
+		if evd != nil {
+			return protoreflect.ValueOfEnum(evd.Number()), nil
+		}
+		// try enum value alias name
+		for i := 0; i < ed.Values().Len(); i++ {
+			// get enum value descriptor
+			evd := ed.Values().Get(i)
+			opts := evd.Options().(*descriptorpb.EnumValueOptions)
+			evalueOpts := proto.GetExtension(opts, tableaupb.E_Evalue).(*tableaupb.EnumValueOptions)
+			if evalueOpts == nil {
+				return defaultValue, errors.Errorf("%s|enum: enum type(%s) has no enum value options", rc.CellDebugString(colName), field.opts.Type)
+			}
+			if evalueOpts.Name == cell.Data {
+				return protoreflect.ValueOfEnum(evd.Number()), nil
+			}
+		}
+		return defaultValue, errors.Errorf("%s|enum: enum value alias name(%s) not found", rc.CellDebugString(colName), cell.Data)
+	}()
+
+	if err != nil {
+		return errors.Wrapf(err, "%s|enum: failed to parse field value: %s", rc.CellDebugString(colName), cell.Data)
+	}
+	msg.Set(field.fd, newValue)
+	return nil
+}
+
 func (sp *sheetParser) parseScalarField(field *Field, msg protoreflect.Message, rc *excel.RowCells, depth int, prefix string) (err error) {
 	newValue := msg.NewField(field.fd)
 	colName := prefix + field.opts.Name
@@ -635,7 +689,6 @@ func parseFileOptions(fd protoreflect.FileDescriptor) (string, *tableaupb.Workbo
 	opts := fd.Options().(*descriptorpb.FileOptions)
 	protofile := string(fd.FullName())
 	workbook := proto.GetExtension(opts, tableaupb.E_Workbook).(*tableaupb.WorkbookOptions)
-	atom.Log.Debugf("file:%s.proto, workbook:%s", protofile, workbook)
 	return protofile, workbook
 }
 
@@ -658,7 +711,7 @@ func parseMessageOptions(md protoreflect.MessageDescriptor) (string, string, int
 		datarow = 2 // default
 	}
 	transpose := worksheet.Transpose
-	atom.Log.Debugf("msgName:%s, worksheetName:%s, namerow:%d, noterow:%d, datarow:%d, transpose:%v\n", msgName, worksheetName, namerow, noterow, datarow, transpose)
+	// atom.Log.Debugf("msgName:%s, worksheetName:%s, namerow:%d, noterow:%d, datarow:%d, transpose:%v\n", msgName, worksheetName, namerow, noterow, datarow, transpose)
 	return msgName, worksheetName, namerow, noterow, datarow, transpose
 }
 
@@ -679,7 +732,7 @@ func parseTimeWithLocation(locationName string, timeStr string) (time.Time, erro
 
 func MessageValueEqual(v1, v2 protoreflect.Value) bool {
 	if proto.Equal(v1.Message().Interface(), v2.Message().Interface()) {
-		atom.Log.Debug("empty message exists")
+		// atom.Log.Debug("empty message exists")
 		return true
 	}
 	return false

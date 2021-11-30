@@ -2,6 +2,7 @@ package protogen
 
 import (
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/Wenchy/tableau/internal/atom"
@@ -10,9 +11,29 @@ import (
 	"github.com/iancoleman/strcase"
 )
 
+const (
+	tableauProtoPath   = "tableau/protobuf/tableau.proto"
+	timestampProtoPath = "google/protobuf/timestamp.proto"
+	durationProtoPath  = "google/protobuf/duration.proto"
+)
+
+var mapRegexp *regexp.Regexp
+var listRegexp *regexp.Regexp
+var structRegexp *regexp.Regexp
+var enumRegexp *regexp.Regexp
+
+
+func init() {
+	mapRegexp = regexp.MustCompile(`^map<(.+),(.+)>`)              // e.g.: map<uint32,Type>
+	listRegexp = regexp.MustCompile(`^\[(.*)\](.+)`)               // e.g.: [Type]uint32
+	structRegexp = regexp.MustCompile(`^\{(.+)\}(.+)`)             // e.g.: {Type}uint32
+	enumRegexp = regexp.MustCompile(`^enum<(.+)>`)                 // e.g.: enum<Type>
+}
+
 type bookParser struct {
 	wb       *tableaupb.Workbook
 	withNote bool
+	types    map[string]bool // type name -> existed
 }
 
 func newBookParser(workbookName string, imports []string) *bookParser {
@@ -24,15 +45,14 @@ func newBookParser(workbookName string, imports []string) *bookParser {
 			},
 			Worksheets: []*tableaupb.Worksheet{},
 			Name:       wbProtoName,
-			Imports: map[string]int32{
-				tableauProtoPath: 1, // default import
-			},
+			Imports:    make(map[string]int32),
 		},
 		withNote: false,
 	}
 
+	// custom imports
 	for _, path := range imports {
-		bp.wb.Imports[path] = 1 // custom imports
+		bp.wb.Imports[path] = 1
 	}
 	return bp
 }
@@ -78,7 +98,7 @@ func (p *bookParser) parseMapField(field *tableaupb.Field, header *sheetHeader, 
 
 	trimmedNameCell := strings.TrimPrefix(nameCell, prefix)
 
-	// map pattern
+	// map syntax pattern
 	matches := mapRegexp.FindStringSubmatch(typeCell)
 	keyType := strings.TrimSpace(matches[1])
 	valueType := strings.TrimSpace(matches[2])
@@ -86,14 +106,14 @@ func (p *bookParser) parseMapField(field *tableaupb.Field, header *sheetHeader, 
 	if types.IsScalarType(valueType) {
 		// incell map
 		field.Name = strcase.ToSnake(trimmedNameCell)
-		field.Type, field.TypeDefined = ParseType(typeCell)
+		field.Type, field.TypeDefined = p.parseType(typeCell)
 		field.Options = &tableaupb.FieldOptions{
 			Name: trimmedNameCell,
 			Type: tableaupb.Type_TYPE_INCELL_MAP,
 		}
 	} else {
 		field.Name = strcase.ToSnake(valueType) + "_map"
-		field.Type, field.TypeDefined = ParseType(typeCell)
+		field.Type, field.TypeDefined = p.parseType(typeCell)
 		field.MapEntry = &tableaupb.MapEntry{
 			KeyType:   keyType,
 			ValueType: valueType,
@@ -116,7 +136,7 @@ func (p *bookParser) parseListField(field *tableaupb.Field, header *sheetHeader,
 
 	trimmedNameCell := strings.TrimPrefix(nameCell, prefix)
 
-	// list pattern
+	// list syntax pattern
 	matches := listRegexp.FindStringSubmatch(typeCell)
 	colType := strings.TrimSpace(matches[2])
 	var isScalarType bool
@@ -144,7 +164,7 @@ func (p *bookParser) parseListField(field *tableaupb.Field, header *sheetHeader,
 		// vertical list: all columns belong to this list after this cursor.
 		field.Card = "repeated"
 		field.Name = strcase.ToSnake(elemType) + "_list"
-		field.Type, field.TypeDefined = ParseType(elemType)
+		field.Type, field.TypeDefined = p.parseType(elemType)
 		field.Options = &tableaupb.FieldOptions{
 			Name:   "", // name is empty for vertical list
 			Layout: layout,
@@ -166,7 +186,7 @@ func (p *bookParser) parseListField(field *tableaupb.Field, header *sheetHeader,
 
 		field.Card = "repeated"
 		field.Name = strcase.ToSnake(listName) + "_list"
-		field.Type, field.TypeDefined = ParseType(elemType)
+		field.Type, field.TypeDefined = p.parseType(elemType)
 		field.Options = &tableaupb.FieldOptions{
 			Name:   listName,
 			Layout: layout,
@@ -203,7 +223,7 @@ func (p *bookParser) parseListField(field *tableaupb.Field, header *sheetHeader,
 		// incell list
 		field.Card = "repeated"
 		field.Name = strcase.ToSnake(trimmedNameCell)
-		field.Type, field.TypeDefined = ParseType(elemType)
+		field.Type, field.TypeDefined = p.parseType(elemType)
 		field.Options = &tableaupb.FieldOptions{
 			Name: trimmedNameCell,
 			Type: tableaupb.Type_TYPE_INCELL_LIST,
@@ -219,15 +239,28 @@ func (p *bookParser) parseStructField(field *tableaupb.Field, header *sheetHeade
 
 	trimmedNameCell := strings.TrimPrefix(nameCell, prefix)
 
-	// struct pattern
+	// struct syntax pattern
 	matches := structRegexp.FindStringSubmatch(typeCell)
 	elemType := strings.TrimSpace(matches[1])
 	colType := strings.TrimSpace(matches[2])
 
-	fieldPairs := ParseIncellStruct(elemType)
-	if fieldPairs == nil {
+	if fieldPairs := ParseIncellStruct(elemType); fieldPairs != nil {
+		// incell struct
+		field.Name = strcase.ToSnake(trimmedNameCell)
+		field.Type, field.TypeDefined = p.parseType(colType)
+		field.Options = &tableaupb.FieldOptions{
+			Name: trimmedNameCell,
+			Type: tableaupb.Type_TYPE_INCELL_STRUCT,
+		}
+
+		for i := 0; i < len(fieldPairs); i += 2 {
+			fieldType := fieldPairs[i]
+			fieldName := fieldPairs[i+1]
+			field.Fields = append(field.Fields, p.parseScalarField(fieldName, fieldType, ""))
+		}
+	} else {
 		// cross cell struct
-		field.Type, field.TypeDefined = ParseType(elemType)
+		field.Type, field.TypeDefined = p.parseType(elemType)
 		field.Name = strcase.ToSnake(field.Type)
 		index := len(field.Type)
 		structName := trimmedNameCell[:index]
@@ -247,36 +280,23 @@ func (p *bookParser) parseStructField(field *tableaupb.Field, header *sheetHeade
 				break
 			}
 		}
-	} else {
-		// incell struct
-		field.Name = strcase.ToSnake(trimmedNameCell)
-		field.Type, field.TypeDefined = ParseType(colType)
-		field.Options = &tableaupb.FieldOptions{
-			Name: trimmedNameCell,
-			Type: tableaupb.Type_TYPE_INCELL_STRUCT,
-		}
-
-		for i := 0; i < len(fieldPairs); i += 2 {
-			fieldType := fieldPairs[i]
-			fieldName := fieldPairs[i+1]
-			field.Fields = append(field.Fields, p.parseScalarField(fieldName, fieldType, ""))
-		}
 	}
 
 	return cursor
 }
 
 func (p *bookParser) parseScalarField(name, typ, note string) *tableaupb.Field {
-	if typ == "timestamp" {
-		typ = "google.protobuf.Timestamp"
-		p.wb.Imports[timestampProtoPath] = 1
-	} else if typ == "duration" {
-		typ = "google.protobuf.Duration"
-		p.wb.Imports[durationProtoPath] = 1
+	// enum syntax pattern
+	if matches := enumRegexp.FindStringSubmatch(typ); len(matches) > 0 {
+		enumType := strings.TrimSpace(matches[1])
+		typ = enumType
 	}
+	typ, typeDefined := p.parseType(typ)
+
 	return &tableaupb.Field{
-		Name: strcase.ToSnake(name),
-		Type: typ,
+		Name:        strcase.ToSnake(name),
+		Type:        typ,
+		TypeDefined: typeDefined,
 		Options: &tableaupb.FieldOptions{
 			Name: name,
 			Note: p.genNote(note),
@@ -291,19 +311,20 @@ func (p *bookParser) genNote(note string) string {
 	return ""
 }
 
-func ParseType(msgName string) (string, bool) {
-	if strings.Contains(msgName, ".") {
+func (p *bookParser) parseType(typ string) (string, bool) {
+	if strings.Contains(typ, ".") {
 		// This messge type is defined in imported proto
-		msgName = strings.TrimPrefix(msgName, ".")
-		return msgName, true
+		typ = strings.TrimPrefix(typ, ".")
+		return typ, true
 	}
-	// if matches := mapRegexp.FindStringSubmatch(msgName); len(matches) > 0 {
-	// 	// map
-	// 	keyType := strings.TrimSpace(matches[1])
-	// 	valueType := strings.TrimSpace(matches[2])
-	// 	return msgName, types.IsScalarType(keyType) && types.IsScalarType(valueType)
-	// }
-	return msgName, false
+	if typ == "timestamp" {
+		typ = "google.protobuf.Timestamp"
+		// p.wb.Imports[timestampProtoPath] = 1
+	} else if typ == "duration" {
+		typ = "google.protobuf.Duration"
+		// p.wb.Imports[durationProtoPath] = 1
+	}
+	return typ, false
 }
 
 func ParseIncellStruct(elemType string) []string {

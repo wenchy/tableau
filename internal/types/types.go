@@ -4,6 +4,7 @@ type Kind int
 
 const (
 	ScalarKind Kind = iota
+	EnumKind
 	ListKind
 	MapKind
 	MessageKind

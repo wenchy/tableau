@@ -84,8 +84,11 @@ xlsx -> Importer -> Protoconf -> Exporter -> JSON/protowire/prototext
 - [x] bytes
 
 ### Enumerations
-- [ ] enum: The name of the enum value as specified in proto is used. Parsers accept both enum names and integer values. 
-- [ ] validate the enum value.
+- [x] enum: The Parser accepts three enum value forms: 
+  - enum value number
+  - enum value name
+  - enum value alias name (with EnumValueOptions specified)
+- [x] enum: validate the enum value.
 
 ### Composite Types
 - [x] message: horizontal(row direction) layout, fields located in cells.
@@ -103,6 +106,7 @@ xlsx -> Importer -> Protoconf -> Exporter -> JSON/protowire/prototext
 - [x] map: scalable or dynamic map size.
 - [x] map: smart recognition of empty value at any position.
 - [x] nesting: unlimited nesting of message, list, and map.
+- [ ] nesting: the composite type's first element can be composite type.
 
 ### Default Values
 Each scalar type's default value is same as protobuf.

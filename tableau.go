@@ -22,6 +22,7 @@ func Xlsx2Conf(protoPackage, indir, outdir string, setters ...options.Option) {
 	atom.InitZap(opts.LogLevel)
 	atom.Log.Infof("options inited: %+v", opts)
 	if err := g.Generate(); err != nil {
+		atom.Log.Errorf("generate failed: %+v", err)
 		atom.Log.Panic(err)
 	}
 }

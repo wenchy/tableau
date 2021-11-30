@@ -49,14 +49,13 @@ func (gen *Generator) Generate() (err error) {
 	protoregistry.GlobalFiles.RangeFilesByPackage(
 		protoreflect.FullName(gen.ProtoPackage),
 		func(fd protoreflect.FileDescriptor) bool {
-			atom.Log.Debugf("filepath: %s", fd.Path())
+			// atom.Log.Debugf("filepath: %s", fd.Path())
 			opts := fd.Options().(*descriptorpb.FileOptions)
 			workbook := proto.GetExtension(opts, tableaupb.E_Workbook).(*tableaupb.WorkbookOptions)
 			if workbook == nil {
 				return true
 			}
-
-			atom.Log.Debugf("proto: %s, workbook %s", fd.Path(), workbook)
+			// atom.Log.Debugf("proto: %s, workbook %s", fd.Path(), workbook)
 			msgs := fd.Messages()
 			for i := 0; i < msgs.Len(); i++ {
 				md := msgs.Get(i)
@@ -66,7 +65,7 @@ func (gen *Generator) Generate() (err error) {
 				if worksheet == nil {
 					continue
 				}
-				atom.Log.Infof("generate: %s, message: %s@%s, worksheet: %s@%s", md.Name(), fd.Path(), md.Name(), workbook.Name, worksheet.Name)
+				atom.Log.Infof("generate: %s@%s <-> %s@%s", fd.Path(), md.Name(), workbook.Name, worksheet.Name)
 				newMsg := dynamicpb.NewMessage(md)
 				// gen.export(newMsg)
 				x := &sheetParser{
@@ -81,7 +80,6 @@ func (gen *Generator) Generate() (err error) {
 				err = x.Export()
 				if err != nil {
 					// Due to closure, this err will be returned by func Generate().
-					atom.Log.Panic(err)
 					return false
 				}
 			}

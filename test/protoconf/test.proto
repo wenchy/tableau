@@ -5,8 +5,8 @@ option go_package = "github.com/Wenchy/tableau/cmd/test/testpb";
 
 import "common.proto";
 import "google/protobuf/duration.proto";
-import "google/protobuf/timestamp.proto";
 import "tableau/protobuf/tableau.proto";
+import "time.proto";
 
 option (tableau.workbook) = {name:"Test.xlsx"};
 
@@ -35,13 +35,6 @@ message Activity {
           int32 num = 2 [(tableau.field) = {name:"Num"}];
         }
         Duration duration = 4 [(tableau.field) = {name:"Duration"}];
-
-        message Duration {
-          int32 type = 1 [(tableau.field) = {name:"Type"}];
-          google.protobuf.Timestamp begin_time = 2 [(tableau.field) = {name:"BeginTime"}];
-          google.protobuf.Timestamp end_time = 3 [(tableau.field) = {name:"EndTime"}];
-          repeated int32 params = 4 [(tableau.field) = {name:"Params" type:TYPE_INCELL_LIST}];
-        }
         google.protobuf.Duration timespan = 5 [(tableau.field) = {name:"Timespan"}];
         Task task = 6 [(tableau.field) = {name:"Task"}];
 

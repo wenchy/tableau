@@ -29,6 +29,7 @@ func Test_Xlsx2Proto(t *testing.T) {
 		options.Imports(
 			[]string{
 				"common.proto",
+				"time.proto",
 			},
 		),
 	)
