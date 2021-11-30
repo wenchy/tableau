@@ -11,6 +11,7 @@ import (
 
 	"github.com/Wenchy/tableau/internal/atom"
 	"github.com/Wenchy/tableau/options"
+	"github.com/Wenchy/tableau/internal/printer"
 	"github.com/Wenchy/tableau/proto/tableaupb"
 
 	"github.com/antchfx/xmlquery"
@@ -296,8 +297,8 @@ func (gen *XmlGenerator) exportXml(xml *tableaupb.Xml) error {
 }
 
 func (gen *XmlGenerator) exportElement(element *tableaupb.Element, depth int) error {
-	gen.writer.WriteString(indent(depth) + fmt.Sprintf("message %s {\n", element.Name))
-	gen.writer.WriteString(indent(depth) + fmt.Sprintf("  option (tableau.element) = {%s};\n", genPrototext(element.Options)))
+	gen.writer.WriteString(printer.Indent(depth) + fmt.Sprintf("message %s {\n", element.Name))
+	gen.writer.WriteString(printer.Indent(depth) + fmt.Sprintf("  option (tableau.element) = {%s};\n", genPrototext(element.Options)))
 	gen.writer.WriteString("\n")
 	tagid := 0
 	// generate attributes
@@ -307,7 +308,7 @@ func (gen *XmlGenerator) exportElement(element *tableaupb.Element, depth int) er
 		if attr.Card == "repeated" {
 			attrLine = "repeated " + attrLine
 		}
-		gen.writer.WriteString(indent(depth) + "  " + attrLine)
+		gen.writer.WriteString(printer.Indent(depth) + "  " + attrLine)
 	}
 	if len(element.Attrs) > 0 && len(element.Children) > 0 {
 		gen.writer.WriteString("\n")
@@ -315,7 +316,7 @@ func (gen *XmlGenerator) exportElement(element *tableaupb.Element, depth int) er
 	// generate child elements
 	if element.Options.Key != "" {
 		tagid++
-		gen.writer.WriteString(indent(depth) + fmt.Sprintf("  map<%s, int32> %s_map = %d;\n", element.KeyType, strcase.ToSnake(strings.Split(element.Options.Key, ".")[0]), tagid))
+		gen.writer.WriteString(printer.Indent(depth) + fmt.Sprintf("  map<%s, int32> %s_map = %d;\n", element.KeyType, strcase.ToSnake(strings.Split(element.Options.Key, ".")[0]), tagid))
 	}
 	for _, child := range element.Children {
 		tagid++
@@ -323,7 +324,7 @@ func (gen *XmlGenerator) exportElement(element *tableaupb.Element, depth int) er
 		if child.Card == "repeated" {
 			childLine = "repeated " + childLine
 		}
-		gen.writer.WriteString(indent(depth) + "  " + childLine)
+		gen.writer.WriteString(printer.Indent(depth) + "  " + childLine)
 	}
 	// generate child messages
 	for _, child := range element.Children {
@@ -332,7 +333,7 @@ func (gen *XmlGenerator) exportElement(element *tableaupb.Element, depth int) er
 			gen.exportElement(child.Element, depth + 1)
 		}		
 	}
-	gen.writer.WriteString(indent(depth) + "}\n")
+	gen.writer.WriteString(printer.Indent(depth) + "}\n")
 	
 	return nil
 }
