@@ -74,8 +74,27 @@ func ParseMeta(indir, relWorkbookPath string) importer.Importer {
 	)
 }
 
-// Xml2Protoconf converts xml files to protoconf files.
-func Xml2Protoconf(protoPackage, goPackage, indir, outdir string, setters ...options.Option) {
+// Xml2Conf converts xml files to different formatted configuration files.
+// Supported formats: json, prototext, and protowire.
+func Xml2Conf(protoPackage, indir, outdir string, setters ...options.Option) {
+	opts := options.ParseOptions(setters...)
+	g := confgen.Generator{
+		ProtoPackage: protoPackage,
+		LocationName: opts.LocationName,
+		InputDir:     indir,
+		OutputDir:    outdir,
+		Output:       opts.Output,
+	}
+	atom.InitZap(opts.LogLevel)
+	atom.Log.Infof("options inited: %+v", opts)
+	if err := g.Generate(); err != nil {
+		atom.Log.Errorf("generate failed: %+v", err)
+		atom.Log.Panic(err)
+	}
+}
+
+// Xml2Proto converts xml files to protoconf files.
+func Xml2Proto(protoPackage, goPackage, indir, outdir string, setters ...options.Option) {
 	opts := options.ParseOptions(setters...)
 	g := protogen.XmlGenerator{
 		ProtoPackage: protoPackage,
