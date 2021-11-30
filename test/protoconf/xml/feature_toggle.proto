@@ -35,7 +35,6 @@ message ToggleCfg {
       int32 notify_closed = 10 [(tableau.attr) = {name:"NotifyClosed" default:"0"}];
       int32 err_code = 11 [(tableau.attr) = {name:"ErrCode" default:"0"}];
       string name = 12 [(tableau.attr) = {name:"name"}];
-
     }
   }
 }

@@ -39,7 +39,6 @@ message MatchCfg {
       int32 max_time = 2 [(tableau.attr) = {name:"MaxTime" default:"0"}];
       int32 freq = 3 [(tableau.attr) = {name:"Freq" default:"0"}];
       int32 confirm_time = 4 [(tableau.attr) = {name:"ConfirmTime" default:"0"}];
-
     }
 
     message Open {
@@ -49,7 +48,6 @@ message MatchCfg {
       int32 begin_time = 2 [(tableau.attr) = {name:"BeginTime" default:"0"}];
       int32 end_date = 3 [(tableau.attr) = {name:"EndDate" default:"0"}];
       int32 end_time = 4 [(tableau.attr) = {name:"EndTime" default:"0"}];
-
     }
 
     message Camp {
@@ -57,21 +55,18 @@ message MatchCfg {
 
       int32 camp_id = 1 [(tableau.attr) = {name:"CampID" default:"0"}];
       int32 player_num = 2 [(tableau.attr) = {name:"PlayerNum" default:"0"}];
-
     }
 
     message Strategy {
       option (tableau.element) = {name:"Strategy"};
 
       string strategy_id = 1 [(tableau.attr) = {name:"StrategyID"}];
-
     }
 
     message Scope {
       option (tableau.element) = {name:"Scope"};
 
       string scope_id = 1 [(tableau.attr) = {name:"ScopeID"}];
-
     }
 
     message Filter {
@@ -90,7 +85,6 @@ message MatchCfg {
 
         int32 rank_limit = 1 [(tableau.attr) = {name:"RankLimit" default:"0"}];
         int32 value = 2 [(tableau.attr) = {name:"Value" default:"0"}];
-
       }
 
       message Power {
@@ -104,7 +98,6 @@ message MatchCfg {
           option (tableau.element) = {name:"Param"};
 
           int32 value = 1 [(tableau.attr) = {name:"Value" default:"0"}];
-
         }
       }
     }
@@ -113,7 +106,6 @@ message MatchCfg {
       option (tableau.element) = {name:"Route"};
 
       int32 key = 1 [(tableau.attr) = {name:"Key" default:"0"}];
-
     }
 
     message MatchAI {
@@ -132,7 +124,6 @@ message MatchCfg {
         int32 is_open = 2 [(tableau.attr) = {name:"IsOpen" default:"0"}];
         int32 min_time = 3 [(tableau.attr) = {name:"MinTime" default:"0"}];
         int32 max_time = 4 [(tableau.attr) = {name:"MaxTime" default:"0"}];
-
       }
     }
 
@@ -141,7 +132,6 @@ message MatchCfg {
 
       string mission_type = 1 [(tableau.attr) = {name:"MissionType"}];
       int32 priority = 2 [(tableau.attr) = {name:"Priority" default:"0"}];
-
     }
   }
 
@@ -149,28 +139,24 @@ message MatchCfg {
     option (tableau.element) = {name:"ConfirmTimeOutPunish"};
 
     int32 time = 1 [(tableau.attr) = {name:"Time" default:"0"}];
-
   }
 
   message MatchRoom {
     option (tableau.element) = {name:"MatchRoom"};
 
     int32 max_loop = 1 [(tableau.attr) = {name:"MaxLoop" default:"0"}];
-
   }
 
   message MatchPlayer {
     option (tableau.element) = {name:"MatchPlayer"};
 
     int32 max_loop = 1 [(tableau.attr) = {name:"MaxLoop" default:"0"}];
-
   }
 
   message MatchStatInfo {
     option (tableau.element) = {name:"MatchStatInfo"};
 
     int32 report_interval = 1 [(tableau.attr) = {name:"ReportInterval" default:"0"}];
-
   }
 
   message TeamRatingWeight {
@@ -189,7 +175,6 @@ message MatchCfg {
         option (tableau.element) = {name:"Param"};
 
         int32 value = 1 [(tableau.attr) = {name:"Value" default:"0"}];
-
       }
     }
   }

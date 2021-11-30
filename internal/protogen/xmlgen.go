@@ -309,7 +309,7 @@ func (gen *XmlGenerator) exportElement(element *tableaupb.Element, depth int) er
 		}
 		gen.writer.WriteString(indent(depth) + "  " + attrLine)
 	}
-	if len(element.Attrs) > 0 {
+	if len(element.Attrs) > 0 && len(element.Children) > 0 {
 		gen.writer.WriteString("\n")
 	}
 	// generate child elements
