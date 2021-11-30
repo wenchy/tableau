@@ -24,20 +24,22 @@ func init() {
 }
 
 type bookExporter struct {
-	ProtoPackage  string
-	GoPackage     string
-	OutputDir     string
-	wb            *tableaupb.Workbook
-	customImports []string
+	ProtoPackage   string
+	GoPackage      string
+	OutputDir      string
+	FilenameSuffix string
+	wb             *tableaupb.Workbook
+	customImports  []string
 }
 
-func newBookExporter(protoPackage, goPackage, outputDir string, imports []string, wb *tableaupb.Workbook) *bookExporter {
+func newBookExporter(protoPackage, goPackage, outputDir, filenameSuffix string, imports []string, wb *tableaupb.Workbook) *bookExporter {
 	return &bookExporter{
-		ProtoPackage:  protoPackage,
-		GoPackage:     goPackage,
-		OutputDir:     outputDir,
-		wb:            wb,
-		customImports: imports,
+		ProtoPackage:   protoPackage,
+		GoPackage:      goPackage,
+		OutputDir:      outputDir,
+		FilenameSuffix: filenameSuffix,
+		wb:             wb,
+		customImports:  imports,
 	}
 }
 
@@ -110,7 +112,7 @@ func (x *bookExporter) export() error {
 	g2.P("option (tableau.workbook) = {", genPrototext(x.wb.Options), "};")
 	g2.P("")
 
-	path := filepath.Join(x.OutputDir, x.wb.Name)
+	path := filepath.Join(x.OutputDir, x.wb.Name+x.FilenameSuffix+".proto")
 	atom.Log.Debugf("output: %s", path)
 
 	if f, err := os.Create(path); err != nil {

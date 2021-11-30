@@ -20,11 +20,12 @@ const (
 )
 
 type Generator struct {
-	ProtoPackage string   // protobuf package name.
-	GoPackage    string   // golang package name.
-	InputDir     string   // input dir of workbooks.
-	OutputDir    string   // output dir of generated protoconf files.
-	Imports      []string // imported common proto file paths
+	ProtoPackage   string   // protobuf package name.
+	GoPackage      string   // golang package name.
+	InputDir       string   // input dir of workbooks.
+	OutputDir      string   // output dir of generated protoconf files.
+	FilenameSuffix string   // filename suffix of generated protoconf files.
+	Imports        []string // imported common proto file paths
 
 	Header *options.HeaderOption // header settings.
 }
@@ -83,7 +84,7 @@ func (gen *Generator) Generate() error {
 			bp.wb.Worksheets = append(bp.wb.Worksheets, ws)
 		}
 		// export book
-		be := newBookExporter(gen.ProtoPackage, gen.GoPackage, gen.OutputDir, gen.Imports, bp.wb)
+		be := newBookExporter(gen.ProtoPackage, gen.GoPackage, gen.OutputDir, gen.FilenameSuffix, gen.Imports, bp.wb)
 		if err := be.export(); err != nil {
 			return errors.Wrapf(err, "failed to export workbook: %s", wbPath)
 		}

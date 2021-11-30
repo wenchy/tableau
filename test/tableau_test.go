@@ -32,6 +32,11 @@ func Test_Xlsx2Proto(t *testing.T) {
 				"time.proto",
 			},
 		),
+		options.Output(
+			&options.OutputOption{
+				FilenameSuffix: "_conf",
+			},
+		),
 	)
 }
 

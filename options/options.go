@@ -27,6 +27,7 @@ type HeaderOption struct {
 }
 
 type OutputOption struct {
+	FilenameSuffix      string
 	FilenameAsSnakeCase bool   // output filename as snake case, default is camel case same as the protobuf message name.
 	Format              Format // output pretty format, with mulitline and indent.
 	Pretty              bool   // output format: json, protowire, or prototext, and default is json.

@@ -37,7 +37,7 @@ type bookParser struct {
 }
 
 func newBookParser(workbookName string, imports []string) *bookParser {
-	wbProtoName := strcase.ToSnake(strings.TrimSuffix(workbookName, filepath.Ext(workbookName))) + ".proto"
+	wbProtoName := strcase.ToSnake(strings.TrimSuffix(workbookName, filepath.Ext(workbookName)))
 	bp := &bookParser{
 		wb: &tableaupb.Workbook{
 			Options: &tableaupb.WorkbookOptions{

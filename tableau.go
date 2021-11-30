@@ -31,12 +31,13 @@ func Xlsx2Conf(protoPackage, indir, outdir string, setters ...options.Option) {
 func Xlsx2Proto(protoPackage, goPackage, indir, outdir string, setters ...options.Option) {
 	opts := options.ParseOptions(setters...)
 	g := protogen.Generator{
-		ProtoPackage: protoPackage,
-		GoPackage:    goPackage,
-		InputDir:     indir,
-		OutputDir:    outdir,
-		Header:       opts.Header,
-		Imports:      opts.Imports,
+		ProtoPackage:   protoPackage,
+		GoPackage:      goPackage,
+		InputDir:       indir,
+		OutputDir:      outdir,
+		FilenameSuffix: opts.Output.FilenameSuffix,
+		Header:         opts.Header,
+		Imports:        opts.Imports,
 	}
 
 	if err := g.Generate(); err != nil {
