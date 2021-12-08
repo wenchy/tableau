@@ -43,7 +43,7 @@ func (gen *Generator) Generate() (err error) {
 	// create output dir
 	err = os.MkdirAll(gen.OutputDir, 0700)
 	if err != nil {
-		return errors.Wrapf(err, "failed to create output dir: %s", gen.OutputDir)
+		return errors.WithMessagef(err, "failed to create output dir: %s", gen.OutputDir)
 	}
 
 	protoregistry.GlobalFiles.RangeFilesByPackage(

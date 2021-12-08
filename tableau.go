@@ -1,6 +1,8 @@
 package tableau
 
 import (
+	"os"
+
 	"github.com/Wenchy/tableau/internal/atom"
 	"github.com/Wenchy/tableau/internal/confgen"
 	"github.com/Wenchy/tableau/internal/protogen"
@@ -23,7 +25,7 @@ func Xlsx2Conf(protoPackage, indir, outdir string, setters ...options.Option) {
 	atom.Log.Infof("options inited: %+v", opts)
 	if err := g.Generate(); err != nil {
 		atom.Log.Errorf("generate failed: %+v", err)
-		atom.Log.Panic(err)
+		os.Exit(-1)
 	}
 }
 
@@ -41,7 +43,8 @@ func Xlsx2Proto(protoPackage, goPackage, indir, outdir string, setters ...option
 	}
 
 	if err := g.Generate(); err != nil {
-		atom.Log.Panic(err)
+		atom.Log.Errorf("generate failed: %+v", err)
+		os.Exit(-1)
 	}
 }
 

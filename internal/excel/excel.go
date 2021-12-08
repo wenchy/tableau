@@ -57,7 +57,7 @@ func NewBook(filename string) (*Book, error) {
 	}
 	err := book.parse()
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to parse workbook: %s", filename)
+		return nil, errors.WithMessagef(err, "failed to parse workbook: %s", filename)
 	}
 	return book, nil
 }
@@ -65,12 +65,12 @@ func NewBook(filename string) (*Book, error) {
 func (b *Book) parse() error {
 	file, err := excelize.OpenFile(b.Filename)
 	if err != nil {
-		return errors.Wrapf(err, "failed to open workbook: %s", b.Filename)
+		return errors.WithMessagef(err, "failed to open workbook: %s", b.Filename)
 	}
 	for _, sheetName := range file.GetSheetList() {
 		rows, err := file.GetRows(sheetName)
 		if err != nil {
-			return errors.Wrapf(err, "failed to get rows of s: %s@%s", b.Filename, sheetName)
+			return errors.WithMessagef(err, "failed to get rows of s: %s@%s", b.Filename, sheetName)
 		}
 		maxRow := len(rows)
 		maxCol := 0

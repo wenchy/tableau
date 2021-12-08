@@ -41,12 +41,12 @@ func (sp *sheetParser) Export() error {
 	wbPath := sp.InputDir + workbook.Name
 	book, err := excel.NewBook(wbPath)
 	if err != nil {
-		return errors.Wrapf(err, "failed to create new workbook: %s", wbPath)
+		return errors.WithMessagef(err, "failed to create new workbook: %s", wbPath)
 	}
 
 	sheet, ok := book.Sheets[worksheetName]
 	if !ok {
-		return errors.Wrapf(err, "not found worksheet: %s", worksheetName)
+		return errors.Errorf("not found worksheet: %s", worksheetName)
 	}
 
 	if transpose {
@@ -60,12 +60,12 @@ func (sp *sheetParser) Export() error {
 				nameCol := int(namerow) - 1
 				name, err := sheet.Cell(row, nameCol)
 				if err != nil {
-					return errors.Wrapf(err, "failed to get name cell: %d, %d", row, nameCol)
+					return errors.WithMessagef(err, "failed to get name cell: %d, %d", row, nameCol)
 				}
 				name = clearNewline(name)
 				data, err := sheet.Cell(row, col)
 				if err != nil {
-					return errors.Wrapf(err, "failed to get data cell: %d, %d", row, col)
+					return errors.WithMessagef(err, "failed to get data cell: %d, %d", row, col)
 				}
 				rc.SetCell(name, row, data)
 			}
@@ -83,12 +83,12 @@ func (sp *sheetParser) Export() error {
 				nameRow := int(namerow) - 1
 				name, err := sheet.Cell(nameRow, col)
 				if err != nil {
-					return errors.Wrapf(err, "failed to get name cell: %d, %d", nameRow, col)
+					return errors.WithMessagef(err, "failed to get name cell: %d, %d", nameRow, col)
 				}
 				name = clearNewline(name)
 				data, err := sheet.Cell(row, col)
 				if err != nil {
-					return errors.Wrapf(err, "failed to get data cell: %d, %d", row, col)
+					return errors.WithMessagef(err, "failed to get data cell: %d, %d", row, col)
 				}
 				rc.SetCell(name, col, data)
 			}
@@ -199,7 +199,7 @@ func (sp *sheetParser) parseFieldOptions(msg protoreflect.Message, rc *excel.Row
 		}
 		err = sp.parseField(field, msg, rc, depth, prefix)
 		if err != nil {
-			return errors.Wrapf(err, "failed to parse field: %s, opts: %v", fd.FullName().Name(), field.opts)
+			return errors.WithMessagef(err, "failed to parse field: %s, opts: %v", fd.FullName().Name(), field.opts)
 		}
 	}
 	return nil
@@ -252,13 +252,13 @@ func (sp *sheetParser) parseMapField(field *Field, msg protoreflect.Message, rc 
 
 				fieldValue, err := sp.parseFieldValue(keyFd, key)
 				if err != nil {
-					return errors.Wrapf(err, "%s|incell map: failed to parse field value: %s", rc.CellDebugString(colName), key)
+					return errors.WithMessagef(err, "%s|incell map: failed to parse field value: %s", rc.CellDebugString(colName), key)
 				}
 				newMapKey := fieldValue.MapKey()
 
 				fieldValue, err = sp.parseFieldValue(valueFd, value)
 				if err != nil {
-					return errors.Wrapf(err, "%s|incell map: failed to parse field value: %s", rc.CellDebugString(colName), value)
+					return errors.WithMessagef(err, "%s|incell map: failed to parse field value: %s", rc.CellDebugString(colName), value)
 				}
 				newMapValue := reflectMap.NewValue()
 				newMapValue = fieldValue
@@ -280,7 +280,7 @@ func (sp *sheetParser) parseMapField(field *Field, msg protoreflect.Message, rc 
 					}
 					fieldValue, err := sp.parseFieldValue(keyFd, cell.Data)
 					if err != nil {
-						return errors.Wrapf(err, "%s|horizontal map: failed to parse field value: %s", rc.CellDebugString(keyColName), cell.Data)
+						return errors.WithMessagef(err, "%s|horizontal map: failed to parse field value: %s", rc.CellDebugString(keyColName), cell.Data)
 					}
 					newMapKey := fieldValue.MapKey()
 
@@ -292,7 +292,7 @@ func (sp *sheetParser) parseMapField(field *Field, msg protoreflect.Message, rc 
 					}
 					err = sp.parseFieldOptions(newMapValue.Message(), rc, depth+1, prefix+field.opts.Name+strconv.Itoa(i))
 					if err != nil {
-						return errors.Wrapf(err, "%s|horizontal map: failed to parse field options with prefix: %s", rc.CellDebugString(keyColName), prefix+field.opts.Name+strconv.Itoa(i))
+						return errors.WithMessagef(err, "%s|horizontal map: failed to parse field options with prefix: %s", rc.CellDebugString(keyColName), prefix+field.opts.Name+strconv.Itoa(i))
 					}
 					if !MessageValueEqual(emptyMapValue, newMapValue) {
 						reflectMap.Set(newMapKey, newMapValue)
@@ -306,7 +306,7 @@ func (sp *sheetParser) parseMapField(field *Field, msg protoreflect.Message, rc 
 				}
 				fieldValue, err := sp.parseFieldValue(keyFd, cell.Data)
 				if err != nil {
-					return errors.Wrapf(err, "%s|vertical map: failed to parse field value: %s", rc.CellDebugString(keyColName), cell.Data)
+					return errors.WithMessagef(err, "%s|vertical map: failed to parse field value: %s", rc.CellDebugString(keyColName), cell.Data)
 				}
 				newMapKey := fieldValue.MapKey()
 
@@ -318,7 +318,7 @@ func (sp *sheetParser) parseMapField(field *Field, msg protoreflect.Message, rc 
 				}
 				err = sp.parseFieldOptions(newMapValue.Message(), rc, depth+1, prefix+field.opts.Name)
 				if err != nil {
-					return errors.Wrapf(err, "%s|vertical map: failed to parse field options with prefix: %s", rc.CellDebugString(keyColName), prefix+field.opts.Name)
+					return errors.WithMessagef(err, "%s|vertical map: failed to parse field options with prefix: %s", rc.CellDebugString(keyColName), prefix+field.opts.Name)
 				}
 				if !MessageValueEqual(emptyMapValue, newMapValue) {
 					reflectMap.Set(newMapKey, newMapValue)
@@ -336,7 +336,7 @@ func (sp *sheetParser) parseMapField(field *Field, msg protoreflect.Message, rc 
 			}
 			fieldValue, err := sp.parseFieldValue(keyFd, cell.Data)
 			if err != nil {
-				return errors.Wrapf(err, "%s|failed to parse field value: %s", rc.CellDebugString(keyColName), cell.Data)
+				return errors.WithMessagef(err, "%s|failed to parse field value: %s", rc.CellDebugString(keyColName), cell.Data)
 			}
 			newMapKey := fieldValue.MapKey()
 			var newMapValue protoreflect.Value
@@ -353,7 +353,7 @@ func (sp *sheetParser) parseMapField(field *Field, msg protoreflect.Message, rc 
 			}
 			newMapValue, err = sp.parseFieldValue(field.fd, cell.Data)
 			if err != nil {
-				return errors.Wrapf(err, "%s|vertical map(scalar): failed to parse field value: %s", rc.CellDebugString(valueColName), cell.Data)
+				return errors.WithMessagef(err, "%s|vertical map(scalar): failed to parse field value: %s", rc.CellDebugString(valueColName), cell.Data)
 			}
 			if !reflectMap.Has(newMapKey) {
 				reflectMap.Set(newMapKey, newMapValue)
@@ -384,7 +384,7 @@ func (sp *sheetParser) parseListField(field *Field, msg protoreflect.Message, rc
 			for _, incell := range splits {
 				value, err := sp.parseFieldValue(field.fd, incell)
 				if err != nil {
-					return errors.Wrapf(err, "%s|incell list: failed to parse field value: %s", rc.CellDebugString(colName), incell)
+					return errors.WithMessagef(err, "%s|incell list: failed to parse field value: %s", rc.CellDebugString(colName), incell)
 				}
 				reflectList.Append(value)
 			}
@@ -397,7 +397,7 @@ func (sp *sheetParser) parseListField(field *Field, msg protoreflect.Message, rc
 				// struct list
 				err = sp.parseFieldOptions(newListValue.Message(), rc, depth+1, prefix+field.opts.Name)
 				if err != nil {
-					return errors.Wrapf(err, "...|vertical list: failed to parse field options with prefix: %s", prefix+field.opts.Name)
+					return errors.WithMessagef(err, "...|vertical list: failed to parse field options with prefix: %s", prefix+field.opts.Name)
 				}
 				if !MessageValueEqual(emptyListValue, newListValue) {
 					reflectList.Append(newListValue)
@@ -408,14 +408,16 @@ func (sp *sheetParser) parseListField(field *Field, msg protoreflect.Message, rc
 			}
 		} else {
 			size := rc.GetCellCountWithPrefix(prefix + field.opts.Name)
-			// atom.Log.Debug("prefix size: ", size)
+			if size <= 0 {
+				return errors.Errorf("%s|horizontal list: no cell found with digit suffix", rc.CellDebugString(prefix+field.opts.Name))
+			}
 			for i := 1; i <= size; i++ {
 				newListValue := reflectList.NewElement()
 				if field.fd.Kind() == protoreflect.MessageKind {
 					// struct list
 					err = sp.parseFieldOptions(newListValue.Message(), rc, depth+1, prefix+field.opts.Name+strconv.Itoa(i))
 					if err != nil {
-						return errors.Wrapf(err, "...|vertical list: failed to parse field options with prefix: %s", prefix+field.opts.Name+strconv.Itoa(i))
+						return errors.WithMessagef(err, "...|horizontal list: failed to parse field options with prefix: %s", prefix+field.opts.Name+strconv.Itoa(i))
 					}
 					if !MessageValueEqual(emptyListValue, newListValue) {
 						reflectList.Append(newListValue)
@@ -429,7 +431,7 @@ func (sp *sheetParser) parseListField(field *Field, msg protoreflect.Message, rc
 					}
 					newListValue, err = sp.parseFieldValue(field.fd, cell.Data)
 					if err != nil {
-						return errors.Wrapf(err, "%s|horizontal list(scalar): failed to parse field value: %s", rc.CellDebugString(colName), cell.Data)
+						return errors.WithMessagef(err, "%s|horizontal list(scalar): failed to parse field value: %s", rc.CellDebugString(colName), cell.Data)
 					}
 					reflectList.Append(newListValue)
 				}
@@ -486,7 +488,7 @@ func (sp *sheetParser) parseStructField(field *Field, msg protoreflect.Message, 
 				incell := splits[i]
 				value, err := sp.parseFieldValue(fd, incell)
 				if err != nil {
-					return errors.Wrapf(err, "%s|incell struct: failed to parse field value: %s", rc.CellDebugString(colName), incell)
+					return errors.WithMessagef(err, "%s|incell struct: failed to parse field value: %s", rc.CellDebugString(colName), incell)
 				}
 				newValue.Message().Set(fd, value)
 			}
@@ -502,7 +504,7 @@ func (sp *sheetParser) parseStructField(field *Field, msg protoreflect.Message, 
 			}
 			newValue, err = sp.parseFieldValue(field.fd, cell.Data)
 			if err != nil {
-				return errors.Wrapf(err, "%s|builtin type: failed to parse field value: %s", rc.CellDebugString(colName), cell.Data)
+				return errors.WithMessagef(err, "%s|builtin type: failed to parse field value: %s", rc.CellDebugString(colName), cell.Data)
 			}
 		} else {
 			pkgName := newValue.Message().Descriptor().ParentFile().Package()
@@ -511,7 +513,7 @@ func (sp *sheetParser) parseStructField(field *Field, msg protoreflect.Message, 
 			}
 			err = sp.parseFieldOptions(newValue.Message(), rc, depth+1, prefix+field.opts.Name)
 			if err != nil {
-				return errors.Wrapf(err, "%s|builtin type: failed to parse field options with prefix: %s", rc.CellDebugString(colName), prefix+field.opts.Name)
+				return errors.WithMessagef(err, "%s|builtin type: failed to parse field options with prefix: %s", rc.CellDebugString(colName), prefix+field.opts.Name)
 			}
 		}
 	}
@@ -567,7 +569,7 @@ func (sp *sheetParser) parseEnumField(field *Field, msg protoreflect.Message, rc
 	}()
 
 	if err != nil {
-		return errors.Wrapf(err, "%s|enum: failed to parse field value: %s", rc.CellDebugString(colName), cell.Data)
+		return errors.WithMessagef(err, "%s|enum: failed to parse field value: %s", rc.CellDebugString(colName), cell.Data)
 	}
 	msg.Set(field.fd, newValue)
 	return nil
@@ -582,7 +584,7 @@ func (sp *sheetParser) parseScalarField(field *Field, msg protoreflect.Message, 
 	}
 	newValue, err = sp.parseFieldValue(field.fd, cell.Data)
 	if err != nil {
-		return errors.Wrapf(err, "%s|scalar: failed to parse field value: %s", rc.CellDebugString(colName), cell.Data)
+		return errors.WithMessagef(err, "%s|scalar: failed to parse field value: %s", rc.CellDebugString(colName), cell.Data)
 	}
 	msg.Set(field.fd, newValue)
 	return nil
@@ -652,12 +654,12 @@ func (sp *sheetParser) parseFieldValue(fd protoreflect.FieldDescriptor, value st
 				// NOTE(wenchy): There is no "Asia/Beijing" location name. Whoa!!! Big surprize?
 				t, err := parseTimeWithLocation(sp.LocationName, value)
 				if err != nil {
-					return protoreflect.ValueOf(ts.ProtoReflect()), errors.Wrapf(err, "illegal timestamp string format: %v", value)
+					return protoreflect.ValueOf(ts.ProtoReflect()), errors.WithMessagef(err, "illegal timestamp string format: %v", value)
 				}
 				// atom.Log.Debugf("timeStr: %v, unix timestamp: %v", value, t.Unix())
 				ts = timestamppb.New(t)
 				if err := ts.CheckValid(); err != nil {
-					return protoreflect.ValueOf(ts.ProtoReflect()), errors.Wrapf(err, "invalid timestamp: %v", value)
+					return protoreflect.ValueOf(ts.ProtoReflect()), errors.WithMessagef(err, "invalid timestamp: %v", value)
 				}
 			}
 			return protoreflect.ValueOf(ts.ProtoReflect()), nil
@@ -667,11 +669,11 @@ func (sp *sheetParser) parseFieldValue(fd protoreflect.FieldDescriptor, value st
 			if value != "" {
 				d, err := time.ParseDuration(value)
 				if err != nil {
-					return protoreflect.ValueOf(du.ProtoReflect()), errors.Wrapf(err, "illegal duration string format: %v", value)
+					return protoreflect.ValueOf(du.ProtoReflect()), errors.WithMessagef(err, "illegal duration string format: %v", value)
 				}
 				du = durationpb.New(d)
 				if err := du.CheckValid(); err != nil {
-					return protoreflect.ValueOf(du.ProtoReflect()), errors.Wrapf(err, "invalid duration: %v", value)
+					return protoreflect.ValueOf(du.ProtoReflect()), errors.WithMessagef(err, "invalid duration: %v", value)
 				}
 			}
 			return protoreflect.ValueOf(du.ProtoReflect()), nil
