@@ -9,37 +9,14 @@ import "google/protobuf/descriptor.proto";
 
 extend google.protobuf.FileOptions {
   WorkbookOptions workbook = 50000;
-  XmlOptions xml = 50001;
 }
 
 extend google.protobuf.MessageOptions {
   WorksheetOptions worksheet = 50000;
-  ElementOptions element = 50001;
 }
 
 extend google.protobuf.FieldOptions {
   FieldOptions field = 50000;
-  ChildOptions child = 50001;
-  AttrOptions attr = 50002;
-}
-
-message XmlOptions {
-  string name = 1;  // xml name
-}
-
-message ElementOptions {
-  string name = 1;     // element name
-  string key = 2;   // key attr name
-}
-
-message ChildOptions {
-  string name = 1;  // child name
-  string default = 2;   // content default value
-}
-
-message AttrOptions {
-  string name = 1;  // attr name
-  string default = 2; // attr default value
 }
 
 extend google.protobuf.EnumOptions {
@@ -88,6 +65,8 @@ message FieldOptions {
   int32 min = 11;     // min value
   int32 max = 12;     // max value
   string range = 13;  // format like set description: [1,10], (1,10], [1,10), [1,~]
+
+  string default = 14; // field default value
 }
 
 message EnumOptions {
