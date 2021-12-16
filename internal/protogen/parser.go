@@ -3,12 +3,18 @@ package protogen
 import (
 	"fmt"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
+	"fmt"
 
 	"github.com/Wenchy/tableau/internal/atom"
 	"github.com/Wenchy/tableau/internal/types"
 	"github.com/Wenchy/tableau/proto/tableaupb"
 	"github.com/iancoleman/strcase"
+
+	"github.com/antchfx/xmlquery"
+	"github.com/antchfx/xpath"
 )
 
 const (
@@ -16,6 +22,19 @@ const (
 	timestampProtoPath = "google/protobuf/timestamp.proto"
 	durationProtoPath  = "google/protobuf/duration.proto"
 )
+
+var mapRegexp *regexp.Regexp
+var listRegexp *regexp.Regexp
+var structRegexp *regexp.Regexp
+var enumRegexp *regexp.Regexp
+var numRegex *regexp.Regexp
+
+func init() {
+	mapRegexp = regexp.MustCompile(`^map<(.+),(.+)>`)  // e.g.: map<uint32,Type>
+	listRegexp = regexp.MustCompile(`^\[(.*)\](.+)`)   // e.g.: [Type]uint32
+	structRegexp = regexp.MustCompile(`^\{(.+)\}(.+)`) // e.g.: {Type}uint32
+	enumRegexp = regexp.MustCompile(`^enum<(.+)>`)     // e.g.: enum<Type>
+}
 
 type bookParser struct {
 	wb       *tableaupb.Workbook
@@ -493,4 +512,146 @@ func ParseIncellStruct(elemType string) []string {
 		fieldPairs = append(fieldPairs, kv...)
 	}
 	return fieldPairs
+}
+
+
+func (gen *XmlGenerator) parseNode(nav *xmlquery.NodeNavigator, element *tableaupb.Field, prefix string) error {
+	gen.nav = nav
+	element.Options = &tableaupb.FieldOptions{
+		Name: nav.LocalName(),
+	}
+	element.Name = nav.LocalName()
+	// iterate over attributes
+	for _, attr := range nav.Current().Attr {
+		switch strings.ToLower(attr.Name.Local) {
+		case "keycol":
+			tagName := strings.Split(attr.Value, ".")[0]
+			attrName := strings.Split(attr.Value, ".")[1]
+			keyNode := xmlquery.FindOne(nav.Current(), fmt.Sprintf("%s/@%s", tagName, attrName))
+			if keyNode == nil {
+				atom.Log.Panic(fmt.Sprintf("KeyCol:%s not found in the immediately following nodes of %s", attr.Value, nav.LocalName()))
+				continue
+			}
+			keyType, _ := gen.guessType(keyNode.InnerText())
+			element.Options.Key = attr.Value
+			element.MapEntry = &tableaupb.MapEntry{
+				KeyType: keyType,
+				ValueType: tagName,
+			}
+		case "desc":
+		default:
+			attrName := attr.Name.Local
+			attrValue := attr.Value
+			t, d := gen.guessType(attrValue)
+			newAttr := &tableaupb.Field{
+				Options: &tableaupb.FieldOptions{
+					Name: attrName,
+					Default: d,
+				},
+				Type: t,
+				Name: strcase.ToSnake(attrName),
+			}
+			if matches := numRegex.FindStringSubmatch(attrName); len(matches) > 0 {
+				if matches[0] != "1" {
+					break
+				}
+				newAttr.Card = "repeated"
+				newAttr.Options.Name = strings.ReplaceAll(newAttr.Options.Name, matches[0], "")
+				newAttr.Name = strcase.ToSnake(newAttr.Options.Name)
+			}
+			element.Fields = append(element.Fields, newAttr)
+		}
+	}
+	// fmt.Println(element)
+
+	// createMetaStruct create a meta struct by some pre-defined tag
+	tagMap := make(map[string]bool)
+	createMetaStruct := func(metaNode *xmlquery.Node) {
+		metaNav := xmlquery.CreateXPathNavigator(metaNode.FirstChild)
+		for metaNav.NodeType() != xpath.ElementNode {
+			metaNav.MoveToNext()
+		}
+		newChild := &tableaupb.Field{
+			Options: &tableaupb.FieldOptions{
+				Name: metaNav.LocalName(),
+			},
+			Card: "repeated",
+			Type: metaNav.LocalName(),
+			Name: strcase.ToSnake(metaNav.LocalName()) + "_list",
+		}
+		element.Fields = append(element.Fields, newChild)
+		gen.parseNode(metaNav, newChild, fmt.Sprintf("%s/%s", prefix, metaNode.Parent.Data))
+		gen.fieldMap[fmt.Sprintf("%s/%s/%s", prefix, metaNode.Parent.Data, metaNav.LocalName())] = newChild
+		tagMap[metaNode.Data] = true
+	}
+	// `StructSupplement` defines the default values of one tag
+	if metaNode := xmlquery.FindOne(nav.Current(), "StructSupplement"); metaNode != nil {
+		createMetaStruct(metaNode)
+	}
+	// `StructFormatSupplement` defines a meta struct
+	if metaNode := xmlquery.FindOne(nav.Current(), "StructFormatSupplement"); metaNode != nil {
+		createMetaStruct(metaNode)
+	}
+	// iterate over child nodes
+	navCopy := *nav
+	for flag := navCopy.MoveToChild(); flag; flag = navCopy.MoveToNext() {
+		// commentNode, documentNode and other meaningless nodes should be filtered
+		if navCopy.NodeType() != xpath.ElementNode {
+			continue
+		}
+		tagName := navCopy.LocalName()
+		if _, exist := tagMap[tagName]; exist {
+			continue
+		}
+		newChild := &tableaupb.Field{
+			Options: &tableaupb.FieldOptions{
+				Name: tagName,
+			},
+			Type: tagName,
+			Name: strcase.ToSnake(tagName),
+		}
+		if keyTag, childList := strings.Split(element.Options.Key, ".")[0], xmlquery.Find(nav.Current(), tagName); len(childList) > 1 || tagName == keyTag {
+			newChild.Card = "repeated"
+			newChild.Name = newChild.Name + "_list"
+		}
+		fatherPath := fmt.Sprintf("%s/%s", prefix, nav.Current().Data)
+		gen.parseNode(&navCopy, newChild, fatherPath)
+
+		// overwrite previous meta struct if necessary
+		curPath := fatherPath + "/" + tagName
+		if child, exist := gen.fieldMap[curPath]; exist {
+			if child.Card == "" && newChild.Card == "repeated" {
+				child.Card = "repeated"
+				child.Name = child.Name + "_list"
+			}
+			fieldMap := make(map[string]bool)
+			for _, c := range child.Fields {
+				fieldMap[c.Options.Name] = true
+			}
+			for _, c := range newChild.Fields {
+				if _, exist := fieldMap[c.Options.Name]; !exist {
+					child.Fields = append(child.Fields, c)
+				}
+			}
+		} else {
+			gen.fieldMap[curPath] = newChild
+			element.Fields = append(element.Fields, newChild)
+		}
+	}
+	return nil
+}
+
+func (gen *XmlGenerator) guessType(value string) (string, string) {
+	var t, d string
+	if _, err := strconv.Atoi(value); err == nil {
+		t, d = "int32", "0"
+	} else if _, err := strconv.ParseInt(value, 10, 64); err == nil {
+		t, d = "int64", "0"
+	} else {
+		t, d = "string", ""
+	}
+	if gen.nav.Current().Parent.Data == "StructSupplement" {
+		d = value
+	}
+	return t, d
 }

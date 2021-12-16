@@ -14,6 +14,8 @@ import (
 	"github.com/Wenchy/tableau/options"
 	"github.com/Wenchy/tableau/proto/tableaupb"
 	"github.com/pkg/errors"
+	"github.com/antchfx/xmlquery"
+	"github.com/iancoleman/strcase"
 )
 
 const (
@@ -23,8 +25,8 @@ const (
 )
 
 type Generator struct {
-	ProtoPackage string // protobuf package name.
-	GoPackage    string // golang package name.
+	ProtoPackage   string   // protobuf package name.
+	GoPackage      string   // golang package name.
 	// Location represents the collection of time offsets in use in a geographical area.
 	// Default is "Asia/Shanghai".
 	LocationName string
@@ -34,12 +36,16 @@ type Generator struct {
 	FilenameWithSubdirPrefix bool   // filename dir separator `/` or `\` is replaced by "__"
 	FilenameSuffix           string // filename suffix of generated protoconf files.
 
-	Imports []string // imported common proto file paths
+	Imports        []string // imported common proto file paths
+}
+
+type ExcelGenerator struct {
+	Generator
 
 	Header *options.HeaderOption // header settings.
 }
 
-func (gen *Generator) Generate() error {
+func (gen *ExcelGenerator) Generate() error {
 	if err := gen.PrepareOutpuDir(); err != nil {
 		return errors.Wrapf(err, "failed to prepare output dir: %s", gen.OutputDir)
 	}
@@ -168,7 +174,7 @@ func (gen *Generator) convertWorkbook(dir, filename string) error {
 	return nil
 }
 
-func (gen *Generator) PrepareOutpuDir() error {
+func (gen *ExcelGenerator) PrepareOutpuDir() error {
 	existed, err := fs.Exists(gen.OutputDir)
 	if err != nil {
 		return errors.Wrapf(err, "failed to check existence of output dir: %s", gen.OutputDir)
@@ -253,4 +259,84 @@ func (g *GeneratedBuf) P(v ...interface{}) {
 // Content returns the contents of the generated file.
 func (g *GeneratedBuf) Content() []byte {
 	return g.buf.Bytes()
+}
+
+
+type XmlGenerator struct {
+	Generator
+
+	fieldMap map[string]*tableaupb.Field
+	nav *xmlquery.NodeNavigator
+}
+
+func (gen *XmlGenerator) Generate() error {
+	err := os.RemoveAll(gen.OutputDir)
+	if err != nil {
+		panic(err)
+	}
+	// create output dir
+	err = os.MkdirAll(gen.OutputDir, 0700)
+	if err != nil {
+		panic(err)
+	}
+
+	files, err := os.ReadDir(gen.InputDir)
+	if err != nil {
+		atom.Log.Fatal(err)
+	}
+	for _, xmlFile := range files {
+		// ignore temp file named with prefix "~$"
+		if strings.HasPrefix(xmlFile.Name(), "~$") {
+			continue
+		}
+		// open xml file and parse the document
+		xmlPath := filepath.Join(gen.InputDir, xmlFile.Name())
+		atom.Log.Debugf("xml: %s", xmlPath)
+		f, err := os.Open(xmlPath)
+		if err != nil {
+			atom.Log.Panic(err)
+			continue
+		}
+		p, err := xmlquery.CreateStreamParser(f, "/")
+		if err != nil {
+			atom.Log.Panic(err)
+			continue
+		}
+		// create xml proto meta struct
+		xmlProtoName := strcase.ToSnake(strings.TrimSuffix(xmlFile.Name(), filepath.Ext(xmlFile.Name())))
+		xml := &tableaupb.Workbook{
+			Options: &tableaupb.WorkbookOptions{
+				Name: xmlFile.Name(),
+			},
+			Name:       xmlProtoName,
+			Imports: map[string]int32{
+				tableauProtoPath: 1, // default import
+			},
+		}
+		for _, path := range gen.Imports {
+			xml.Imports[path] = 1 // custom imports
+		}
+		n, err := p.Read()
+		if err != nil {
+			atom.Log.Panic(err)
+		}
+		gen.fieldMap = make(map[string]*tableaupb.Field)
+		worksheet := &tableaupb.Worksheet{
+			Options: &tableaupb.WorksheetOptions{
+				Name: xmlFile.Name(),
+			},
+			Name: xmlFile.Name(),
+		}
+		root := &tableaupb.Field{}
+		gen.parseNode(xmlquery.CreateXPathNavigator(n), root, "")
+		worksheet.Fields = append(worksheet.Fields, root)
+		xml.Worksheets = append(xml.Worksheets, worksheet)
+		// export book
+		be := newBookExporter(gen.ProtoPackage, gen.GoPackage, gen.OutputDir, gen.FilenameSuffix, gen.Imports, xml)
+		if err := be.export(); err != nil {
+			return errors.Wrapf(err, "failed to export workbook: %s", xmlPath)
+		}
+	}
+
+	return nil
 }

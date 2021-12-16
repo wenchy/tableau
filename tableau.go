@@ -34,18 +34,20 @@ func Excel2Conf(protoPackage, indir, outdir string, setters ...options.Option) {
 // Excel2Proto converts excel files (with tableau header) to protoconf files.
 func Excel2Proto(protoPackage, goPackage, indir, outdir string, setters ...options.Option) {
 	opts := options.ParseOptions(setters...)
-	g := protogen.Generator{
-		ProtoPackage: protoPackage,
-		GoPackage:    goPackage,
-		LocationName: opts.LocationName,
-		InputDir:     indir,
-		OutputDir:    outdir,
+	g := protogen.ExcelGenerator{
+		Generator: protogen.Generator{
+			ProtoPackage:   protoPackage,
+			GoPackage:      goPackage,
+			LocationName: opts.LocationName,
+			InputDir:     indir,
+			OutputDir:    outdir,
 
-		FilenameWithSubdirPrefix: opts.Output.FilenameWithSubdirPrefix,
-		FilenameSuffix:           opts.Output.FilenameSuffix,
+			FilenameWithSubdirPrefix: opts.Output.FilenameWithSubdirPrefix,
+			FilenameSuffix:           opts.Output.FilenameSuffix,
 
-		Header:  opts.Header,
-		Imports: opts.Imports,
+			Imports: opts.Imports,
+		},
+		Header:         opts.Header,
 	}
 	atom.InitZap(opts.LogLevel)
 	atom.Log.Debugf("options inited: %+v, header: %+v, output: %+v", opts, opts.Header, opts.Output)
@@ -97,12 +99,13 @@ func Xml2Conf(protoPackage, indir, outdir string, setters ...options.Option) {
 func Xml2Proto(protoPackage, goPackage, indir, outdir string, setters ...options.Option) {
 	opts := options.ParseOptions(setters...)
 	g := protogen.XmlGenerator{
-		ProtoPackage: protoPackage,
-		GoPackage:    goPackage,
-		InputDir:     indir,
-		OutputDir:    outdir,
-		Xml:          opts.Xml,
-		Imports:      opts.Imports,
+		Generator: protogen.Generator{
+			ProtoPackage: protoPackage,
+			GoPackage:    goPackage,
+			InputDir:     indir,
+			OutputDir:    outdir,
+			Imports:      opts.Imports,
+		},
 	}
 
 	g.Generate()
