@@ -22,7 +22,7 @@
         - NotifyClosed		开关关闭是否通知客户端，0不通知，其他通知
         - ErrCode			通知客户端错误码
         -->
-        <Toggle name="测试" ID="protocol::TOGGLE_TEST" OpenRate="10000">111111111</Toggle>
+        <Toggle name="测试" ID="protocol::TOGGLE_TEST" OpenRate="10000" />
         <Toggle name="匹配" ID="protocol::TOGGLE_MATCH" OpenRate="10000" />
         <Toggle name="事件" ID="protocol::TOGGLE_EVENT" OpenRate="10000" />
         <Toggle name="公会" ID="protocol::TOGGLE_GUILD" OpenRate="10000" ErrCode="Err_FT_Guild"/>

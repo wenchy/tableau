@@ -12,7 +12,7 @@ import (
 	"github.com/Wenchy/tableau/internal/printer"
 	"github.com/Wenchy/tableau/proto/tableaupb"
 	"github.com/emirpasic/gods/sets/treeset"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -115,6 +115,7 @@ func (x *bookExporter) export() error {
 	g2.P("option (tableau.workbook) = {", genPrototext(x.wb.Options), "};")
 	g2.P("")
 
+
 	path := filepath.Join(x.OutputDir, x.wb.Name+x.FilenameSuffix+".proto")
 	atom.Log.Infof("output: %s", path)
 
@@ -161,7 +162,7 @@ func (x *sheetExporter) export() error {
 	depth := 1
 	for i, field := range x.ws.Fields {
 		tagid := i + 1
-		if err := x.exportField(depth, tagid, field); err != nil {
+		if err := x.exportField(depth, tagid, field, x.ws.Name); err != nil {
 			return err
 		}
 	}
@@ -172,7 +173,7 @@ func (x *sheetExporter) export() error {
 	return nil
 }
 
-func (x *sheetExporter) exportField(depth int, tagid int, field *tableaupb.Field) error {
+func (x *sheetExporter) exportField(depth int, tagid int, field *tableaupb.Field, prefix string) error {
 	// head := "%x%x"
 	cardTypeSep := ""
 	if field.Card != "" {
@@ -197,10 +198,11 @@ func (x *sheetExporter) exportField(depth int, tagid int, field *tableaupb.Field
 
 	if !field.TypeDefined && field.Fields != nil {
 		// iff field is a map or list and message type is not imported.
-		nestedMsgName := field.Type
+		msgName := field.Type
 		if field.MapEntry != nil {
-			nestedMsgName = field.MapEntry.ValueType
+			msgName = field.MapEntry.ValueType
 		}
+		nestedMsgName := prefix + "/" + msgName
 
 		if isSameFieldMessageType(field, x.nestedMessages[nestedMsgName]) {
 			// if the nested message is the same as the previous one,
@@ -212,10 +214,10 @@ func (x *sheetExporter) exportField(depth int, tagid int, field *tableaupb.Field
 		x.nestedMessages[nestedMsgName] = field
 
 		// x.g.P("")
-		x.g.P(printer.Indent(depth), "message ", nestedMsgName, " {")
+		x.g.P(printer.Indent(depth), "message ", msgName, " {")
 		for i, f := range field.Fields {
 			tagid := i + 1
-			if err := x.exportField(depth+1, tagid, f); err != nil {
+			if err := x.exportField(depth+1, tagid, f, nestedMsgName); err != nil {
 				return err
 			}
 		}

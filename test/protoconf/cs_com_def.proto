@@ -3,7 +3,7 @@ syntax = "proto3";
 
 
 package pb;
-option go_package = "git.woa.com/wedo/server/protocol";
+option go_package = "github.com/Wenchy/tableau/cmd/test/testpb";
 
 
 // 由gen_feature_toggle自动生成，请勿手动添加

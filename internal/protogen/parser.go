@@ -104,6 +104,9 @@ func (p *bookParser) parseSubField(field *tableaupb.Field, header *sheetHeader, 
 	cursor, ok := p.parseField(subField, header, cursor, prefix, nested)
 	if ok {
 		field.Fields = append(field.Fields, subField)
+		if field.Options.Layout == tableaupb.Layout_LAYOUT_HORIZONTAL {
+			field.Options.ListMaxLen /= int32(len(field.Fields))
+		}
 	}
 	return cursor
 }
@@ -278,6 +281,7 @@ func (p *bookParser) parseListField(field *tableaupb.Field, header *sheetHeader,
 	// preprocess
 	layout := tableaupb.Layout_LAYOUT_VERTICAL // default layout is vertical.
 	index := -1
+	tmpCursor := cursor
 	if index = strings.Index(trimmedNameCell, "1"); index > 0 {
 		layout = tableaupb.Layout_LAYOUT_HORIZONTAL
 		if cursor+1 < len(header.namerow) {
@@ -303,6 +307,12 @@ func (p *bookParser) parseListField(field *tableaupb.Field, header *sheetHeader,
 					layout = tableaupb.Layout_LAYOUT_DEFAULT // incell list
 				}
 			}
+		}
+		for tmpNameCell, listName := trimmedNameCell, trimmedNameCell[:index]; strings.Contains(tmpNameCell, listName); {
+			if tmpCursor++; tmpCursor >= len(header.namerow) {
+				break
+			}
+			tmpNameCell = strings.TrimPrefix(header.getNameCell(tmpCursor), prefix)
 		}
 	} else {
 		if isScalarType {
@@ -360,6 +370,7 @@ func (p *bookParser) parseListField(field *tableaupb.Field, header *sheetHeader,
 		field.Options = &tableaupb.FieldOptions{
 			Name:   listName,
 			Layout: layout,
+			ListMaxLen: int32(tmpCursor - cursor),
 		}
 		if isScalarType {
 			for cursor++; cursor < len(header.namerow); cursor++ {
@@ -520,7 +531,6 @@ func (gen *XmlGenerator) parseNode(nav *xmlquery.NodeNavigator, element *tableau
 	element.Options = &tableaupb.FieldOptions{
 		Name: nav.LocalName(),
 	}
-	element.Name = nav.LocalName()
 	// iterate over attributes
 	for _, attr := range nav.Current().Attr {
 		switch strings.ToLower(attr.Name.Local) {
@@ -529,15 +539,16 @@ func (gen *XmlGenerator) parseNode(nav *xmlquery.NodeNavigator, element *tableau
 			attrName := strings.Split(attr.Value, ".")[1]
 			keyNode := xmlquery.FindOne(nav.Current(), fmt.Sprintf("%s/@%s", tagName, attrName))
 			if keyNode == nil {
-				atom.Log.Panic(fmt.Sprintf("KeyCol:%s not found in the immediately following nodes of %s", attr.Value, nav.LocalName()))
+				atom.Log.Panicf("KeyCol:%s not found in the immediately following nodes of %s", attr.Value, nav.LocalName())
 				continue
 			}
 			keyType, _ := gen.guessType(keyNode.InnerText())
-			element.Options.Key = attr.Value
+			element.Options.Key = attrName
 			element.MapEntry = &tableaupb.MapEntry{
 				KeyType: keyType,
 				ValueType: tagName,
 			}
+			element.Type = fmt.Sprintf("map<%s, %s>", keyType, tagName)
 		case "desc":
 		default:
 			attrName := attr.Name.Local
@@ -557,7 +568,7 @@ func (gen *XmlGenerator) parseNode(nav *xmlquery.NodeNavigator, element *tableau
 				}
 				newAttr.Card = "repeated"
 				newAttr.Options.Name = strings.ReplaceAll(newAttr.Options.Name, matches[0], "")
-				newAttr.Name = strcase.ToSnake(newAttr.Options.Name)
+				newAttr.Name = strcase.ToSnake(newAttr.Options.Name) + "_list"
 			}
 			element.Fields = append(element.Fields, newAttr)
 		}
@@ -610,7 +621,7 @@ func (gen *XmlGenerator) parseNode(nav *xmlquery.NodeNavigator, element *tableau
 			Type: tagName,
 			Name: strcase.ToSnake(tagName),
 		}
-		if keyTag, childList := strings.Split(element.Options.Key, ".")[0], xmlquery.Find(nav.Current(), tagName); len(childList) > 1 || tagName == keyTag {
+		if childList := xmlquery.Find(nav.Current(), tagName); len(childList) > 1 {
 			newChild.Card = "repeated"
 			newChild.Name = newChild.Name + "_list"
 		}
@@ -637,6 +648,14 @@ func (gen *XmlGenerator) parseNode(nav *xmlquery.NodeNavigator, element *tableau
 			gen.fieldMap[curPath] = newChild
 			element.Fields = append(element.Fields, newChild)
 		}
+	}
+
+	if element.MapEntry != nil {
+		element.Name = strcase.ToSnake(element.MapEntry.ValueType) + "_map"
+	} else if element.Card == "repeated" {
+		element.Name = strcase.ToSnake(nav.LocalName()) + "_list"
+	} else {
+		element.Name = strcase.ToSnake(nav.LocalName())
 	}
 	return nil
 }

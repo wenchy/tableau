@@ -26,7 +26,7 @@ message Activity {
       message Section {
         uint32 section_id = 1 [(tableau.field) = {name:"SectionID"}];
         string section_name = 2 [(tableau.field) = {name:"SectionName"}];
-        repeated Item section_item_list = 3 [(tableau.field) = {name:"SectionItem" layout:LAYOUT_HORIZONTAL}];
+        repeated Item section_item_list = 3 [(tableau.field) = {name:"SectionItem" layout:LAYOUT_HORIZONTAL list_max_len:3}];
         message Item {
           int32 id = 1 [(tableau.field) = {name:"Id"}];
           int32 num = 2 [(tableau.field) = {name:"Num"}];
@@ -54,8 +54,13 @@ message Activity {
         }
         Info incell_struct = 8 [(tableau.field) = {name:"IncellStruct" type:TYPE_INCELL_STRUCT}];
         repeated int32 int_params = 9 [(tableau.field) = {name:"IntParams" type:TYPE_INCELL_LIST}];
+<<<<<<< 68b940b72919953ce379f1f1f984aa8f44f831c3
         map<int32, string> tips = 10 [(tableau.field) = {name:"Tips" type:TYPE_INCELL_MAP}];
         repeated string client_param_list = 11 [(tableau.field) = {name:"ClientParam" layout:LAYOUT_HORIZONTAL}];
+=======
+        map<int32,string> tips = 10 [(tableau.field) = {name:"Tips" type:TYPE_INCELL_MAP}];
+        repeated string client_param_list = 11 [(tableau.field) = {name:"ClientParam" layout:LAYOUT_HORIZONTAL list_max_len:3}];
+>>>>>>> feat: xlsxgen and GetSuffix
       }
     }
   }
@@ -71,6 +76,19 @@ message ExchangeInfo {
     google.protobuf.Timestamp begin_time = 3 [(tableau.field) = {name:"BeginTime"}];
     google.protobuf.Timestamp date = 4 [(tableau.field) = {name:"Date"}];
     google.protobuf.Duration time = 5 [(tableau.field) = {name:"Time"}];
+    repeated Item reward_item_list = 3 [(tableau.field) = {name:"RewardItem" layout:LAYOUT_HORIZONTAL list_max_len:2}];
+    repeated Exchange exchange_list = 4 [(tableau.field) = {layout:LAYOUT_VERTICAL}];
+
+    message Exchange {
+      uint32 exchange_id = 1 [(tableau.field) = {name:"ExchangeId"}];
+      repeated ExchangeItem input_item_list = 2 [(tableau.field) = {name:"InputItem" layout:LAYOUT_HORIZONTAL list_max_len:3}];
+
+      message ExchangeItem {
+        int32 id = 1 [(tableau.field) = {name:"Id"}];
+        int32 num = 2 [(tableau.field) = {name:"Num"}];
+      }
+      repeated ExchangeItem output_item_list = 3 [(tableau.field) = {name:"OutputItem" layout:LAYOUT_HORIZONTAL list_max_len:2}];
+    }
   }
 }
 

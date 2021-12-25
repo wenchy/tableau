@@ -16,7 +16,7 @@
 			<Filter   FilterID="protocol::MatchFilter_Platform" Open="0" Value="1" desc="平台过滤器Open为1表示开启" />
 			<Filter   FilterID="protocol::MatchFilter_MaxLevelGap" Open="1" Value="10"  UpdInterval="5" desc="过滤器">
 				<Param RankLimit="0" Value="20"/>
-				<Param RankLimit="0" Value="40"/>/
+				<Param RankLimit="0" Value="40"/>
 			</Filter>
 			<Route    Key="1" desc="路由哈希值" />
       <!-- PlayerOnlyOneCamp: 匹配到AI的玩家都在一个阵营 GuaranteeAIRatio:保底AI概率万分比 -->

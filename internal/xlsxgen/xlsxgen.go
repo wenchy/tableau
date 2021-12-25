@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -102,7 +103,7 @@ func (gen *Generator) export(protomsg proto.Message) {
 	gen.TestParseFieldOptions(md, &row, 0, "")
 	fmt.Println("==================", msgName)
 
-	filename := gen.OutputDir + workbook.Name
+	filename := gen.OutputDir + strings.ReplaceAll(workbook.Name, filepath.Ext(workbook.Name), ".xlsx")
 	var wb *excelize.File
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
 		wb = excelize.NewFile()
@@ -330,7 +331,7 @@ func TestParseFileOptions(fd protoreflect.FileDescriptor) (string, *tableaupb.Wo
 	opts := fd.Options().(*descriptorpb.FileOptions)
 	protofile := string(fd.FullName())
 	workbook := proto.GetExtension(opts, tableaupb.E_Workbook).(*tableaupb.WorkbookOptions)
-	atom.Log.Debugf("file:%s.proto, workbook:%s\n", protofile, workbook)
+	atom.Log.Debugf("file:%s, workbook:%s\n", fd.Path(), workbook)
 	return protofile, workbook
 }
 
@@ -474,8 +475,8 @@ func (gen *Generator) TestParseFieldOptions(md protoreflect.MessageDescriptor, r
 				if layout == tableaupb.Layout_LAYOUT_VERTICAL {
 					gen.TestParseFieldOptions(fd.Message(), row, depth+1, prefix+name)
 				} else {
-					size := 2
-					for i := 1; i <= size; i++ {
+					atom.Log.Debug(field)
+					for i := 1; i <= int(field.ListMaxLen); i++ {
 						gen.TestParseFieldOptions(fd.Message(), row, depth+1, prefix+name+strconv.Itoa(i))
 					}
 				}
@@ -483,6 +484,11 @@ func (gen *Generator) TestParseFieldOptions(md protoreflect.MessageDescriptor, r
 				if etype == tableaupb.Type_TYPE_INCELL_LIST {
 					fmt.Println("cell(FIELD_TYPE_CELL_LIST): ", prefix+name)
 					*row = append(*row, Cell{Name: prefix + name})
+				} else if layout == tableaupb.Layout_LAYOUT_HORIZONTAL {
+					atom.Log.Debug(field)
+					for i := 0; i < int(field.ListMaxLen); i++ {
+						*row = append(*row, Cell{Name: prefix + name + strconv.Itoa(i + 1)})
+					}
 				} else {
 					panic(fmt.Sprintf("unknown list type: %v\n", etype))
 				}

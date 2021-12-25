@@ -13,9 +13,9 @@ import (
 	"github.com/Wenchy/tableau/internal/importer"
 	"github.com/Wenchy/tableau/options"
 	"github.com/Wenchy/tableau/proto/tableaupb"
-	"github.com/pkg/errors"
 	"github.com/antchfx/xmlquery"
 	"github.com/iancoleman/strcase"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -23,6 +23,10 @@ const (
 	version             = "0.1.1"
 	TableauProtoPackage = "tableau"
 )
+
+type IGenerator interface {
+	GetSuffix() string // get filename extension
+}
 
 type Generator struct {
 	ProtoPackage   string   // protobuf package name.
@@ -37,15 +41,51 @@ type Generator struct {
 	FilenameSuffix           string // filename suffix of generated protoconf files.
 
 	Imports        []string // imported common proto file paths
+
+	i IGenerator
 }
 
-type ExcelGenerator struct {
+func (gen Generator) GetSuffix() string {
+	return gen.i.GetSuffix()
+}
+
+func newGenerator(protoPackage, goPackage, indir, outdir string, setters ...options.Option) *Generator {
+	opts := options.ParseOptions(setters...)
+	return &Generator{
+		ProtoPackage:   protoPackage,
+		GoPackage:      goPackage,
+		LocationName: opts.LocationName,
+		InputDir:     indir,
+		OutputDir:    outdir,
+
+		FilenameWithSubdirPrefix: opts.Output.FilenameWithSubdirPrefix,
+		FilenameSuffix:           opts.Output.FilenameSuffix,
+
+		Imports: opts.Imports,
+	}
+}
+
+type XlsxGenerator struct {
 	Generator
 
 	Header *options.HeaderOption // header settings.
 }
 
-func (gen *ExcelGenerator) Generate() error {
+func NewXlsxGenerator(protoPackage, goPackage, indir, outdir string, setters ...options.Option) *XlsxGenerator {
+	opts := options.ParseOptions(setters...)
+	g := &XlsxGenerator{
+		Generator: *newGenerator(protoPackage, goPackage, indir, outdir, setters...),
+		Header:         opts.Header,
+	}
+	g.i = g
+	return g
+}
+
+func (gen XlsxGenerator) GetSuffix() string {
+	return ".xlsx"
+}
+
+func (gen *XlsxGenerator) Generate() error {
 	if err := gen.PrepareOutpuDir(); err != nil {
 		return errors.Wrapf(err, "failed to prepare output dir: %s", gen.OutputDir)
 	}
@@ -78,7 +118,7 @@ func (gen *Generator) generate(dir string) error {
 			continue
 		}
 		// atom.Log.Debugf("generating %s, %s", entry.Name(), filepath.Ext(entry.Name()))
-		if filepath.Ext(entry.Name()) != ".xlsx" {
+		if filepath.Ext(entry.Name()) != gen.GetSuffix() {
 			// ignore not xlsx files
 			continue
 		}
@@ -174,29 +214,74 @@ func (gen *Generator) convertWorkbook(dir, filename string) error {
 	return nil
 }
 
-func (gen *ExcelGenerator) PrepareOutpuDir() error {
+// func (gen *Generator) PrepareOutpuDir() error {
+// 	existed, err := fs.Exists(gen.OutputDir)
+// 	if err != nil {
+// 		return errors.Wrapf(err, "failed to check existence of output dir: %s", gen.OutputDir)
+// 	}
+// 	if existed {
+// 		// remove all *.proto file but not Imports
+// 		imports := make(map[string]int)
+// 		for _, path := range gen.Imports {
+// 			imports[path] = 1
+// 		}
+// 		files, err := os.ReadDir(gen.OutputDir)
+// 		if err != nil {
+// 			return errors.Wrapf(err, "failed to read dir: %s", gen.OutputDir)
+// 		}
+// 		for _, file := range files {
+// 			if !strings.HasSuffix(file.Name(), ".proto") {
+// 				continue
+// 			}
+// 			if _, ok := imports[file.Name()]; ok {
+// 				continue
+// 			}
+// 			fpath := filepath.Join(gen.OutputDir, file.Name())
+// 			err := os.Remove(fpath)
+// 			if err != nil {
+// 				return errors.Wrapf(err, "failed to remove file: %s", fpath)
+// 			}
+// 		}
+
+// 	} else {
+// 		// create output dir
+// 		err = os.MkdirAll(gen.OutputDir, 0700)
+// 		if err != nil {
+// 			return errors.Wrapf(err, "failed to create output dir: %s", gen.OutputDir)
+// 		}
+// 	}
+
+// 	return nil
+// }
+
+func (gen *Generator) PrepareOutpuDir() error {
 	existed, err := fs.Exists(gen.OutputDir)
 	if err != nil {
 		return errors.Wrapf(err, "failed to check existence of output dir: %s", gen.OutputDir)
 	}
 	if existed {
-		// remove all *.proto file but not Imports
-		imports := make(map[string]int)
-		for _, path := range gen.Imports {
-			imports[path] = 1
+		files, err := os.ReadDir(gen.InputDir)
+		if err != nil {
+			return errors.Wrapf(err, "failed to read input dir: %s", gen.InputDir)
 		}
-		files, err := os.ReadDir(gen.OutputDir)
+		fileMap := make(map[string]bool)
+		for _, wbFile := range files {
+			if strings.HasPrefix(wbFile.Name(), "~$") || !strings.HasSuffix(wbFile.Name(), gen.GetSuffix()) {
+				// ignore xlsx temp file named with prefix "~$"
+				continue
+			}
+			fileMap[strcase.ToSnake(strings.ReplaceAll(wbFile.Name(), gen.GetSuffix(), ""))] = true
+		}
+		files, err = os.ReadDir(gen.OutputDir)
 		if err != nil {
 			return errors.Wrapf(err, "failed to read dir: %s", gen.OutputDir)
 		}
 		for _, file := range files {
-			if !strings.HasSuffix(file.Name(), ".proto") {
-				continue
-			}
-			if _, ok := imports[file.Name()]; ok {
+			if _, existed := fileMap[strings.ReplaceAll(file.Name(), fmt.Sprintf("%s.proto", gen.FilenameSuffix), "")]; !existed {
 				continue
 			}
 			fpath := filepath.Join(gen.OutputDir, file.Name())
+			atom.Log.Debug(fpath)
 			err := os.Remove(fpath)
 			if err != nil {
 				return errors.Wrapf(err, "failed to remove file: %s", fpath)
@@ -269,24 +354,29 @@ type XmlGenerator struct {
 	nav *xmlquery.NodeNavigator
 }
 
-func (gen *XmlGenerator) Generate() error {
-	err := os.RemoveAll(gen.OutputDir)
-	if err != nil {
-		panic(err)
+func NewXmlGenerator(protoPackage, goPackage, indir, outdir string, setters ...options.Option) *XmlGenerator {
+	g := &XmlGenerator{
+		Generator: *newGenerator(protoPackage, goPackage, indir, outdir, setters...),
 	}
-	// create output dir
-	err = os.MkdirAll(gen.OutputDir, 0700)
-	if err != nil {
-		panic(err)
-	}
+	g.i = g
+	return g
+}
 
+func (gen XmlGenerator) GetSuffix() string {
+	return ".xml"
+}
+
+func (gen *XmlGenerator) Generate() error {
+	if err := gen.PrepareOutpuDir(); err != nil {
+		return errors.Wrapf(err, "failed to prepare output dir: %s", gen.OutputDir)
+	}
 	files, err := os.ReadDir(gen.InputDir)
 	if err != nil {
 		atom.Log.Fatal(err)
 	}
 	for _, xmlFile := range files {
 		// ignore temp file named with prefix "~$"
-		if strings.HasPrefix(xmlFile.Name(), "~$") {
+		if strings.HasPrefix(xmlFile.Name(), "~$") || !strings.HasSuffix(xmlFile.Name(), gen.GetSuffix()) {
 			continue
 		}
 		// open xml file and parse the document
@@ -321,15 +411,17 @@ func (gen *XmlGenerator) Generate() error {
 			atom.Log.Panic(err)
 		}
 		gen.fieldMap = make(map[string]*tableaupb.Field)
+		root := xmlquery.CreateXPathNavigator(n)
 		worksheet := &tableaupb.Worksheet{
 			Options: &tableaupb.WorksheetOptions{
-				Name: xmlFile.Name(),
+				Name: root.LocalName(),
 			},
-			Name: xmlFile.Name(),
+			Name: root.LocalName(),
 		}
-		root := &tableaupb.Field{}
-		gen.parseNode(xmlquery.CreateXPathNavigator(n), root, "")
-		worksheet.Fields = append(worksheet.Fields, root)
+		field := &tableaupb.Field{}
+		gen.parseNode(root, field, "")
+		atom.Log.Debug(field)
+		worksheet.Fields = append(worksheet.Fields, field.Fields...) // root节点变成了sheet
 		xml.Worksheets = append(xml.Worksheets, worksheet)
 		// export book
 		be := newBookExporter(gen.ProtoPackage, gen.GoPackage, gen.OutputDir, gen.FilenameSuffix, gen.Imports, xml)

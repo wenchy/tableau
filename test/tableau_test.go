@@ -107,10 +107,10 @@ func Test_CSV2Excel(t *testing.T) {
 
 func Test_Xml2Proto(t *testing.T) {
 	tableau.Xml2Proto(
-		"test",
+		"testxml",
 		"github.com/Wenchy/tableau/cmd/test/testpb",
-		"./testdata/xml",
-		"./protoconf/xml",
+		"./testdata",
+		"./protoconf",
 		options.Xml(
 			&options.XmlOption{}),
 		options.Imports(
@@ -123,10 +123,19 @@ func Test_Xml2Proto(t *testing.T) {
 
 func Test_Xml2JSON(t *testing.T) {
 	tableau.Xml2Conf(
-		"test",
+		"testxml",
 		"./testdata/",
-		"./_output/json/",
+		"./_output/json",
 		options.LogLevel("debug"),
 	)
 	// tableau.Generate("test", "./testdata/", "./_output/xml/")
+}
+
+func Test_Proto2Xlsx(t *testing.T) {
+	tableau.Proto2Xlsx(
+		"test",
+		"./protoconf/",
+		"./_output/xlsx/",
+	)
+	// tableau.Generate("test", "./testdata/", "./_output/xlsx/")
 }
