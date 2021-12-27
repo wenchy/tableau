@@ -20,26 +20,30 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type sheetParser struct {
-	ProtoPackage string
-	LocationName string
-	InputDir     string
-	OutputDir    string
-	Output       *options.OutputOption // output settings.
+type sheetExporter struct {
+	InputDir  string
+	OutputDir string
+	Output    *options.OutputOption // output settings.
 
-	protomsg proto.Message
+}
+
+func NewSheetExporter(inputDir, outputDir string, output *options.OutputOption) *sheetExporter {
+	return &sheetExporter{
+		InputDir:  inputDir,
+		OutputDir: outputDir,
+		Output:    output,
+	}
 }
 
 // export the protomsg message.
-func (sp *sheetParser) Export() error {
-	md := sp.protomsg.ProtoReflect().Descriptor()
-	msg := sp.protomsg.ProtoReflect()
+func (x *sheetExporter) Export(parser *sheetParser, protomsg proto.Message) error {
+	md := protomsg.ProtoReflect().Descriptor()
 	_, workbook := parseFileOptions(md.ParentFile())
 	msgName, worksheetName, namerow, _, datarow, transpose := parseMessageOptions(md)
 	// msgName, worksheetName, namerow, noterow, datarow, transpose := parseMessageOptions(md)
 
-	wbPath := sp.InputDir + workbook.Name
-	book, err := excel.NewBook(wbPath)
+	wbPath := x.InputDir + workbook.Name
+	book, err := excel.NewBook(wbPath, NewSheetParser("tableau", ""))
 	if err != nil {
 		return errors.WithMessagef(err, "failed to create new workbook: %s", wbPath)
 	}
@@ -49,6 +53,28 @@ func (sp *sheetParser) Export() error {
 		return errors.Errorf("not found worksheet: %s", worksheetName)
 	}
 
+	if err := parser.Parse(protomsg, sheet, namerow, datarow, transpose); err != nil {
+		return errors.WithMessage(err, "failed to parse sheet")
+	}
+
+	exporter := mexporter.New(msgName, protomsg, x.OutputDir, x.Output)
+	return exporter.Export()
+}
+
+type sheetParser struct {
+	ProtoPackage string
+	LocationName string
+}
+
+func NewSheetParser(protoPackage, locationName string) *sheetParser {
+	return &sheetParser{
+		ProtoPackage: protoPackage,
+		LocationName: locationName,
+	}
+}
+
+func (sp *sheetParser) Parse(protomsg proto.Message, sheet *excel.Sheet, namerow, datarow int32, transpose bool) error {
+	msg := protomsg.ProtoReflect()
 	if transpose {
 		// interchange the rows and columns
 		// namerow: name column
@@ -62,14 +88,14 @@ func (sp *sheetParser) Export() error {
 				if err != nil {
 					return errors.WithMessagef(err, "failed to get name cell: %d, %d", row, nameCol)
 				}
-				name = clearNewline(name)
+				// name = clearNewline(name)
 				data, err := sheet.Cell(row, col)
 				if err != nil {
 					return errors.WithMessagef(err, "failed to get data cell: %d, %d", row, col)
 				}
 				rc.SetCell(name, row, data)
 			}
-			sp.parseFieldOptions(msg, rc, 0, "")
+			err := sp.parseFieldOptions(msg, rc, 0, "")
 			if err != nil {
 				return err
 			}
@@ -85,7 +111,7 @@ func (sp *sheetParser) Export() error {
 				if err != nil {
 					return errors.WithMessagef(err, "failed to get name cell: %d, %d", nameRow, col)
 				}
-				name = clearNewline(name)
+				// name = clearNewline(name)
 				data, err := sheet.Cell(row, col)
 				if err != nil {
 					return errors.WithMessagef(err, "failed to get data cell: %d, %d", row, col)
@@ -98,8 +124,7 @@ func (sp *sheetParser) Export() error {
 			}
 		}
 	}
-	x := mexporter.New(msgName, sp.protomsg, sp.OutputDir, sp.Output)
-	return x.Export()
+	return nil
 }
 
 type Field struct {

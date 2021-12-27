@@ -1,0 +1,22 @@
+syntax = "proto3";
+package tableau;
+option go_package = "github.com/Wenchy/tableau/proto/tableaupb";
+
+import "tableau.proto";
+
+message WorkbookMeta {
+  option (tableau.worksheet) = {
+    name: "@TABLEAU"
+    namerow: 1
+    datarow: 2
+  };
+
+  map<string, SheetMeta> sheet_meta_map = 1 [(tableau.field).key = "Sheet"];
+}
+message SheetMeta {
+  string sheet = 1 [(tableau.field).name = "Sheet"];
+  string alias = 2 [(tableau.field).name = "Alias"];
+  int32 name_cell_line = 3  [(tableau.field).name = "NameCellLine"];
+  int32 type_cell_line = 4  [(tableau.field).name = "TypeCellLine"];
+  // bool transpose = 5  [(tableau.field).key = "Transpose"];
+}

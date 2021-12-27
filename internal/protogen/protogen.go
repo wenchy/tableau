@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/Wenchy/tableau/internal/atom"
+	"github.com/Wenchy/tableau/internal/confgen"
 	"github.com/Wenchy/tableau/internal/excel"
 	"github.com/Wenchy/tableau/internal/fs"
 	"github.com/Wenchy/tableau/options"
@@ -45,9 +46,13 @@ func (gen *Generator) Generate() error {
 		}
 		wbPath := filepath.Join(gen.InputDir, wbFile.Name())
 		atom.Log.Debugf("workbook: %s", wbPath)
-		book, err := excel.NewBook(wbPath)
+		book, err := excel.NewBook(wbPath, confgen.NewSheetParser("tableau", ""))
 		if err != nil {
 			return errors.Wrapf(err, "failed to create new workbook: %s", wbPath)
+		}
+
+		if len(book.Sheets) == 0 {
+			continue
 		}
 		// creat a book parser
 		bp := newBookParser(wbFile.Name(), gen.Imports)
@@ -67,6 +72,7 @@ func (gen *Generator) Generate() error {
 				Name:   sheetName,
 			}
 			shHeader := &sheetHeader{
+				meta:    sheet.Meta,
 				namerow: sheet.Rows[gen.Header.Namerow-1],
 				typerow: sheet.Rows[gen.Header.Typerow-1],
 				noterow: sheet.Rows[gen.Header.Noterow-1],
@@ -133,23 +139,35 @@ func (gen *Generator) PrepareOutpuDir() error {
 }
 
 type sheetHeader struct {
+	meta    *tableaupb.SheetMeta
 	namerow []string
 	typerow []string
 	noterow []string
 }
 
-func getCell(row []string, cursor int) string {
-	return strings.TrimSpace(row[cursor])
+func getCell(row []string, cursor int, line int32) string {
+	if line == 0 {
+		line = 1 // default line is 1
+	}
+
+	cell := row[cursor]
+	lines := strings.Split(cell, "\n")
+	if int32(len(lines)) >= line {
+		return strings.TrimSpace(lines[line-1])
+	}
+	atom.Log.Debugf("No enough lines in cell: %s, want at leat %d lines", cell, line)
+	return ""
 }
+
 func (sh *sheetHeader) getNameCell(cursor int) string {
-	return getCell(sh.namerow, cursor)
+	return getCell(sh.namerow, cursor, sh.meta.NameCellLine)
 }
 
 func (sh *sheetHeader) getTypeCell(cursor int) string {
-	return getCell(sh.typerow, cursor)
+	return getCell(sh.typerow, cursor, sh.meta.TypeCellLine)
 }
 func (sh *sheetHeader) getNoteCell(cursor int) string {
-	return getCell(sh.noterow, cursor)
+	return getCell(sh.noterow, cursor, 1) // default note line is 1
 }
 
 type GeneratedBuf struct {

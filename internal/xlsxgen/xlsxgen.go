@@ -78,7 +78,7 @@ func (gen *Generator) Generate() {
 			if worksheet == nil {
 				continue
 			}
-			atom.Log.Infof("generate: %s, message: %s@%s, worksheet: %s@%s", md.Name(), fd.Path(), md.Name(), workbook.Name, worksheet.Name)
+			atom.Log.Infof("generate: %s, message: %s#%s, worksheet: %s#%s", md.Name(), fd.Path(), md.Name(), workbook.Name, worksheet.Name)
 			newMsg := dynamicpb.NewMessage(md)
 			gen.export(newMsg)
 		}

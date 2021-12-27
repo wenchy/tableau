@@ -65,19 +65,11 @@ func (gen *Generator) Generate() (err error) {
 				if worksheet == nil {
 					continue
 				}
-				atom.Log.Infof("generate: %s@%s <-> %s@%s", fd.Path(), md.Name(), workbook.Name, worksheet.Name)
+				atom.Log.Infof("generate: %s#%s <-> %s#%s", fd.Path(), md.Name(), workbook.Name, worksheet.Name)
 				newMsg := dynamicpb.NewMessage(md)
-				// gen.export(newMsg)
-				x := &sheetParser{
-					ProtoPackage: gen.ProtoPackage,
-					LocationName: gen.LocationName,
-					InputDir:     gen.InputDir,
-					OutputDir:    gen.OutputDir,
-					Output:       gen.Output,
-
-					protomsg: newMsg,
-				}
-				err = x.Export()
+				parser := NewSheetParser(gen.ProtoPackage, gen.LocationName)
+				exporter := NewSheetExporter(gen.InputDir, gen.OutputDir, gen.Output)
+				err = exporter.Export(parser, newMsg)
 				if err != nil {
 					// Due to closure, this err will be returned by func Generate().
 					return false
