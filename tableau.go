@@ -35,6 +35,7 @@ func Xlsx2Proto(protoPackage, goPackage, indir, outdir string, setters ...option
 	g := protogen.Generator{
 		ProtoPackage:   protoPackage,
 		GoPackage:      goPackage,
+		LocationName:   opts.LocationName,
 		InputDir:       indir,
 		OutputDir:      outdir,
 		FilenameSuffix: opts.Output.FilenameSuffix,

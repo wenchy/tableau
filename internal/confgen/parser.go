@@ -65,7 +65,7 @@ func NewSheetParser(protoPackage, locationName string) *sheetParser {
 }
 
 func (sp *sheetParser) Parse(protomsg proto.Message, sheet *excel.Sheet, wsOpts *tableaupb.WorksheetOptions) error {
-	atom.Log.Debugf("parse sheet: %s", sheet.Name)
+	// atom.Log.Debugf("parse sheet: %s", sheet.Name)
 	msg := protomsg.ProtoReflect()
 	if wsOpts.Transpose {
 		// interchange the rows and columns

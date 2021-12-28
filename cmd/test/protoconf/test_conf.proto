@@ -47,7 +47,11 @@ message ItemConf {
 }
 
 message ActivityConf {
-  option (tableau.worksheet).name = "Activity";
+  option (tableau.worksheet) = {
+    name: "Activity"
+    namerow: 1
+    datarow: 2
+  };
 
   map<int32, Activity> activity_map = 1 [(tableau.field).key = "活动ID"];
 
@@ -88,6 +92,8 @@ message ActivityConf {
 message EnvConf {
   option (tableau.worksheet) = {
     name: "Env"
+    namerow: 1
+    datarow: 2
     transpose: true
   };
 
@@ -110,7 +116,11 @@ message EnvConf {
 }
 
 message MailConf {
-  option (tableau.worksheet).name = "Mail";
+  option (tableau.worksheet) = {
+    name: "Mail"
+    namerow: 1
+    datarow: 2
+  };
 
   map<int32, Row> mail_map = 1;  // default: [(tableau.field).key = "Key"];
 

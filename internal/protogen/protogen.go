@@ -17,12 +17,16 @@ import (
 )
 
 const (
-	version = "v0.1.0"
+	version             = "v0.1.0"
+	tableauProtoPackage = "tableau"
 )
 
 type Generator struct {
-	ProtoPackage   string   // protobuf package name.
-	GoPackage      string   // golang package name.
+	ProtoPackage string // protobuf package name.
+	GoPackage    string // golang package name.
+	// Location represents the collection of time offsets in use in a geographical area.
+	// Default is "Asia/Shanghai".
+	LocationName   string
 	InputDir       string   // input dir of workbooks.
 	OutputDir      string   // output dir of generated protoconf files.
 	FilenameSuffix string   // filename suffix of generated protoconf files.
@@ -46,7 +50,7 @@ func (gen *Generator) Generate() error {
 		}
 		wbPath := filepath.Join(gen.InputDir, wbFile.Name())
 		atom.Log.Debugf("workbook: %s", wbPath)
-		book, err := excel.NewBookExt(wbPath, confgen.NewSheetParser("tableau", ""))
+		book, err := excel.NewBookExt(wbPath, confgen.NewSheetParser(tableauProtoPackage, gen.LocationName))
 		if err != nil {
 			return errors.Wrapf(err, "failed to create new workbook: %s", wbPath)
 		}
@@ -61,6 +65,13 @@ func (gen *Generator) Generate() error {
 			sheetMsgName := sheet.Name
 			if sheet.Meta.Alias != "" {
 				sheetMsgName = sheet.Meta.Alias
+			}
+			// merge nameline and typeline from sheet meta and header option
+			if sheet.Meta.Nameline == 0 {
+				sheet.Meta.Nameline = gen.Header.Nameline
+			}
+			if sheet.Meta.Typeline == 0 {
+				sheet.Meta.Typeline = gen.Header.Typeline
 			}
 			ws := &tableaupb.Worksheet{
 				Options: &tableaupb.WorksheetOptions{

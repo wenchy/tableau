@@ -25,6 +25,9 @@ func Test_Xlsx2Proto(t *testing.T) {
 				Typerow: 2,
 				Noterow: 3,
 				Datarow: 5,
+
+				Nameline: 2,
+				Typeline: 2,
 			}),
 		options.Imports(
 			[]string{

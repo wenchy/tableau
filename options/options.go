@@ -24,6 +24,9 @@ type HeaderOption struct {
 	Typerow int32
 	Noterow int32
 	Datarow int32
+
+	Nameline int32
+	Typeline int32
 }
 
 type OutputOption struct {
