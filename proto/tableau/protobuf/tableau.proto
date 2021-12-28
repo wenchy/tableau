@@ -50,6 +50,7 @@ message FieldOptions {
   Layout layout = 5;  // default: LAYOUT_DEFAULT
   string sep = 6;     // separator, default: ","
   string subsep = 7;  // sub separator, default: ":"
+  bool optional = 8;   // [default = false]; // whether the field is optional.
 
   /////////////////////////////
   // Simple Validators Below //

@@ -153,6 +153,7 @@ func (sp *sheetParser) parseFieldOptions(msg protoreflect.Message, rc *excel.Row
 		layout := tableaupb.Layout_LAYOUT_DEFAULT
 		sep := ""
 		subsep := ""
+		optional := false
 
 		opts := fd.Options().(*descriptorpb.FieldOptions)
 		fieldOpts := proto.GetExtension(opts, tableaupb.E_Field).(*tableaupb.FieldOptions)
@@ -164,6 +165,7 @@ func (sp *sheetParser) parseFieldOptions(msg protoreflect.Message, rc *excel.Row
 			layout = fieldOpts.Layout
 			sep = fieldOpts.Sep
 			subsep = fieldOpts.Subsep
+			optional = fieldOpts.Optional
 		} else {
 			// default processing
 			if fd.IsList() {
@@ -208,13 +210,14 @@ func (sp *sheetParser) parseFieldOptions(msg protoreflect.Message, rc *excel.Row
 		field := &Field{
 			fd: fd,
 			opts: &tableaupb.FieldOptions{
-				Name:   name,
-				Note:   note,
-				Type:   etype,
-				Key:    key,
-				Layout: layout,
-				Sep:    sep,
-				Subsep: subsep,
+				Name:     name,
+				Note:     note,
+				Type:     etype,
+				Key:      key,
+				Layout:   layout,
+				Sep:      sep,
+				Subsep:   subsep,
+				Optional: optional,
 			},
 		}
 		err = sp.parseField(field, msg, rc, depth, prefix)
@@ -251,7 +254,7 @@ func (sp *sheetParser) parseMapField(field *Field, msg protoreflect.Message, rc 
 	// newKey := sp.parseFieldValue(keyFd, "1111001").MapKey()
 	if field.opts.Type == tableaupb.Type_TYPE_INCELL_MAP {
 		colName := prefix + field.opts.Name
-		cell := rc.Cell(colName)
+		cell := rc.Cell(colName, field.opts.Optional)
 		if cell == nil {
 			return errors.Errorf("%s|column not found", rc.CellDebugString(colName))
 		}
@@ -294,7 +297,7 @@ func (sp *sheetParser) parseMapField(field *Field, msg protoreflect.Message, rc 
 				// atom.Log.Debug("prefix size: ", size)
 				for i := 1; i <= size; i++ {
 					keyColName := prefix + field.opts.Name + strconv.Itoa(i) + field.opts.Key
-					cell := rc.Cell(keyColName)
+					cell := rc.Cell(keyColName, field.opts.Optional)
 					if cell == nil {
 						return errors.Errorf("%s|horizontal map: key column not found", rc.CellDebugString(keyColName))
 					}
@@ -320,7 +323,7 @@ func (sp *sheetParser) parseMapField(field *Field, msg protoreflect.Message, rc 
 				}
 			} else {
 				keyColName := prefix + field.opts.Name + field.opts.Key
-				cell := rc.Cell(keyColName)
+				cell := rc.Cell(keyColName, field.opts.Optional)
 				if cell == nil {
 					return errors.Errorf("%s|vertical map: key column not found", rc.CellDebugString(keyColName))
 				}
@@ -350,7 +353,7 @@ func (sp *sheetParser) parseMapField(field *Field, msg protoreflect.Message, rc 
 			value := "Value" // default value name
 			// key cell
 			keyColName := prefix + field.opts.Name + key
-			cell := rc.Cell(keyColName)
+			cell := rc.Cell(keyColName, field.opts.Optional)
 			if cell == nil {
 				return errors.Errorf("%s|vertical map(scalar): key column not found", rc.CellDebugString(keyColName))
 			}
@@ -367,7 +370,7 @@ func (sp *sheetParser) parseMapField(field *Field, msg protoreflect.Message, rc 
 			}
 			// value cell
 			valueColName := prefix + field.opts.Name + value
-			cell = rc.Cell(valueColName)
+			cell = rc.Cell(valueColName, field.opts.Optional)
 			if cell == nil {
 				return errors.Errorf("%s|vertical map(scalar): value colum not found", rc.CellDebugString(valueColName))
 			}
@@ -393,7 +396,7 @@ func (sp *sheetParser) parseListField(field *Field, msg protoreflect.Message, rc
 	if field.opts.Type == tableaupb.Type_TYPE_INCELL_LIST {
 		// incell list
 		colName := prefix + field.opts.Name
-		cell := rc.Cell(colName)
+		cell := rc.Cell(colName, field.opts.Optional)
 		if cell == nil {
 			return errors.Errorf("%s|incell list: column not found", rc.CellDebugString(colName))
 		}
@@ -445,7 +448,7 @@ func (sp *sheetParser) parseListField(field *Field, msg protoreflect.Message, rc
 				} else {
 					// scalar list
 					colName := prefix + field.opts.Name + strconv.Itoa(i)
-					cell := rc.Cell(colName)
+					cell := rc.Cell(colName, field.opts.Optional)
 					if cell == nil {
 						return errors.Errorf("%s|horizontal list(scalar): column not found", rc.CellDebugString(colName))
 					}
@@ -493,7 +496,7 @@ func (sp *sheetParser) parseStructField(field *Field, msg protoreflect.Message, 
 	colName := prefix + field.opts.Name
 	if field.opts.Type == tableaupb.Type_TYPE_INCELL_STRUCT {
 		// incell struct
-		cell := rc.Cell(colName)
+		cell := rc.Cell(colName, field.opts.Optional)
 		if cell == nil {
 			return errors.Errorf("%s|incell struct: column not found", rc.CellDebugString(colName))
 		}
@@ -518,7 +521,7 @@ func (sp *sheetParser) parseStructField(field *Field, msg protoreflect.Message, 
 		subMsgName := string(field.fd.Message().FullName())
 		_, found := specialMessageMap[subMsgName]
 		if found {
-			cell := rc.Cell(colName)
+			cell := rc.Cell(colName, field.opts.Optional)
 			if cell == nil {
 				return errors.Errorf("%s|builtin type: column not found", rc.CellDebugString(colName))
 			}
@@ -546,7 +549,7 @@ func (sp *sheetParser) parseStructField(field *Field, msg protoreflect.Message, 
 func (sp *sheetParser) parseEnumField(field *Field, msg protoreflect.Message, rc *excel.RowCells, depth int, prefix string) (err error) {
 	newValue := msg.NewField(field.fd)
 	colName := prefix + field.opts.Name
-	cell := rc.Cell(colName)
+	cell := rc.Cell(colName, field.opts.Optional)
 	if cell == nil {
 		return errors.Errorf("%s|enum: column not found", rc.CellDebugString(colName))
 	}
@@ -598,7 +601,7 @@ func (sp *sheetParser) parseEnumField(field *Field, msg protoreflect.Message, rc
 func (sp *sheetParser) parseScalarField(field *Field, msg protoreflect.Message, rc *excel.RowCells, depth int, prefix string) (err error) {
 	newValue := msg.NewField(field.fd)
 	colName := prefix + field.opts.Name
-	cell := rc.Cell(colName)
+	cell := rc.Cell(colName, field.opts.Optional)
 	if cell == nil {
 		return errors.Errorf("%s|scalar: column not found", rc.CellDebugString(colName))
 	}

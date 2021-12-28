@@ -123,6 +123,7 @@ func (b *Book) parseWorkbookMeta() error {
 	if err := b.parser.Parse(b.WorkbookMeta, sheet, 1, 2, false); err != nil {
 		return errors.WithMessagef(err, "failed to parse sheet: %s#%s", b.Filename, tableauSheetName)
 	}
+
 	atom.Log.Debugf("%s#%s: %+v", b.Filename, tableauSheetName, b.WorkbookMeta)
 	return nil
 }
@@ -193,14 +194,22 @@ type RowCell struct {
 	Data string // cell data
 }
 
-func (r *RowCells) Cell(name string) *RowCell {
-	return r.cells[name]
+func (r *RowCells) Cell(name string, optional bool) *RowCell {
+	c := r.cells[name]
+	if c == nil && optional {
+		// if optional, return an empty cell.
+		c = &RowCell{
+			Col:  -1,
+			Data: "",
+		}
+	}
+	return c
 }
 
 func (r *RowCells) CellDebugString(name string) string {
-	rc := r.Cell(name)
+	rc := r.Cell(name, false)
 	if rc == nil {
-		return fmt.Sprintf("(%d,%d)%s:%s", r.Row+1, 1, name, "")
+		return fmt.Sprintf("(%d,%d)%s:%s", r.Row+1, -1, name, "")
 	}
 	return fmt.Sprintf("(%d,%d)%s:%s", r.Row+1, rc.Col+1, name, rc.Data)
 }

@@ -58,6 +58,10 @@ func (gen *Generator) Generate() error {
 		bp := newBookParser(wbFile.Name(), gen.Imports)
 		for _, sheet := range book.Sheets {
 			// parse sheet header
+			sheetMsgName := sheet.Name
+			if sheet.Meta.Alias != "" {
+				sheetMsgName = sheet.Meta.Alias
+			}
 			ws := &tableaupb.Worksheet{
 				Options: &tableaupb.WorksheetOptions{
 					Name:      sheet.Name,
@@ -69,7 +73,7 @@ func (gen *Generator) Generate() error {
 					Tags:      "",
 				},
 				Fields: []*tableaupb.Field{},
-				Name:   sheet.Name,
+				Name:   sheetMsgName,
 			}
 			shHeader := &sheetHeader{
 				meta:    sheet.Meta,

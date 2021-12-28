@@ -82,6 +82,7 @@ xlsx -> Importer -> Protoconf -> Exporter -> JSON/protowire/prototext
 - [x] bool
 - [x] string
 - [x] bytes
+- [x] datetime, date, time, duration 
 
 ### Enumerations
 - [x] enum: The Parser accepts three enum value forms: 
@@ -133,6 +134,11 @@ Each scalar type's default value is same as protobuf.
 ### Merge
 - [ ] merge multiple workbooks
 - [ ] merge multiple worksheets
+
+### Workbook meta 
+workbook meta sheet **@TABLEAU**:
+- specify which sheets to be parsed
+- specify parser options for each sheet
 
 ### Datetime
 > [Understanding about RFC 3339 for Datetime and Timezone Formatting in Software Engineering](https://medium.com/easyread/understanding-about-rfc-3339-for-datetime-formatting-in-software-engineering-940aa5d5f68a)
