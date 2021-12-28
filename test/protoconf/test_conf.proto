@@ -4,6 +4,7 @@ package test;
 option go_package = "github.com/Wenchy/tableau/cmd/test/testpb";
 
 import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
 import "tableau/protobuf/tableau.proto";
 import "time.proto";
 
@@ -68,5 +69,8 @@ message Exchange {
   message Reward {
     uint32 id = 1 [(tableau.field) = {name:"ID"}];
     string desc = 2 [(tableau.field) = {name:"Desc"}];
+    google.protobuf.Timestamp begin_time = 3 [(tableau.field) = {name:"BeginTime"}];
+    google.protobuf.Timestamp date = 4 [(tableau.field) = {name:"Date"}];
+    google.protobuf.Duration time = 5 [(tableau.field) = {name:"Time"}];
   }
 }

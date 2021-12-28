@@ -40,8 +40,8 @@ func (x *sheetExporter) Export(book *excel.Book, parser *sheetParser, protomsg p
 	msgName, worksheetName, namerow, _, datarow, transpose := parseMessageOptions(md)
 	// msgName, worksheetName, namerow, noterow, datarow, transpose := parseMessageOptions(md)
 
-	sheet, ok := book.Sheets[worksheetName]
-	if !ok {
+	sheet := book.GetSheet(worksheetName)
+	if sheet == nil {
 		return errors.Errorf("not found worksheet: %s", worksheetName)
 	}
 
@@ -687,7 +687,7 @@ func (sp *sheetParser) parseFieldValue(fd protoreflect.FieldDescriptor, value st
 			// make use of d as a *durationpb.Duration
 			du := &durationpb.Duration{} // default
 			if value != "" {
-				d, err := time.ParseDuration(value)
+				d, err := parseDuration(value)
 				if err != nil {
 					return protoreflect.ValueOf(du.ProtoReflect()), errors.WithMessagef(err, "illegal duration string format: %v", value)
 				}
@@ -740,16 +740,37 @@ func parseMessageOptions(md protoreflect.MessageDescriptor) (string, string, int
 func parseTimeWithLocation(locationName string, timeStr string) (time.Time, error) {
 	// see https://golang.org/pkg/time/#LoadLocation
 	if location, err := time.LoadLocation(locationName); err != nil {
-		atom.Log.Panicf("LoadLocation failed: %s", err)
-		return time.Time{}, err
+		return time.Time{}, errors.Wrapf(err, "LoadLocation failed: %s", locationName)
 	} else {
-		timeLayout := "2006-01-02 15:04:05"
-		t, err := time.ParseInLocation(timeLayout, timeStr, location)
+		timeStr = strings.TrimSpace(timeStr)
+		layout := "2006-01-02 15:04:05"
+		if strings.Contains(timeStr, " ") {
+			layout = "2006-01-02 15:04:05"
+		} else {
+			layout = "2006-01-02"
+			if !strings.Contains(timeStr, "-") && len(timeStr) == 8 {
+				// convert "yyyymmdd" to "yyyy-mm-dd"
+				timeStr = timeStr[0:4] + "-" + timeStr[4:6] + "-" + timeStr[6:8]
+			}
+		}
+		t, err := time.ParseInLocation(layout, timeStr, location)
 		if err != nil {
-			atom.Log.Panicf("ParseInLocation failed:%v ,timeStr: %v, locationName: %v", err, timeStr, locationName)
+			return time.Time{}, errors.Wrapf(err, "ParseInLocation failed, timeStr: %v, locationName: %v", timeStr, locationName)
 		}
 		return t, nil
 	}
+}
+
+func parseDuration(duration string) (time.Duration, error) {
+	duration = strings.TrimSpace(duration)
+	if !strings.ContainsAny(duration, ":hmsµu") && len(duration) == 6 {
+		duration = duration[0:2] + "h" + duration[2:4] + "m" + duration[4:6] + "s"
+	} else if strings.Contains(duration, ":") && len(duration) == 8 {
+		// convert "hh:mm:ss" to "<hh>h<mm>m:<ss>s"
+		duration = duration[0:2] + "h" + duration[3:5] + "m" + duration[6:8] + "s"
+	}
+
+	return time.ParseDuration(duration)
 }
 
 func MessageValueEqual(v1, v2 protoreflect.Value) bool {

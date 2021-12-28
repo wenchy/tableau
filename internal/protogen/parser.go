@@ -317,12 +317,13 @@ func (p *bookParser) parseType(typ string) (string, bool) {
 		typ = strings.TrimPrefix(typ, ".")
 		return typ, true
 	}
-	if typ == "timestamp" {
+	switch typ {
+	case "datetime", "date":
 		typ = "google.protobuf.Timestamp"
-		// p.wb.Imports[timestampProtoPath] = 1
-	} else if typ == "duration" {
+	case "duration", "time":
 		typ = "google.protobuf.Duration"
-		// p.wb.Imports[durationProtoPath] = 1
+	default:
+		return typ, false
 	}
 	return typ, false
 }

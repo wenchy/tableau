@@ -56,11 +56,11 @@ func (gen *Generator) Generate() error {
 		}
 		// creat a book parser
 		bp := newBookParser(wbFile.Name(), gen.Imports)
-		for sheetName, sheet := range book.Sheets {
+		for _, sheet := range book.Sheets {
 			// parse sheet header
 			ws := &tableaupb.Worksheet{
 				Options: &tableaupb.WorksheetOptions{
-					Name:      sheetName,
+					Name:      sheet.Name,
 					Namerow:   gen.Header.Namerow,
 					Typerow:   gen.Header.Typerow,
 					Noterow:   gen.Header.Noterow,
@@ -69,7 +69,7 @@ func (gen *Generator) Generate() error {
 					Tags:      "",
 				},
 				Fields: []*tableaupb.Field{},
-				Name:   sheetName,
+				Name:   sheet.Name,
 			}
 			shHeader := &sheetHeader{
 				meta:    sheet.Meta,
@@ -144,8 +144,6 @@ type sheetHeader struct {
 	typerow []string
 	noterow []string
 }
-
-
 
 func getCell(row []string, cursor int, line int32) string {
 	cell := row[cursor]

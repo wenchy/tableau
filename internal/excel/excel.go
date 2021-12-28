@@ -8,6 +8,7 @@ import (
 
 	"github.com/Wenchy/tableau/internal/atom"
 	"github.com/Wenchy/tableau/proto/tableaupb"
+	"github.com/emirpasic/gods/sets/treeset"
 	"github.com/pkg/errors"
 	"github.com/xuri/excelize/v2"
 	"google.golang.org/protobuf/proto"
@@ -60,7 +61,7 @@ type Book struct {
 	Filename     string
 	file         *excelize.File
 	WorkbookMeta *tableaupb.WorkbookMeta
-	Sheets       map[string]*Sheet // sheet name -> Sheet
+	Sheets       []*Sheet
 	parser       Parser
 }
 
@@ -70,7 +71,6 @@ func NewBook(filename string, parser Parser) (*Book, error) {
 		WorkbookMeta: &tableaupb.WorkbookMeta{
 			SheetMetaMap: make(map[string]*tableaupb.SheetMeta),
 		},
-		Sheets: make(map[string]*Sheet),
 		parser: parser,
 	}
 
@@ -88,6 +88,15 @@ func NewBook(filename string, parser Parser) (*Book, error) {
 		return nil, errors.WithMessagef(err, "failed to parse workbook: %s", filename)
 	}
 	return book, nil
+}
+
+func (b *Book) GetSheet(sheetName string) *Sheet {
+	for _, s := range b.Sheets {
+		if s.Name == sheetName {
+			return s
+		}
+	}
+	return nil
 }
 
 func (b *Book) parseWorkbookMeta() error {
@@ -119,13 +128,19 @@ func (b *Book) parseWorkbookMeta() error {
 }
 
 func (b *Book) parse() error {
-	for _, sheetMeta := range b.WorkbookMeta.SheetMetaMap {
-		sheetName := sheetMeta.Sheet
+	// Target: keep the order of sheets.
+	set := treeset.NewWithStringComparator()
+	for sheetName := range b.WorkbookMeta.SheetMetaMap {
+		set.Add(sheetName) // default must import path
+	}
+
+	for _, val := range set.Values() {
+		sheetName := val.(string)
 		s, err := b.parseSheet(sheetName)
 		if err != nil {
 			return errors.WithMessagef(err, "failed to get rows of s: %s#%s", b.Filename, sheetName)
 		}
-		b.Sheets[sheetName] = s
+		b.Sheets = append(b.Sheets, s)
 	}
 	return nil
 }
