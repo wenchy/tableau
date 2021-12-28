@@ -152,6 +152,12 @@ func (b *Book) parseSheet(sheetName string) (*Sheet, error) {
 		Rows:   rows,
 		Meta:   b.WorkbookMeta.SheetMetaMap[sheetName],
 	}
+	// Special `Meta` field process for "@TABLEAU" sheet.
+	if sheetName == tableauSheetName {
+		s.Meta = &tableaupb.SheetMeta{
+			Sheet: sheetName,
+		}
+	}
 	return s, nil
 }
 
@@ -211,4 +217,17 @@ func (r *RowCells) GetCellCountWithPrefix(prefix string) int {
 		}
 	}
 	return size
+}
+
+func ExtractNameFromCell(cell string, line int32) string {
+	if line == 0 {
+		line = 1 // default line is 1
+	}
+
+	lines := strings.Split(cell, "\n")
+	if int32(len(lines)) >= line {
+		return strings.TrimSpace(lines[line-1])
+	}
+	atom.Log.Debugf("No enough lines in cell: %s, want at leat %d lines", cell, line)
+	return ""
 }

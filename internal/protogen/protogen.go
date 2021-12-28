@@ -145,18 +145,11 @@ type sheetHeader struct {
 	noterow []string
 }
 
-func getCell(row []string, cursor int, line int32) string {
-	if line == 0 {
-		line = 1 // default line is 1
-	}
 
+
+func getCell(row []string, cursor int, line int32) string {
 	cell := row[cursor]
-	lines := strings.Split(cell, "\n")
-	if int32(len(lines)) >= line {
-		return strings.TrimSpace(lines[line-1])
-	}
-	atom.Log.Debugf("No enough lines in cell: %s, want at leat %d lines", cell, line)
-	return ""
+	return excel.ExtractNameFromCell(cell, line)
 }
 
 func (sh *sheetHeader) getNameCell(cursor int) string {

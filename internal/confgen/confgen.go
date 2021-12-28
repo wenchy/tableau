@@ -2,9 +2,11 @@ package confgen
 
 import (
 	"os"
+	"path/filepath"
 	"regexp"
 
 	"github.com/Wenchy/tableau/internal/atom"
+	"github.com/Wenchy/tableau/internal/excel"
 	"github.com/Wenchy/tableau/options"
 	"github.com/Wenchy/tableau/proto/tableaupb"
 	"github.com/pkg/errors"
@@ -55,6 +57,13 @@ func (gen *Generator) Generate() (err error) {
 			if workbook == nil {
 				return true
 			}
+			var book *excel.Book
+			wbPath := filepath.Join(gen.InputDir, workbook.Name)
+			book, err = excel.NewBook(wbPath, NewSheetParser("tableau", ""))
+			if err != nil {
+				atom.Log.Errorf("failed to create new workbook: %s", wbPath)
+				return false
+			}
 			// atom.Log.Debugf("proto: %s, workbook %s", fd.Path(), workbook)
 			msgs := fd.Messages()
 			for i := 0; i < msgs.Len(); i++ {
@@ -68,8 +77,8 @@ func (gen *Generator) Generate() (err error) {
 				atom.Log.Infof("generate: %s#%s <-> %s#%s", fd.Path(), md.Name(), workbook.Name, worksheet.Name)
 				newMsg := dynamicpb.NewMessage(md)
 				parser := NewSheetParser(gen.ProtoPackage, gen.LocationName)
-				exporter := NewSheetExporter(gen.InputDir, gen.OutputDir, gen.Output)
-				err = exporter.Export(parser, newMsg)
+				exporter := NewSheetExporter(gen.OutputDir, gen.Output)
+				err = exporter.Export(book, parser, newMsg)
 				if err != nil {
 					// Due to closure, this err will be returned by func Generate().
 					return false

@@ -21,32 +21,24 @@ import (
 )
 
 type sheetExporter struct {
-	InputDir  string
 	OutputDir string
 	Output    *options.OutputOption // output settings.
 
 }
 
-func NewSheetExporter(inputDir, outputDir string, output *options.OutputOption) *sheetExporter {
+func NewSheetExporter(outputDir string, output *options.OutputOption) *sheetExporter {
 	return &sheetExporter{
-		InputDir:  inputDir,
 		OutputDir: outputDir,
 		Output:    output,
 	}
 }
 
 // export the protomsg message.
-func (x *sheetExporter) Export(parser *sheetParser, protomsg proto.Message) error {
+func (x *sheetExporter) Export(book *excel.Book, parser *sheetParser, protomsg proto.Message) error {
 	md := protomsg.ProtoReflect().Descriptor()
-	_, workbook := parseFileOptions(md.ParentFile())
+	// _, workbook := parseFileOptions(md.ParentFile())
 	msgName, worksheetName, namerow, _, datarow, transpose := parseMessageOptions(md)
 	// msgName, worksheetName, namerow, noterow, datarow, transpose := parseMessageOptions(md)
-
-	wbPath := x.InputDir + workbook.Name
-	book, err := excel.NewBook(wbPath, NewSheetParser("tableau", ""))
-	if err != nil {
-		return errors.WithMessagef(err, "failed to create new workbook: %s", wbPath)
-	}
 
 	sheet, ok := book.Sheets[worksheetName]
 	if !ok {
@@ -74,6 +66,7 @@ func NewSheetParser(protoPackage, locationName string) *sheetParser {
 }
 
 func (sp *sheetParser) Parse(protomsg proto.Message, sheet *excel.Sheet, namerow, datarow int32, transpose bool) error {
+	atom.Log.Debugf("parse sheet: %s", sheet.Name)
 	msg := protomsg.ProtoReflect()
 	if transpose {
 		// interchange the rows and columns
@@ -84,11 +77,12 @@ func (sp *sheetParser) Parse(protomsg proto.Message, sheet *excel.Sheet, namerow
 			rc := excel.NewRowCells(col)
 			for row := 0; row < sheet.MaxRow; row++ {
 				nameCol := int(namerow) - 1
-				name, err := sheet.Cell(row, nameCol)
+				nameCell, err := sheet.Cell(row, nameCol)
 				if err != nil {
 					return errors.WithMessagef(err, "failed to get name cell: %d, %d", row, nameCol)
 				}
-				// name = clearNewline(name)
+				name := excel.ExtractNameFromCell(nameCell, sheet.Meta.NameCellLine)
+				// name := clearNewline(nameCell)
 				data, err := sheet.Cell(row, col)
 				if err != nil {
 					return errors.WithMessagef(err, "failed to get data cell: %d, %d", row, col)
@@ -107,11 +101,12 @@ func (sp *sheetParser) Parse(protomsg proto.Message, sheet *excel.Sheet, namerow
 			rc := excel.NewRowCells(row)
 			for col := 0; col < sheet.MaxCol; col++ {
 				nameRow := int(namerow) - 1
-				name, err := sheet.Cell(nameRow, col)
+				nameCell, err := sheet.Cell(nameRow, col)
 				if err != nil {
 					return errors.WithMessagef(err, "failed to get name cell: %d, %d", nameRow, col)
 				}
-				// name = clearNewline(name)
+				name := excel.ExtractNameFromCell(nameCell, sheet.Meta.NameCellLine)
+				// name := clearNewline(nameCell)
 				data, err := sheet.Cell(row, col)
 				if err != nil {
 					return errors.WithMessagef(err, "failed to get data cell: %d, %d", row, col)
