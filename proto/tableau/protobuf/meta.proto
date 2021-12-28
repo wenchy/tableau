@@ -16,7 +16,7 @@ message WorkbookMeta {
 message SheetMeta {
   string sheet = 1 [(tableau.field) = { name: "Sheet" optional: false }];
   string alias = 2 [(tableau.field) = { name: "Alias" optional: true }];
-  int32 name_cell_line = 3 [(tableau.field) = { name: "NameCellLine" optional: true }];
-  int32 type_cell_line = 4 [(tableau.field) = { name: "TypeCellLine" optional: true }];
+  int32 nameline = 3 [(tableau.field) = { name: "Nameline" optional: true }];
+  int32 typeline = 4 [(tableau.field) = { name: "Typeline" optional: true }];
   bool transpose = 5 [(tableau.field) = { name: "Transpose" optional: true }];
 }

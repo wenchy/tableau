@@ -40,6 +40,8 @@ message WorksheetOptions {
   bool transpose = 6;  // [default = false]; // interchange the rows and columns
   string tags = 7;     // [default = ""]; // tags for usage, e.g.: "1,2" specifying loading servers. Speciallly, "*"
                        // means all servers.
+  int32 nameline = 8;  // [default = 0]; // specify which line in cell as name, '0' means the whole cell is name.
+  int32 typeline = 9;  // [default = 0]; // specify which line in cell as type,'0' means the whole cell is type.
 }
 
 message FieldOptions {
@@ -50,7 +52,7 @@ message FieldOptions {
   Layout layout = 5;  // default: LAYOUT_DEFAULT
   string sep = 6;     // separator, default: ","
   string subsep = 7;  // sub separator, default: ":"
-  bool optional = 8;   // [default = false]; // whether the field is optional.
+  bool optional = 8;  // [default = false]; // whether the field is optional.
 
   /////////////////////////////
   // Simple Validators Below //

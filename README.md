@@ -140,6 +140,10 @@ workbook meta sheet **@TABLEAU**:
 - specify which sheets to be parsed
 - specify parser options for each sheet
 
+| Sheet  | Alias        | Nameline | Typeline |
+| ------ | ------------ | -------- | -------- |
+| Sheet1 | ExchangeInfo | 2        | 2        |
+
 ### Datetime
 > [Understanding about RFC 3339 for Datetime and Timezone Formatting in Software Engineering](https://medium.com/easyread/understanding-about-rfc-3339-for-datetime-formatting-in-software-engineering-940aa5d5f68a)
 > ```

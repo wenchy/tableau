@@ -46,7 +46,7 @@ func (gen *Generator) Generate() error {
 		}
 		wbPath := filepath.Join(gen.InputDir, wbFile.Name())
 		atom.Log.Debugf("workbook: %s", wbPath)
-		book, err := excel.NewBook(wbPath, confgen.NewSheetParser("tableau", ""))
+		book, err := excel.NewBookExt(wbPath, confgen.NewSheetParser("tableau", ""))
 		if err != nil {
 			return errors.Wrapf(err, "failed to create new workbook: %s", wbPath)
 		}
@@ -71,6 +71,8 @@ func (gen *Generator) Generate() error {
 					Datarow:   gen.Header.Datarow,
 					Transpose: false,
 					Tags:      "",
+					Nameline:  sheet.Meta.Nameline,
+					Typeline:  sheet.Meta.Typeline,
 				},
 				Fields: []*tableaupb.Field{},
 				Name:   sheetMsgName,
@@ -151,15 +153,15 @@ type sheetHeader struct {
 
 func getCell(row []string, cursor int, line int32) string {
 	cell := row[cursor]
-	return excel.ExtractNameFromCell(cell, line)
+	return excel.ExtractFromCell(cell, line)
 }
 
 func (sh *sheetHeader) getNameCell(cursor int) string {
-	return getCell(sh.namerow, cursor, sh.meta.NameCellLine)
+	return getCell(sh.namerow, cursor, sh.meta.Nameline)
 }
 
 func (sh *sheetHeader) getTypeCell(cursor int) string {
-	return getCell(sh.typerow, cursor, sh.meta.TypeCellLine)
+	return getCell(sh.typerow, cursor, sh.meta.Typeline)
 }
 func (sh *sheetHeader) getNoteCell(cursor int) string {
 	return getCell(sh.noterow, cursor, 1) // default note line is 1

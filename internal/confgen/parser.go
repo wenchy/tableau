@@ -37,15 +37,14 @@ func NewSheetExporter(outputDir string, output *options.OutputOption) *sheetExpo
 func (x *sheetExporter) Export(book *excel.Book, parser *sheetParser, protomsg proto.Message) error {
 	md := protomsg.ProtoReflect().Descriptor()
 	// _, workbook := parseFileOptions(md.ParentFile())
-	msgName, worksheetName, namerow, _, datarow, transpose := parseMessageOptions(md)
-	// msgName, worksheetName, namerow, noterow, datarow, transpose := parseMessageOptions(md)
+	msgName, wsOpts := parseMessageOptions(md)
 
-	sheet := book.GetSheet(worksheetName)
+	sheet := book.Sheets[wsOpts.Name]
 	if sheet == nil {
-		return errors.Errorf("not found worksheet: %s", worksheetName)
+		return errors.Errorf("not found worksheet: %s", wsOpts.Name)
 	}
 
-	if err := parser.Parse(protomsg, sheet, namerow, datarow, transpose); err != nil {
+	if err := parser.Parse(protomsg, sheet, wsOpts); err != nil {
 		return errors.WithMessage(err, "failed to parse sheet")
 	}
 
@@ -65,24 +64,23 @@ func NewSheetParser(protoPackage, locationName string) *sheetParser {
 	}
 }
 
-func (sp *sheetParser) Parse(protomsg proto.Message, sheet *excel.Sheet, namerow, datarow int32, transpose bool) error {
+func (sp *sheetParser) Parse(protomsg proto.Message, sheet *excel.Sheet, wsOpts *tableaupb.WorksheetOptions) error {
 	atom.Log.Debugf("parse sheet: %s", sheet.Name)
 	msg := protomsg.ProtoReflect()
-	if transpose {
+	if wsOpts.Transpose {
 		// interchange the rows and columns
 		// namerow: name column
 		// [datarow, MaxCol]: data column
 		// kvRow := make(map[string]string)
-		for col := int(datarow) - 1; col < sheet.MaxCol; col++ {
+		for col := int(wsOpts.Datarow) - 1; col < sheet.MaxCol; col++ {
 			rc := excel.NewRowCells(col)
 			for row := 0; row < sheet.MaxRow; row++ {
-				nameCol := int(namerow) - 1
+				nameCol := int(wsOpts.Namerow) - 1
 				nameCell, err := sheet.Cell(row, nameCol)
 				if err != nil {
 					return errors.WithMessagef(err, "failed to get name cell: %d, %d", row, nameCol)
 				}
-				name := excel.ExtractNameFromCell(nameCell, sheet.Meta.NameCellLine)
-				// name := clearNewline(nameCell)
+				name := excel.ExtractFromCell(nameCell, wsOpts.Nameline)
 				data, err := sheet.Cell(row, col)
 				if err != nil {
 					return errors.WithMessagef(err, "failed to get data cell: %d, %d", row, col)
@@ -97,16 +95,15 @@ func (sp *sheetParser) Parse(protomsg proto.Message, sheet *excel.Sheet, namerow
 	} else {
 		// namerow: name row
 		// [datarow, MaxRow]: data row
-		for row := int(datarow) - 1; row < sheet.MaxRow; row++ {
+		for row := int(wsOpts.Datarow) - 1; row < sheet.MaxRow; row++ {
 			rc := excel.NewRowCells(row)
 			for col := 0; col < sheet.MaxCol; col++ {
-				nameRow := int(namerow) - 1
+				nameRow := int(wsOpts.Namerow) - 1
 				nameCell, err := sheet.Cell(nameRow, col)
 				if err != nil {
 					return errors.WithMessagef(err, "failed to get name cell: %d, %d", nameRow, col)
 				}
-				name := excel.ExtractNameFromCell(nameCell, sheet.Meta.NameCellLine)
-				// name := clearNewline(nameCell)
+				name := excel.ExtractFromCell(nameCell, wsOpts.Nameline)
 				data, err := sheet.Cell(row, col)
 				if err != nil {
 					return errors.WithMessagef(err, "failed to get data cell: %d, %d", row, col)
@@ -718,26 +715,26 @@ func parseFileOptions(fd protoreflect.FileDescriptor) (string, *tableaupb.Workbo
 }
 
 // parseMessageOptions is aimed to parse the options of a protobuf message.
-func parseMessageOptions(md protoreflect.MessageDescriptor) (string, string, int32, int32, int32, bool) {
+func parseMessageOptions(md protoreflect.MessageDescriptor) (string, *tableaupb.WorksheetOptions) {
 	opts := md.Options().(*descriptorpb.MessageOptions)
 	msgName := string(md.Name())
-	worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(*tableaupb.WorksheetOptions)
-	worksheetName := worksheet.Name
-	namerow := worksheet.Namerow
-	if worksheet.Namerow == 0 {
-		namerow = 1 // default
+	wsOpts := proto.GetExtension(opts, tableaupb.E_Worksheet).(*tableaupb.WorksheetOptions)
+	if wsOpts.Namerow == 0 {
+		wsOpts.Namerow = 1 // default
 	}
-	noterow := worksheet.Noterow
-	if noterow == 0 {
-		noterow = 1 // default
+	if wsOpts.Typerow == 0 {
+		wsOpts.Typerow = 2 // default
 	}
-	datarow := worksheet.Datarow
-	if datarow == 0 {
-		datarow = 2 // default
+
+	if wsOpts.Noterow == 0 {
+		wsOpts.Noterow = 3 // default
 	}
-	transpose := worksheet.Transpose
-	// atom.Log.Debugf("msgName:%s, worksheetName:%s, namerow:%d, noterow:%d, datarow:%d, transpose:%v\n", msgName, worksheetName, namerow, noterow, datarow, transpose)
-	return msgName, worksheetName, namerow, noterow, datarow, transpose
+
+	if wsOpts.Datarow == 0 {
+		wsOpts.Datarow = 4 // default
+	}
+	// atom.Log.Debugf("msg: %v, wsOpts: %+v", msgName, wsOpts)
+	return msgName, wsOpts
 }
 
 func parseTimeWithLocation(locationName string, timeStr string) (time.Time, error) {

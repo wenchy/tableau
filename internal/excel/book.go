@@ -3,23 +3,24 @@ package excel
 import (
 	"fmt"
 	"math"
+	"regexp"
 	"strings"
 	"unicode"
 
 	"github.com/Wenchy/tableau/internal/atom"
-	"github.com/Wenchy/tableau/proto/tableaupb"
-	"github.com/emirpasic/gods/sets/treeset"
 	"github.com/pkg/errors"
 	"github.com/xuri/excelize/v2"
-	"google.golang.org/protobuf/proto"
 )
 
-type Parser interface {
-	Parse(protomsg proto.Message, sheet *Sheet, namerow, datarow int32, transpose bool) error
+var newlineRegex *regexp.Regexp
+
+func init() {
+	newlineRegex = regexp.MustCompile(`\r?\n?`)
 }
 
-// tableauSheetName defines the meta data of each worksheet.
-const tableauSheetName = "@TABLEAU"
+func clearNewline(s string) string {
+	return newlineRegex.ReplaceAllString(s, "")
+}
 
 type Sheet struct {
 	Name   string
@@ -27,8 +28,6 @@ type Sheet struct {
 	MaxCol int
 
 	Rows [][]string
-
-	Meta *tableaupb.SheetMeta
 }
 
 func (s *Sheet) Cell(row, col int) (string, error) {
@@ -58,98 +57,35 @@ func (s *Sheet) String() string {
 }
 
 type Book struct {
-	Filename     string
-	file         *excelize.File
-	WorkbookMeta *tableaupb.WorkbookMeta
-	Sheets       []*Sheet
-	parser       Parser
+	Filename string
+	Sheets   map[string]*Sheet // sheet name -> sheet
 }
 
-func NewBook(filename string, parser Parser) (*Book, error) {
-	book := &Book{
+func NewBook(filename string, sheets []string) (*Book, error) {
+	b := &Book{
 		Filename: filename,
-		WorkbookMeta: &tableaupb.WorkbookMeta{
-			SheetMetaMap: make(map[string]*tableaupb.SheetMeta),
-		},
-		parser: parser,
+		Sheets:   make(map[string]*Sheet),
 	}
 
 	file, err := excelize.OpenFile(filename)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to open workbook: %s", filename)
 	}
-	book.file = file
 
-	if err := book.parseWorkbookMeta(); err != nil {
-		return nil, errors.Wrapf(err, "failed to parse tableau sheet: %s", tableauSheetName)
-	}
-
-	if err := book.parse(); err != nil {
-		return nil, errors.WithMessagef(err, "failed to parse workbook: %s", filename)
-	}
-	return book, nil
-}
-
-func (b *Book) GetSheet(sheetName string) *Sheet {
-	for _, s := range b.Sheets {
-		if s.Name == sheetName {
-			return s
-		}
-	}
-	return nil
-}
-
-func (b *Book) parseWorkbookMeta() error {
-	if b.file.GetSheetIndex(tableauSheetName) == -1 {
-		atom.Log.Debugf("workbook %s has no sheet named %s", b.Filename, tableauSheetName)
-		return nil
-	}
-
-	sheet, err := b.parseSheet(tableauSheetName)
-	if err != nil {
-		return errors.WithMessagef(err, "failed to parse sheet: %s#%s", b.Filename, tableauSheetName)
-	}
-
-	if sheet.MaxRow <= 1 {
-		for _, sheetName := range b.file.GetSheetList() {
-			if sheetName != tableauSheetName {
-				b.WorkbookMeta.SheetMetaMap[sheetName] = &tableaupb.SheetMeta{
-					Sheet: sheetName,
-				}
-			}
-		}
-		return nil
-	}
-	if err := b.parser.Parse(b.WorkbookMeta, sheet, 1, 2, false); err != nil {
-		return errors.WithMessagef(err, "failed to parse sheet: %s#%s", b.Filename, tableauSheetName)
-	}
-
-	atom.Log.Debugf("%s#%s: %+v", b.Filename, tableauSheetName, b.WorkbookMeta)
-	return nil
-}
-
-func (b *Book) parse() error {
-	// Target: keep the order of sheets.
-	set := treeset.NewWithStringComparator()
-	for sheetName := range b.WorkbookMeta.SheetMetaMap {
-		set.Add(sheetName) // default must import path
-	}
-
-	for _, val := range set.Values() {
-		sheetName := val.(string)
-		s, err := b.parseSheet(sheetName)
+	for _, sheetName := range sheets {
+		s, err := parseSheet(file, sheetName)
 		if err != nil {
-			return errors.WithMessagef(err, "failed to get rows of s: %s#%s", b.Filename, sheetName)
+			return nil, errors.WithMessagef(err, "failed to get rows of s: %s#%s", b.Filename, sheetName)
 		}
-		b.Sheets = append(b.Sheets, s)
+		b.Sheets[sheetName] = s
 	}
-	return nil
+	return b, nil
 }
 
-func (b *Book) parseSheet(sheetName string) (*Sheet, error) {
-	rows, err := b.file.GetRows(sheetName)
+func parseSheet(file *excelize.File, sheetName string) (*Sheet, error) {
+	rows, err := file.GetRows(sheetName)
 	if err != nil {
-		return nil, errors.WithMessagef(err, "failed to get rows of sheet: %s#%s", b.Filename, sheetName)
+		return nil, errors.WithMessagef(err, "failed to get rows of sheet: %s", sheetName)
 	}
 	maxRow := len(rows)
 	maxCol := 0
@@ -166,13 +102,6 @@ func (b *Book) parseSheet(sheetName string) (*Sheet, error) {
 		MaxRow: maxRow,
 		MaxCol: maxCol,
 		Rows:   rows,
-		Meta:   b.WorkbookMeta.SheetMetaMap[sheetName],
-	}
-	// Special `Meta` field process for "@TABLEAU" sheet.
-	if sheetName == tableauSheetName {
-		s.Meta = &tableaupb.SheetMeta{
-			Sheet: sheetName,
-		}
 	}
 	return s, nil
 }
@@ -243,9 +172,10 @@ func (r *RowCells) GetCellCountWithPrefix(prefix string) int {
 	return size
 }
 
-func ExtractNameFromCell(cell string, line int32) string {
+func ExtractFromCell(cell string, line int32) string {
 	if line == 0 {
-		line = 1 // default line is 1
+		// line 0 means the whole cell.
+		return clearNewline(strings.TrimSpace(cell))
 	}
 
 	lines := strings.Split(cell, "\n")

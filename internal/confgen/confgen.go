@@ -3,7 +3,6 @@ package confgen
 import (
 	"os"
 	"path/filepath"
-	"regexp"
 
 	"github.com/Wenchy/tableau/internal/atom"
 	"github.com/Wenchy/tableau/internal/excel"
@@ -16,16 +15,6 @@ import (
 	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/dynamicpb"
 )
-
-var newlineRegex *regexp.Regexp
-
-func init() {
-	newlineRegex = regexp.MustCompile(`\r?\n?`)
-}
-
-func clearNewline(s string) string {
-	return newlineRegex.ReplaceAllString(s, "")
-}
 
 type Generator struct {
 	ProtoPackage string // protobuf package name.
@@ -57,24 +46,30 @@ func (gen *Generator) Generate() (err error) {
 			if workbook == nil {
 				return true
 			}
+			var sheets []string
+			sheetMap := map[string]string{} // sheet name -> message name
+			msgs := fd.Messages()
+			for i := 0; i < msgs.Len(); i++ {
+				md := msgs.Get(i)
+				opts := md.Options().(*descriptorpb.MessageOptions)
+				worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(*tableaupb.WorksheetOptions)
+				if worksheet != nil {
+					sheetMap[worksheet.Name] = string(md.Name())
+					sheets = append(sheets, worksheet.Name)
+				}
+			}
 			var book *excel.Book
 			wbPath := filepath.Join(gen.InputDir, workbook.Name)
-			book, err = excel.NewBook(wbPath, NewSheetParser("tableau", ""))
+			book, err = excel.NewBook(wbPath, sheets)
 			if err != nil {
 				atom.Log.Errorf("failed to create new workbook: %s", wbPath)
 				return false
 			}
 			// atom.Log.Debugf("proto: %s, workbook %s", fd.Path(), workbook)
-			msgs := fd.Messages()
-			for i := 0; i < msgs.Len(); i++ {
-				md := msgs.Get(i)
+			for sheetName, msgName := range sheetMap {
+				md := msgs.ByName(protoreflect.Name(msgName))
 				// atom.Log.Debugf("%s", md.FullName())
-				opts := md.Options().(*descriptorpb.MessageOptions)
-				worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(*tableaupb.WorksheetOptions)
-				if worksheet == nil {
-					continue
-				}
-				atom.Log.Infof("generate: %s#%s <-> %s#%s", fd.Path(), md.Name(), workbook.Name, worksheet.Name)
+				atom.Log.Infof("generate: %s#%s <-> %s#%s", fd.Path(), md.Name(), workbook.Name, sheetName)
 				newMsg := dynamicpb.NewMessage(md)
 				parser := NewSheetParser(gen.ProtoPackage, gen.LocationName)
 				exporter := NewSheetExporter(gen.OutputDir, gen.Output)
