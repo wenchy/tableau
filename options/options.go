@@ -30,10 +30,14 @@ type HeaderOption struct {
 }
 
 type OutputOption struct {
-	FilenameSuffix      string
-	FilenameAsSnakeCase bool   // output filename as snake case, default is camel case same as the protobuf message name.
+	// only for protogen generated protoconf file
+	FilenameWithSubdirPrefix bool // default true, filename dir separator `/` or `\` is replaced by "__"
+	FilenameSuffix           string
+
+	// only for confgen generated JSON/prototext/protowire file
+	FilenameAsSnakeCase bool   // default false, output filename as snake case, default is camel case same as the protobuf message name.
 	Format              Format // output pretty format, with mulitline and indent.
-	Pretty              bool   // output format: json, protowire, or prototext, and default is json.
+	Pretty              bool   // default true, output format: json, protowire, or prototext, and default is json.
 	// Output.EmitUnpopulated specifies whether to emit unpopulated fields. It does not
 	// emit unpopulated oneof fields or unpopulated extension fields.
 	// The JSON value emitted for unpopulated fields are as follows:
@@ -48,7 +52,7 @@ type OutputOption struct {
 	//  ║ []    │ list fields                ║
 	//  ║ {}    │ map fields                 ║
 	//  ╚═══════╧════════════════════════════╝
-	EmitUnpopulated bool
+	EmitUnpopulated bool // default true
 }
 
 // Option is the functional option type.
@@ -96,10 +100,11 @@ func newDefaultOptions() *Options {
 			Datarow: 4,
 		},
 		Output: &OutputOption{
-			FilenameAsSnakeCase: false,
-			Format:              JSON,
-			Pretty:              true,
-			EmitUnpopulated:     true,
+			FilenameWithSubdirPrefix: true,
+			FilenameAsSnakeCase:      false,
+			Format:                   JSON,
+			Pretty:                   true,
+			EmitUnpopulated:          true,
 		},
 	}
 }

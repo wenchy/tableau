@@ -7,7 +7,6 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/Wenchy/tableau/internal/atom"
 	"github.com/pkg/errors"
 	"github.com/xuri/excelize/v2"
 )
@@ -182,6 +181,6 @@ func ExtractFromCell(cell string, line int32) string {
 	if int32(len(lines)) >= line {
 		return strings.TrimSpace(lines[line-1])
 	}
-	atom.Log.Debugf("No enough lines in cell: %s, want at leat %d lines", cell, line)
+	// atom.Log.Debugf("No enough lines in cell: %s, want at least %d lines", cell, line)
 	return ""
 }

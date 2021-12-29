@@ -36,15 +36,29 @@ type bookParser struct {
 	types    map[string]bool // type name -> existed
 }
 
-func newBookParser(workbookName string, imports []string) *bookParser {
-	wbProtoName := strcase.ToSnake(strings.TrimSuffix(workbookName, filepath.Ext(workbookName)))
+func newBookParser(relativePath string, filenameWithSubdirPrefix bool, imports []string) *bookParser {
+	// atom.Log.Debugf("filenameWithSubdirPrefix: %v", filenameWithSubdirPrefix)
+	// relative slash separated path
+	relSlashPath := filepath.ToSlash(relativePath)
+
+	ext := filepath.Ext(relSlashPath)
+	filename := ""
+	if filenameWithSubdirPrefix {
+		snakePath := strcase.ToSnake(strings.TrimSuffix(relSlashPath, ext))
+		filename = strings.ReplaceAll(snakePath, "/", "__")
+	} else {
+		workbookName := filepath.Base(relativePath)
+		filename = strcase.ToSnake(strings.TrimSuffix(workbookName, ext))
+	}
 	bp := &bookParser{
 		wb: &tableaupb.Workbook{
 			Options: &tableaupb.WorkbookOptions{
-				Name: workbookName,
+				// NOTE(wenchyzhu): all OS platforms use path slash separator `/`
+				// see: https://stackoverflow.com/questions/9371031/how-do-i-create-crossplatform-file-paths-in-go
+				Name: relSlashPath, 
 			},
 			Worksheets: []*tableaupb.Worksheet{},
-			Name:       wbProtoName,
+			Name:       filename,
 			Imports:    make(map[string]int32),
 		},
 		withNote: false,

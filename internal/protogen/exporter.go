@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/Wenchy/tableau/internal/atom"
+	"github.com/Wenchy/tableau/internal/fs"
 	"github.com/Wenchy/tableau/internal/printer"
 	"github.com/Wenchy/tableau/proto/tableaupb"
 	"github.com/emirpasic/gods/sets/treeset"
@@ -113,7 +114,15 @@ func (x *bookExporter) export() error {
 	g2.P("")
 
 	path := filepath.Join(x.OutputDir, x.wb.Name+x.FilenameSuffix+".proto")
-	atom.Log.Debugf("output: %s", path)
+	atom.Log.Infof("output: %s", path)
+
+	if existed, err := fs.Exists(path); err != nil {
+		return errors.WithMessagef(err, "failed to check if file exists: %s", path)
+	} else {
+		if existed {
+			return errors.Errorf("file already exists: %s", path)
+		}
+	}
 
 	if f, err := os.Create(path); err != nil {
 		return errors.Wrapf(err, "failed to create output file: %s", path)

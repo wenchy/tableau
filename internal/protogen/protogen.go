@@ -26,11 +26,14 @@ type Generator struct {
 	GoPackage    string // golang package name.
 	// Location represents the collection of time offsets in use in a geographical area.
 	// Default is "Asia/Shanghai".
-	LocationName   string
-	InputDir       string   // input dir of workbooks.
-	OutputDir      string   // output dir of generated protoconf files.
-	FilenameSuffix string   // filename suffix of generated protoconf files.
-	Imports        []string // imported common proto file paths
+	LocationName string
+	InputDir     string // input dir of workbooks.
+	OutputDir    string // output dir of generated protoconf files.
+
+	FilenameWithSubdirPrefix bool   // filename dir separator `/` or `\` is replaced by "__"
+	FilenameSuffix           string // filename suffix of generated protoconf files.
+
+	Imports []string // imported common proto file paths
 
 	Header *options.HeaderOption // header settings.
 }
@@ -39,79 +42,105 @@ func (gen *Generator) Generate() error {
 	if err := gen.PrepareOutpuDir(); err != nil {
 		return errors.Wrapf(err, "failed to prepare output dir: %s", gen.OutputDir)
 	}
-	files, err := os.ReadDir(gen.InputDir)
+	return gen.generate(gen.InputDir)
+}
+
+func (gen *Generator) generate(dir string) error {
+	dirEntries, err := os.ReadDir(dir)
 	if err != nil {
 		return errors.Wrapf(err, "failed to read input dir: %s", gen.InputDir)
 	}
-	for _, wbFile := range files {
-		if strings.HasPrefix(wbFile.Name(), "~$") {
+	for _, entry := range dirEntries {
+		if entry.IsDir() {
+			// scan and generate subdir recursively
+			return gen.generate(filepath.Join(dir, entry.Name()))
+		}
+
+		if strings.HasPrefix(entry.Name(), "~$") {
 			// ignore xlsx temp file named with prefix "~$"
 			continue
 		}
-		wbPath := filepath.Join(gen.InputDir, wbFile.Name())
-		atom.Log.Debugf("workbook: %s", wbPath)
-		book, err := excel.NewBookExt(wbPath, confgen.NewSheetParser(tableauProtoPackage, gen.LocationName))
-		if err != nil {
-			return errors.Wrapf(err, "failed to create new workbook: %s", wbPath)
-		}
-
-		if len(book.Sheets) == 0 {
+		// atom.Log.Debugf("generating %s, %s", entry.Name(), filepath.Ext(entry.Name()))
+		if filepath.Ext(entry.Name()) != ".xlsx" {
+			// ignore not xlsx files
 			continue
 		}
-		// creat a book parser
-		bp := newBookParser(wbFile.Name(), gen.Imports)
-		for _, sheet := range book.Sheets {
-			// parse sheet header
-			sheetMsgName := sheet.Name
-			if sheet.Meta.Alias != "" {
-				sheetMsgName = sheet.Meta.Alias
-			}
-			// merge nameline and typeline from sheet meta and header option
-			if sheet.Meta.Nameline == 0 {
-				sheet.Meta.Nameline = gen.Header.Nameline
-			}
-			if sheet.Meta.Typeline == 0 {
-				sheet.Meta.Typeline = gen.Header.Typeline
-			}
-			ws := &tableaupb.Worksheet{
-				Options: &tableaupb.WorksheetOptions{
-					Name:      sheet.Name,
-					Namerow:   gen.Header.Namerow,
-					Typerow:   gen.Header.Typerow,
-					Noterow:   gen.Header.Noterow,
-					Datarow:   gen.Header.Datarow,
-					Transpose: false,
-					Tags:      "",
-					Nameline:  sheet.Meta.Nameline,
-					Typeline:  sheet.Meta.Typeline,
-				},
-				Fields: []*tableaupb.Field{},
-				Name:   sheetMsgName,
-			}
-			shHeader := &sheetHeader{
-				meta:    sheet.Meta,
-				namerow: sheet.Rows[gen.Header.Namerow-1],
-				typerow: sheet.Rows[gen.Header.Typerow-1],
-				noterow: sheet.Rows[gen.Header.Noterow-1],
-			}
-
-			var ok bool
-			for cursor := 0; cursor < len(shHeader.namerow); cursor++ {
-				field := &tableaupb.Field{}
-				cursor, ok = bp.parseField(field, shHeader, cursor, "")
-				if ok {
-					ws.Fields = append(ws.Fields, field)
-				}
-			}
-			// append parsed sheet to workbook
-			bp.wb.Worksheets = append(bp.wb.Worksheets, ws)
-		}
-		// export book
-		be := newBookExporter(gen.ProtoPackage, gen.GoPackage, gen.OutputDir, gen.FilenameSuffix, gen.Imports, bp.wb)
-		if err := be.export(); err != nil {
-			return errors.Wrapf(err, "failed to export workbook: %s", wbPath)
+		if err := gen.convertWorkbook(dir, entry.Name()); err != nil {
+			return errors.WithMessage(err, "failed to convert workbook")
 		}
 	}
+	return nil
+}
+
+func getRelativePath(rootdir, dir, filename string) string {
+	relativeDir, _ := filepath.Rel(rootdir, dir)
+	return filepath.Join(relativeDir, filename)
+}
+
+func (gen *Generator) convertWorkbook(dir, filename string) error {
+	relativePath := getRelativePath(gen.InputDir, dir, filename)
+	atom.Log.Infof("workbook: %s, %s, %s", gen.InputDir, dir, relativePath)
+	book, err := excel.NewBookExt(filepath.Join(dir, filename), confgen.NewSheetParser(tableauProtoPackage, gen.LocationName))
+	if err != nil {
+		return errors.Wrapf(err, "failed to create new workbook: %s", relativePath)
+	}
+	if len(book.Sheets) == 0 {
+		return nil
+	}
+	// creat a book parser
+	bp := newBookParser(relativePath, gen.FilenameWithSubdirPrefix, gen.Imports)
+	for _, sheet := range book.Sheets {
+		// parse sheet header
+		sheetMsgName := sheet.Name
+		if sheet.Meta.Alias != "" {
+			sheetMsgName = sheet.Meta.Alias
+		}
+		// merge nameline and typeline from sheet meta and header option
+		if sheet.Meta.Nameline == 0 {
+			sheet.Meta.Nameline = gen.Header.Nameline
+		}
+		if sheet.Meta.Typeline == 0 {
+			sheet.Meta.Typeline = gen.Header.Typeline
+		}
+		ws := &tableaupb.Worksheet{
+			Options: &tableaupb.WorksheetOptions{
+				Name:      sheet.Name,
+				Namerow:   gen.Header.Namerow,
+				Typerow:   gen.Header.Typerow,
+				Noterow:   gen.Header.Noterow,
+				Datarow:   gen.Header.Datarow,
+				Transpose: false,
+				Tags:      "",
+				Nameline:  sheet.Meta.Nameline,
+				Typeline:  sheet.Meta.Typeline,
+			},
+			Fields: []*tableaupb.Field{},
+			Name:   sheetMsgName,
+		}
+		shHeader := &sheetHeader{
+			meta:    sheet.Meta,
+			namerow: sheet.Rows[gen.Header.Namerow-1],
+			typerow: sheet.Rows[gen.Header.Typerow-1],
+			noterow: sheet.Rows[gen.Header.Noterow-1],
+		}
+
+		var ok bool
+		for cursor := 0; cursor < len(shHeader.namerow); cursor++ {
+			field := &tableaupb.Field{}
+			cursor, ok = bp.parseField(field, shHeader, cursor, "")
+			if ok {
+				ws.Fields = append(ws.Fields, field)
+			}
+		}
+		// append parsed sheet to workbook
+		bp.wb.Worksheets = append(bp.wb.Worksheets, ws)
+	}
+	// export book
+	be := newBookExporter(gen.ProtoPackage, gen.GoPackage, gen.OutputDir, gen.FilenameSuffix, gen.Imports, bp.wb)
+	if err := be.export(); err != nil {
+		return errors.WithMessagef(err, "failed to export workbook: %s", relativePath)
+	}
+
 	return nil
 }
 

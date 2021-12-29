@@ -22,7 +22,7 @@ func Xlsx2Conf(protoPackage, indir, outdir string, setters ...options.Option) {
 		Output:       opts.Output,
 	}
 	atom.InitZap(opts.LogLevel)
-	atom.Log.Infof("options inited: %+v", opts)
+	atom.Log.Debugf("options inited: %+v, header: %+v, output: %+v", opts, opts.Header, opts.Output)
 	if err := g.Generate(); err != nil {
 		atom.Log.Errorf("generate failed: %+v", err)
 		os.Exit(-1)
@@ -33,16 +33,20 @@ func Xlsx2Conf(protoPackage, indir, outdir string, setters ...options.Option) {
 func Xlsx2Proto(protoPackage, goPackage, indir, outdir string, setters ...options.Option) {
 	opts := options.ParseOptions(setters...)
 	g := protogen.Generator{
-		ProtoPackage:   protoPackage,
-		GoPackage:      goPackage,
-		LocationName:   opts.LocationName,
-		InputDir:       indir,
-		OutputDir:      outdir,
-		FilenameSuffix: opts.Output.FilenameSuffix,
-		Header:         opts.Header,
-		Imports:        opts.Imports,
-	}
+		ProtoPackage: protoPackage,
+		GoPackage:    goPackage,
+		LocationName: opts.LocationName,
+		InputDir:     indir,
+		OutputDir:    outdir,
 
+		FilenameWithSubdirPrefix: opts.Output.FilenameWithSubdirPrefix,
+		FilenameSuffix:           opts.Output.FilenameSuffix,
+
+		Header:  opts.Header,
+		Imports: opts.Imports,
+	}
+	atom.InitZap(opts.LogLevel)
+	atom.Log.Debugf("options inited: %+v, header: %+v, output: %+v", opts, opts.Header, opts.Output)
 	if err := g.Generate(); err != nil {
 		atom.Log.Errorf("generate failed: %+v", err)
 		os.Exit(-1)

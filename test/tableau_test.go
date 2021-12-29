@@ -38,8 +38,10 @@ func Test_Xlsx2Proto(t *testing.T) {
 		options.Output(
 			&options.OutputOption{
 				FilenameSuffix: "_conf",
+				FilenameWithSubdirPrefix: true,
 			},
 		),
+		options.LogLevel("debug"),
 	)
 }
 
