@@ -45,6 +45,11 @@ func (gen *Generator) Generate() error {
 	return gen.generate(gen.InputDir)
 }
 
+func (gen *Generator) GenOneWorkbook(relativeWorkbookPath string) error {
+	absPath := filepath.Join(gen.InputDir, relativeWorkbookPath)
+	return gen.convertWorkbook(filepath.Dir(absPath), filepath.Base(absPath))
+}
+
 func (gen *Generator) generate(dir string) error {
 	dirEntries, err := os.ReadDir(dir)
 	if err != nil {
@@ -72,13 +77,19 @@ func (gen *Generator) generate(dir string) error {
 	return nil
 }
 
-func getRelativePath(rootdir, dir, filename string) string {
-	relativeDir, _ := filepath.Rel(rootdir, dir)
-	return filepath.Join(relativeDir, filename)
+func getRelativePath(rootdir, dir, filename string) (string, error) {
+	relativeDir, err := filepath.Rel(rootdir, dir)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to get relative path from %s to %s", rootdir, dir)
+	}
+	return filepath.Join(relativeDir, filename), nil
 }
 
 func (gen *Generator) convertWorkbook(dir, filename string) error {
-	relativePath := getRelativePath(gen.InputDir, dir, filename)
+	relativePath, err := getRelativePath(gen.InputDir, dir, filename)
+	if err != nil {
+		return errors.WithMessagef(err, "get relative path failed")
+	}
 	atom.Log.Infof("workbook: %s, %s, %s", gen.InputDir, dir, relativePath)
 	book, err := excel.NewBookExt(filepath.Join(dir, filename), confgen.NewSheetParser(tableauProtoPackage, gen.LocationName))
 	if err != nil {
