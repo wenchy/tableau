@@ -5,129 +5,109 @@ option go_package = "github.com/Wenchy/tableau/cmd/test/testpb";
 
 import "tableau/protobuf/tableau.proto";
 
-option (tableau.workbook) = {name:"Match.xml"};
+option (tableau.workbook) = {name:"Match.xlsx"};
 
 message MatchCfg {
-  option (tableau.worksheet) = {name:"MatchCfg"};
+  option (tableau.worksheet) = {name:"MatchCfg" namerow:1 typerow:2 noterow:3 datarow:4};
 
-  repeated MatchMode match_mode_list = 1 [(tableau.field) = {name:"MatchMode"}];
+  int32 confirm_time_out_punish_time = 1 [(tableau.field) = {name:"ConfirmTimeOutPunishTime"}];
+  int32 match_room_max_loop = 2 [(tableau.field) = {name:"MatchRoomMaxLoop"}];
+  int32 match_player_max_loop = 3 [(tableau.field) = {name:"MatchPlayerMaxLoop"}];
+  int32 match_stat_info_report_interval = 4 [(tableau.field) = {name:"MatchStatInfoReportInterval"}];
+  repeated MatchMode match_mode_list = 5 [(tableau.field) = {layout:LAYOUT_VERTICAL}];
 
   message MatchMode {
-    string mission_type = 1 [(tableau.field) = {name:"MissionType"}];
-    Time time = 2 [(tableau.field) = {name:"Time"}];
+    string match_mode_mission_type = 1 [(tableau.field) = {name:"MatchModeMissionType"}];
+    Time time = 2 [(tableau.field) = {name:"Matc"}];
 
     message Time {
-      int32 min_time = 1 [(tableau.field) = {name:"MinTime" default:"0"}];
-      int32 max_time = 2 [(tableau.field) = {name:"MaxTime" default:"0"}];
-      int32 freq = 3 [(tableau.field) = {name:"Freq" default:"0"}];
-      int32 confirm_time = 4 [(tableau.field) = {name:"ConfirmTime" default:"0"}];
-    }
-    Open open = 3 [(tableau.field) = {name:"Open"}];
+      int32 h_mode_time_min_time = 1 [(tableau.field) = {name:"hModeTimeMinTime"}];
+      int32 h_mode_time_max_time = 2 [(tableau.field) = {name:"hModeTimeMaxTime"}];
+      int32 h_mode_time_freq = 3 [(tableau.field) = {name:"hModeTimeFreq"}];
+      int32 h_mode_time_confirm_time = 4 [(tableau.field) = {name:"hModeTimeConfirmTime"}];
+      Open open = 5 [(tableau.field) = {name:"hMod"}];
 
-    message Open {
-      int32 begin_date = 1 [(tableau.field) = {name:"BeginDate" default:"0"}];
-      int32 begin_time = 2 [(tableau.field) = {name:"BeginTime" default:"0"}];
-      int32 end_date = 3 [(tableau.field) = {name:"EndDate" default:"0"}];
-      int32 end_time = 4 [(tableau.field) = {name:"EndTime" default:"0"}];
-    }
-    repeated Camp camp_list = 4 [(tableau.field) = {name:"Camp"}];
+      message Open {
+        int32 e_open_begin_date = 1 [(tableau.field) = {name:"eOpenBeginDate"}];
+        int32 e_open_begin_time = 2 [(tableau.field) = {name:"eOpenBeginTime"}];
+        int32 e_open_end_date = 3 [(tableau.field) = {name:"eOpenEndDate"}];
+        int32 e_open_end_time = 4 [(tableau.field) = {name:"eOpenEndTime"}];
+        repeated Camp camp_list = 5 [(tableau.field) = {layout:LAYOUT_VERTICAL}];
 
-    message Camp {
-      int32 camp_id = 1 [(tableau.field) = {name:"CampID" default:"0"}];
-      int32 player_num = 2 [(tableau.field) = {name:"PlayerNum" default:"0"}];
-    }
-    Strategy strategy = 5 [(tableau.field) = {name:"Strategy"}];
+        message Camp {
+          int32 e_camp_camp_id = 1 [(tableau.field) = {name:"eCampCampID"}];
+          int32 e_camp_player_num = 2 [(tableau.field) = {name:"eCampPlayerNum"}];
+          Strategy strategy = 3 [(tableau.field) = {name:"eStrateg"}];
 
-    message Strategy {
-      string strategy_id = 1 [(tableau.field) = {name:"StrategyID"}];
-    }
-    Scope scope = 6 [(tableau.field) = {name:"Scope"}];
+          message Strategy {
+            string y_strategy_id = 1 [(tableau.field) = {name:"yStrategyID"}];
+          }
+          Scope scope = 4 [(tableau.field) = {name:"eScop"}];
 
-    message Scope {
-      string scope_id = 1 [(tableau.field) = {name:"ScopeID"}];
-    }
-    repeated Filter filter_list = 7 [(tableau.field) = {name:"Filter"}];
+          message Scope {
+            string e_scope_id = 1 [(tableau.field) = {name:"eScopeID"}];
+          }
+          repeated Filter filter_list = 5 [(tableau.field) = {layout:LAYOUT_VERTICAL}];
 
-    message Filter {
-      string filter_id = 1 [(tableau.field) = {name:"FilterID"}];
-      int32 open = 2 [(tableau.field) = {name:"Open" default:"0"}];
-      int32 value = 3 [(tableau.field) = {name:"Value" default:"0"}];
-      int32 upd_interval = 4 [(tableau.field) = {name:"UpdInterval" default:"0"}];
-      repeated Param param_list = 5 [(tableau.field) = {name:"Param"}];
+          message Filter {
+            string e_filter_filter_id = 1 [(tableau.field) = {name:"eFilterFilterID"}];
+            int32 e_filter_open = 2 [(tableau.field) = {name:"eFilterOpen"}];
+            int32 e_filter_value = 3 [(tableau.field) = {name:"eFilterValue"}];
+            int32 e_filter_upd_interval = 4 [(tableau.field) = {name:"eFilterUpdInterval"}];
+            repeated Param param_list = 5 [(tableau.field) = {layout:LAYOUT_VERTICAL}];
 
-      message Param {
-        int32 rank_limit = 1 [(tableau.field) = {name:"RankLimit" default:"0"}];
-        int32 value = 2 [(tableau.field) = {name:"Value" default:"0"}];
-      }
-      repeated Power power_list = 6 [(tableau.field) = {name:"Power"}];
+            message Param {
+              int32 e_filter_param_rank_limit = 1 [(tableau.field) = {name:"eFilterParamRankLimit"}];
+              int32 e_filter_param_value = 2 [(tableau.field) = {name:"eFilterParamValue"}];
+              Route route = 3 [(tableau.field) = {name:"eRout"}];
 
-      message Power {
-        int32 hornor_power = 1 [(tableau.field) = {name:"HornorPower" default:"0"}];
-        repeated Param param_list = 2 [(tableau.field) = {name:"Param"}];
+              message Route {
+                int32 e_key = 1 [(tableau.field) = {name:"eKey"}];
+              }
+              MatchAI match_ai = 4 [(tableau.field) = {name:"eMatchA"}];
 
-        message Param {
-          int32 value = 1 [(tableau.field) = {name:"Value" default:"0"}];
+              message MatchAI {
+                int32 i_is_open = 1 [(tableau.field) = {name:"IIsOpen"}];
+                int32 i_player_only_one_camp = 2 [(tableau.field) = {name:"IPlayerOnlyOneCamp"}];
+                int32 i_guarantee_ai_ratio = 3 [(tableau.field) = {name:"IGuaranteeAIRatio"}];
+                repeated AI ai_list = 4 [(tableau.field) = {layout:LAYOUT_VERTICAL}];
+
+                message AI {
+                  string iai_type = 1 [(tableau.field) = {name:"IAIType"}];
+                  int32 iai_is_open = 2 [(tableau.field) = {name:"IAIIsOpen"}];
+                  int32 iai_min_time = 3 [(tableau.field) = {name:"IAIMinTime"}];
+                  int32 iai_max_time = 4 [(tableau.field) = {name:"IAIMaxTime"}];
+                  repeated Weight weight_list = 5 [(tableau.field) = {layout:LAYOUT_VERTICAL}];
+
+                  message Weight {
+                    int32 team_rating_weight_weight_num = 1 [(tableau.field) = {name:"TeamRatingWeightWeightNum"}];
+                    repeated Param param_list = 2 [(tableau.field) = {layout:LAYOUT_VERTICAL}];
+
+                    message Param {
+                      int32 team_rating_weight_weight_param_value = 1 [(tableau.field) = {name:"TeamRatingWeightWeightParamValue"}];
+                      repeated Random random_list = 2 [(tableau.field) = {layout:LAYOUT_VERTICAL}];
+
+                      message Random {
+                        string match_mode_random_mission_type = 1 [(tableau.field) = {name:"MatchModeRandomMissionType"}];
+                        int32 match_mode_random_priority = 2 [(tableau.field) = {name:"MatchModeRandomPriority"}];
+                        repeated Power power_list = 3 [(tableau.field) = {layout:LAYOUT_VERTICAL}];
+
+                        message Power {
+                          int32 match_mode_filter_power_hornor_power = 1 [(tableau.field) = {name:"MatchModeFilterPowerHornorPower"}];
+                          repeated Param param_list = 2 [(tableau.field) = {layout:LAYOUT_VERTICAL}];
+
+                          message Param {
+                            int32 match_mode_filter_power_param_value = 1 [(tableau.field) = {name:"MatchModeFilterPowerParamValue"}];
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
-      }
-    }
-    Route route = 8 [(tableau.field) = {name:"Route"}];
-
-    message Route {
-      int32 key = 1 [(tableau.field) = {name:"Key" default:"0"}];
-    }
-    MatchAI match_ai = 9 [(tableau.field) = {name:"MatchAI"}];
-
-    message MatchAI {
-      int32 is_open = 1 [(tableau.field) = {name:"IsOpen" default:"0"}];
-      int32 player_only_one_camp = 2 [(tableau.field) = {name:"PlayerOnlyOneCamp" default:"0"}];
-      int32 guarantee_ai_ratio = 3 [(tableau.field) = {name:"GuaranteeAIRatio" default:"0"}];
-      repeated AI ai_list = 4 [(tableau.field) = {name:"AI"}];
-
-      message AI {
-        string type = 1 [(tableau.field) = {name:"Type"}];
-        int32 is_open = 2 [(tableau.field) = {name:"IsOpen" default:"0"}];
-        int32 min_time = 3 [(tableau.field) = {name:"MinTime" default:"0"}];
-        int32 max_time = 4 [(tableau.field) = {name:"MaxTime" default:"0"}];
-      }
-    }
-    repeated Random random_list = 10 [(tableau.field) = {name:"Random"}];
-
-    message Random {
-      string mission_type = 1 [(tableau.field) = {name:"MissionType"}];
-      int32 priority = 2 [(tableau.field) = {name:"Priority" default:"0"}];
-    }
-  }
-  ConfirmTimeOutPunish confirm_time_out_punish = 2 [(tableau.field) = {name:"ConfirmTimeOutPunish"}];
-
-  message ConfirmTimeOutPunish {
-    int32 time = 1 [(tableau.field) = {name:"Time" default:"0"}];
-  }
-  MatchRoom match_room = 3 [(tableau.field) = {name:"MatchRoom"}];
-
-  message MatchRoom {
-    int32 max_loop = 1 [(tableau.field) = {name:"MaxLoop" default:"0"}];
-  }
-  MatchPlayer match_player = 4 [(tableau.field) = {name:"MatchPlayer"}];
-
-  message MatchPlayer {
-    int32 max_loop = 1 [(tableau.field) = {name:"MaxLoop" default:"0"}];
-  }
-  MatchStatInfo match_stat_info = 5 [(tableau.field) = {name:"MatchStatInfo"}];
-
-  message MatchStatInfo {
-    int32 report_interval = 1 [(tableau.field) = {name:"ReportInterval" default:"0"}];
-  }
-  TeamRatingWeight team_rating_weight = 6 [(tableau.field) = {name:"TeamRatingWeight"}];
-
-  message TeamRatingWeight {
-    repeated Weight weight_list = 1 [(tableau.field) = {name:"Weight"}];
-
-    message Weight {
-      int32 num = 1 [(tableau.field) = {name:"Num" default:"0"}];
-      repeated Param param_list = 2 [(tableau.field) = {name:"Param"}];
-
-      message Param {
-        int32 value = 1 [(tableau.field) = {name:"Value" default:"0"}];
       }
     }
   }

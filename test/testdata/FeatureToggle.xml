@@ -95,6 +95,6 @@
         <Toggle name="微信公众号" ID="protocol::TOGGLE_WEIXIN_MEDIA_PLATFORM" OpenRate="10000" />
         <Toggle name="礼包中心" ID="protocol::TOGGLE_PACKAGE_CENTER" OpenRate="10000" />
         <Toggle name="公告(包括:登录前公告+登录后公告)" ID="protocol::TOGGLE_ANNOUNCEMENT" OpenRate="0" />
-        <Toggle name="活动入口" ID="protocol::TOGGLE_ACTIVITY_ENTRY" OpenRate="0" />
+        <Toggle name="活动入口111" ID="protocol::TOGGLE_ACTIVITY_ENTRY" OpenRate="0" />
     </FeatureToggle>
 </ToggleCfg>

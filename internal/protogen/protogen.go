@@ -41,6 +41,7 @@ type Generator struct {
 	FilenameSuffix           string // filename suffix of generated protoconf files.
 
 	Imports        []string // imported common proto file paths
+	Header *options.HeaderOption // header settings.
 
 	i IGenerator
 }
@@ -62,20 +63,65 @@ func newGenerator(protoPackage, goPackage, indir, outdir string, setters ...opti
 		FilenameSuffix:           opts.Output.FilenameSuffix,
 
 		Imports: opts.Imports,
+		Header:         opts.Header,
 	}
+}
+
+func (gen *Generator) parseXlsx(wbPath string) error {
+	book, err := excel.NewBook(wbPath)
+	if err != nil {
+		return errors.Wrapf(err, "failed to create new workbook: %s", wbPath)
+	}
+	// creat a book parser
+	_, wbName := filepath.Split(wbPath)
+	bp := newBookParser(wbName, gen.Imports)
+	for sheetName, sheet := range book.Sheets {
+		// parse sheet header
+		ws := &tableaupb.Worksheet{
+			Options: &tableaupb.WorksheetOptions{
+				Name:      sheetName,
+				Namerow:   gen.Header.Namerow,
+				Typerow:   gen.Header.Typerow,
+				Noterow:   gen.Header.Noterow,
+				Datarow:   gen.Header.Datarow,
+				Transpose: false,
+				Tags:      "",
+			},
+			Fields: []*tableaupb.Field{},
+			Name:   sheetName,
+		}
+		shHeader := &sheetHeader{
+			namerow: sheet.Rows[gen.Header.Namerow-1],
+			typerow: sheet.Rows[gen.Header.Typerow-1],
+			noterow: sheet.Rows[gen.Header.Noterow-1],
+		}
+
+		var ok bool
+		for cursor := 0; cursor < len(shHeader.namerow); cursor++ {
+			field := &tableaupb.Field{}
+			cursor, ok = bp.parseField(field, shHeader, cursor, "")
+			if ok {
+				ws.Fields = append(ws.Fields, field)
+			}
+		}
+		// append parsed sheet to workbook
+		bp.wb.Worksheets = append(bp.wb.Worksheets, ws)
+	}
+	// export book
+	be := newBookExporter(gen.ProtoPackage, gen.GoPackage, gen.OutputDir, gen.FilenameSuffix, gen.Imports, bp.wb)
+	if err := be.export(); err != nil {
+		return errors.Wrapf(err, "failed to export workbook: %s", wbPath)
+	}
+	return nil
 }
 
 type XlsxGenerator struct {
 	Generator
-
-	Header *options.HeaderOption // header settings.
 }
 
 func NewXlsxGenerator(protoPackage, goPackage, indir, outdir string, setters ...options.Option) *XlsxGenerator {
-	opts := options.ParseOptions(setters...)
 	g := &XlsxGenerator{
 		Generator: *newGenerator(protoPackage, goPackage, indir, outdir, setters...),
-		Header:         opts.Header,
 	}
 	g.i = g
 	return g
@@ -214,45 +260,7 @@ func (gen *Generator) convertWorkbook(dir, filename string) error {
 	return nil
 }
 
-// func (gen *Generator) PrepareOutpuDir() error {
-// 	existed, err := fs.Exists(gen.OutputDir)
-// 	if err != nil {
-// 		return errors.Wrapf(err, "failed to check existence of output dir: %s", gen.OutputDir)
-// 	}
-// 	if existed {
-// 		// remove all *.proto file but not Imports
-// 		imports := make(map[string]int)
-// 		for _, path := range gen.Imports {
-// 			imports[path] = 1
-// 		}
-// 		files, err := os.ReadDir(gen.OutputDir)
-// 		if err != nil {
-// 			return errors.Wrapf(err, "failed to read dir: %s", gen.OutputDir)
-// 		}
-// 		for _, file := range files {
-// 			if !strings.HasSuffix(file.Name(), ".proto") {
-// 				continue
-// 			}
-// 			if _, ok := imports[file.Name()]; ok {
-// 				continue
-// 			}
-// 			fpath := filepath.Join(gen.OutputDir, file.Name())
-// 			err := os.Remove(fpath)
-// 			if err != nil {
-// 				return errors.Wrapf(err, "failed to remove file: %s", fpath)
-// 			}
-// 		}
 
-// 	} else {
-// 		// create output dir
-// 		err = os.MkdirAll(gen.OutputDir, 0700)
-// 		if err != nil {
-// 			return errors.Wrapf(err, "failed to create output dir: %s", gen.OutputDir)
-// 		}
-// 	}
-
-// 	return nil
-// }
 
 func (gen *Generator) PrepareOutpuDir() error {
 	existed, err := fs.Exists(gen.OutputDir)
@@ -281,7 +289,6 @@ func (gen *Generator) PrepareOutpuDir() error {
 				continue
 			}
 			fpath := filepath.Join(gen.OutputDir, file.Name())
-			atom.Log.Debug(fpath)
 			err := os.Remove(fpath)
 			if err != nil {
 				return errors.Wrapf(err, "failed to remove file: %s", fpath)
@@ -307,8 +314,11 @@ type sheetHeader struct {
 }
 
 func getCell(row []string, cursor int, line int32) string {
-	cell := row[cursor]
-	return importer.ExtractFromCell(cell, line)
+	// empty cell may be not in list
+	if cursor >= len(row) {
+		return ""
+	}
+	return importer.ExtractFromCell(row[cursor], line)
 }
 
 func (sh *sheetHeader) getNameCell(cursor int) string {
@@ -349,9 +359,6 @@ func (g *GeneratedBuf) Content() []byte {
 
 type XmlGenerator struct {
 	Generator
-
-	fieldMap map[string]*tableaupb.Field
-	nav *xmlquery.NodeNavigator
 }
 
 func NewXmlGenerator(protoPackage, goPackage, indir, outdir string, setters ...options.Option) *XmlGenerator {
@@ -374,6 +381,7 @@ func (gen *XmlGenerator) Generate() error {
 	if err != nil {
 		atom.Log.Fatal(err)
 	}
+
 	for _, xmlFile := range files {
 		// ignore temp file named with prefix "~$"
 		if strings.HasPrefix(xmlFile.Name(), "~$") || !strings.HasSuffix(xmlFile.Name(), gen.GetSuffix()) {
@@ -392,41 +400,23 @@ func (gen *XmlGenerator) Generate() error {
 			atom.Log.Panic(err)
 			continue
 		}
-		// create xml proto meta struct
-		xmlProtoName := strcase.ToSnake(strings.TrimSuffix(xmlFile.Name(), filepath.Ext(xmlFile.Name())))
-		xml := &tableaupb.Workbook{
-			Options: &tableaupb.WorkbookOptions{
-				Name: xmlFile.Name(),
-			},
-			Name:       xmlProtoName,
-			Imports: map[string]int32{
-				tableauProtoPath: 1, // default import
-			},
-		}
-		for _, path := range gen.Imports {
-			xml.Imports[path] = 1 // custom imports
-		}
 		n, err := p.Read()
 		if err != nil {
 			atom.Log.Panic(err)
 		}
-		gen.fieldMap = make(map[string]*tableaupb.Field)
 		root := xmlquery.CreateXPathNavigator(n)
-		worksheet := &tableaupb.Worksheet{
-			Options: &tableaupb.WorksheetOptions{
-				Name: root.LocalName(),
-			},
-			Name: root.LocalName(),
+		xlsxGen := xlsxgen.Generator{
+			OutputDir: filepath.Join(gen.InputDir, ".xml2xlsx"),
+			Workbook: strings.ReplaceAll(xmlFile.Name(), gen.GetSuffix(), ".xlsx"),
 		}
-		field := &tableaupb.Field{}
-		gen.parseNode(root, field, "")
-		atom.Log.Debug(field)
-		worksheet.Fields = append(worksheet.Fields, field.Fields...) // root节点变成了sheet
-		xml.Worksheets = append(xml.Worksheets, worksheet)
-		// export book
-		be := newBookExporter(gen.ProtoPackage, gen.GoPackage, gen.OutputDir, gen.FilenameSuffix, gen.Imports, xml)
-		if err := be.export(); err != nil {
-			return errors.Wrapf(err, "failed to export workbook: %s", xmlPath)
+		metaSheet := xlsxgen.NewMetaSheet(root.LocalName(), gen.Header, false)
+		gen.parseXml(root, metaSheet, int(gen.Header.Datarow)-1)
+		atom.Log.Debug(metaSheet)
+		xlsxGen.ExportSheet(metaSheet)
+		// generate proto by Generator.parseXlsx
+		wbPath := filepath.Join(xlsxGen.OutputDir, xlsxGen.Workbook)
+		if err := gen.parseXlsx(wbPath); err != nil {
+			return errors.Wrapf(err, "failed to parse workbook: %s", wbPath)
 		}
 	}
 

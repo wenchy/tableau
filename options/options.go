@@ -32,6 +32,10 @@ type HeaderOption struct {
 	Typeline int32
 }
 
+type CustomRowData struct {
+	Default string `json:"default"`
+}
+
 type OutputOption struct {
 	// only for protogen generated protoconf file
 	FilenameWithSubdirPrefix bool // default true, filename dir separator `/` or `\` is replaced by "__"

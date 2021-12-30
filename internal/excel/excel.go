@@ -1,4 +1,4 @@
-package rawdata
+package excel
 
 import (
 	"fmt"
@@ -6,7 +6,6 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/Wenchy/tableau/internal/atom"
 	"github.com/pkg/errors"
 	"github.com/xuri/excelize/v2"
 )
@@ -47,6 +46,7 @@ func (s *Sheet) String() string {
 
 type Book struct {
 	Filename string
+	file     *excelize.File
 	Sheets   map[string]*Sheet // s name -> Sheet
 }
 
@@ -63,22 +63,6 @@ func NewBook(filename string) (*Book, error) {
 }
 
 func (b *Book) parse() error {
-	if strings.HasSuffix(b.Filename, ".xlsx") {
-		return b.parseXlsx()
-	} else if strings.HasSuffix(b.Filename, ".xml") {
-		return b.parseXml()
-	}
-
-	return errors.New(fmt.Sprintf("Unknown file type:%s", b.Filename))
-}
-
-func (b *Book) parseXml() error {
-	
-	return nil
-}
-
-func (b *Book) parseXlsx() error {
-	atom.Log.Debug(b.Filename)
 	file, err := excelize.OpenFile(b.Filename)
 	if err != nil {
 		return errors.WithMessagef(err, "failed to open workbook: %s", b.Filename)

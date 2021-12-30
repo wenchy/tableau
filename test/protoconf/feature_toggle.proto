@@ -5,30 +5,32 @@ option go_package = "github.com/Wenchy/tableau/cmd/test/testpb";
 
 import "tableau/protobuf/tableau.proto";
 
-option (tableau.workbook) = {name:"FeatureToggle.xml"};
+option (tableau.workbook) = {name:"FeatureToggle.xlsx"};
 
 message ToggleCfg {
-  option (tableau.worksheet) = {name:"ToggleCfg"};
+  option (tableau.worksheet) = {name:"ToggleCfg" namerow:1 typerow:2 noterow:3 datarow:4};
 
-  repeated FeatureToggle feature_toggle_list = 1 [(tableau.field) = {name:"FeatureToggle"}];
+  map<int32, FeatureToggle> feature_toggle_map = 1 [(tableau.field) = {key:"FeatureToggleEnvID"}];
 
   message FeatureToggle {
-    int32 env_id = 1 [(tableau.field) = {name:"EnvID" default:"0"}];
-    repeated Toggle toggle_list = 2 [(tableau.field) = {name:"Toggle"}];
+    int32 feature_toggle_env_id = 1 [(tableau.field) = {name:"FeatureToggleEnvID"}];
+    repeated Toggle toggle_list = 2 [(tableau.field) = {layout:LAYOUT_VERTICAL}];
 
     message Toggle {
-      string id = 1 [(tableau.field) = {name:"ID" default:"protocol::TOGGLE_SAMPLE"}];
-      int32 open_rate = 2 [(tableau.field) = {name:"OpenRate" default:"0"}];
-      int32 world_id = 3 [(tableau.field) = {name:"WorldID" default:"0"}];
-      int32 zone_id = 4 [(tableau.field) = {name:"ZoneID" default:"0"}];
-      string open_time = 5 [(tableau.field) = {name:"OpenTime" default:"0,0"}];
-      string close_time = 6 [(tableau.field) = {name:"CloseTime" default:"0,0"}];
-      int32 user_limit_type = 7 [(tableau.field) = {name:"UserLimitType" default:"0"}];
-      int32 user_source_type = 8 [(tableau.field) = {name:"UserSourceType" default:"0"}];
-      repeated int32 sys_key_list = 9 [(tableau.field) = {name:"SysKey" default:"0"}];
-      int32 notify_closed = 10 [(tableau.field) = {name:"NotifyClosed" default:"0"}];
-      int32 err_code = 11 [(tableau.field) = {name:"ErrCode" default:"0"}];
-      string name = 12 [(tableau.field) = {name:"name"}];
+      string feature_toggle_toggle_id = 1 [(tableau.field) = {name:"FeatureToggleToggleID"}];
+      int32 feature_toggle_toggle_open_rate = 2 [(tableau.field) = {name:"FeatureToggleToggleOpenRate"}];
+      int32 feature_toggle_toggle_world_id = 3 [(tableau.field) = {name:"FeatureToggleToggleWorldID"}];
+      int32 feature_toggle_toggle_zone_id = 4 [(tableau.field) = {name:"FeatureToggleToggleZoneID"}];
+      string feature_toggle_toggle_open_time = 5 [(tableau.field) = {name:"FeatureToggleToggleOpenTime"}];
+      string feature_toggle_toggle_close_time = 6 [(tableau.field) = {name:"FeatureToggleToggleCloseTime"}];
+      int32 feature_toggle_toggle_user_limit_type = 7 [(tableau.field) = {name:"FeatureToggleToggleUserLimitType"}];
+      int32 feature_toggle_toggle_user_source_type = 8 [(tableau.field) = {name:"FeatureToggleToggleUserSourceType"}];
+      int32 feature_toggle_toggle_sys_key_1 = 9 [(tableau.field) = {name:"FeatureToggleToggleSysKey1"}];
+      int32 feature_toggle_toggle_sys_key_2 = 10 [(tableau.field) = {name:"FeatureToggleToggleSysKey2"}];
+      int32 feature_toggle_toggle_sys_key_3 = 11 [(tableau.field) = {name:"FeatureToggleToggleSysKey3"}];
+      int32 feature_toggle_toggle_notify_closed = 12 [(tableau.field) = {name:"FeatureToggleToggleNotifyClosed"}];
+      int32 feature_toggle_toggle_err_code = 13 [(tableau.field) = {name:"FeatureToggleToggleErrCode"}];
+      string feature_toggle_togglename = 14 [(tableau.field) = {name:"FeatureToggleTogglename"}];
     }
   }
 }
