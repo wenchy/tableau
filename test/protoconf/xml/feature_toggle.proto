@@ -8,7 +8,7 @@ import "tableau/protobuf/tableau.proto";
 option (tableau.workbook) = {name:"FeatureToggle.xlsx"};
 
 message ToggleCfg {
-  option (tableau.worksheet) = {name:"ToggleCfg" namerow:1 typerow:2 noterow:3 datarow:4};
+  option (tableau.worksheet) = {name:"ToggleCfg" namerow:1 typerow:2 noterow:3 datarow:4 nameline:1 typeline:1};
 
   map<int32, FeatureToggle> feature_toggle_map = 1 [(tableau.field) = {key:"FeatureToggleEnvID"}];
 

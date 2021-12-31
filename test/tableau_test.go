@@ -18,8 +18,8 @@ func Test_Excel2Proto(t *testing.T) {
 	tableau.Excel2Proto(
 		"test",
 		"github.com/Wenchy/tableau/cmd/test/testpb",
-		"./testdata",
-		"./protoconf",
+		"./testdata/xlsx",
+		"./protoconf/xlsx",
 		options.Header(
 			&options.HeaderOption{
 				Namerow: 1,
@@ -49,7 +49,7 @@ func Test_Excel2Proto(t *testing.T) {
 func Test_Excel2JSON(t *testing.T) {
 	tableau.Excel2Conf(
 		"test",
-		"./testdata/",
+		"./testdata/xlsx",
 		"./_output/json/",
 		options.LogLevel("debug"),
 	)
@@ -109,10 +109,8 @@ func Test_Xml2Proto(t *testing.T) {
 	tableau.Xml2Proto(
 		"testxml",
 		"github.com/Wenchy/tableau/cmd/test/testpb",
-		"./testdata",
-		"./protoconf",
-		options.Xml(
-			&options.XmlOption{}),
+		"./testdata/xml",
+		"./protoconf/xml",
 		options.Imports(
 			[]string{
 				"cs_com_def.proto",
@@ -124,7 +122,7 @@ func Test_Xml2Proto(t *testing.T) {
 func Test_Xml2JSON(t *testing.T) {
 	tableau.Xml2Conf(
 		"testxml",
-		"./testdata/",
+		"./testdata/xml",
 		"./_output/json",
 		options.LogLevel("debug"),
 	)

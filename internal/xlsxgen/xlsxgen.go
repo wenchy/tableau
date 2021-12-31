@@ -87,8 +87,13 @@ func (sheet *MetaSheet) Cell(row int, name string) *Cell {
 	}
 	sheet.colMap[name] = len(sheet.Rows[sheet.Namerow-1].Cells)
 	sheet.Rows[sheet.Namerow-1].Cells = append(sheet.Rows[sheet.Namerow-1].Cells, Cell{Data: name})
-	sheet.Rows[sheet.Typerow-1].Cells = append(sheet.Rows[sheet.Typerow-1].Cells, Cell{Data: ""})
-	sheet.Rows[sheet.Noterow-1].Cells = append(sheet.Rows[sheet.Noterow-1].Cells, Cell{Data: "Note"})
+	// if there is typerow and noterow
+	if sheet.Typerow < sheet.Datarow {
+		sheet.Rows[sheet.Typerow-1].Cells = append(sheet.Rows[sheet.Typerow-1].Cells, Cell{Data: ""})
+	}
+	if sheet.Noterow < sheet.Datarow {
+		sheet.Rows[sheet.Noterow-1].Cells = append(sheet.Rows[sheet.Noterow-1].Cells, Cell{Data: "Note"})
+	}
 	sheet.Rows[row].Cells = append(sheet.Rows[row].Cells, Cell{Data: ""})
 	return &sheet.Rows[row].Cells[len(sheet.Rows[row].Cells)-1]
 }

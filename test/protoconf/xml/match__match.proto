@@ -5,10 +5,10 @@ option go_package = "github.com/Wenchy/tableau/cmd/test/testpb";
 
 import "tableau/protobuf/tableau.proto";
 
-option (tableau.workbook) = {name:"Match.xlsx"};
+option (tableau.workbook) = {name:"match/Match.xlsx"};
 
 message MatchCfg {
-  option (tableau.worksheet) = {name:"MatchCfg" namerow:1 typerow:2 noterow:3 datarow:4};
+  option (tableau.worksheet) = {name:"MatchCfg" namerow:1 typerow:2 noterow:3 datarow:4 nameline:1 typeline:1};
 
   int32 confirm_time_out_punish_time = 1 [(tableau.field) = {name:"ConfirmTimeOutPunishTime"}];
   int32 match_room_max_loop = 2 [(tableau.field) = {name:"MatchRoomMaxLoop"}];
