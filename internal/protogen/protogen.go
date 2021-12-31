@@ -59,7 +59,12 @@ func (gen *Generator) generate(dir string) error {
 	for _, entry := range dirEntries {
 		if entry.IsDir() {
 			// scan and generate subdir recursively
-			return gen.generate(filepath.Join(dir, entry.Name()))
+			subdir := filepath.Join(dir, entry.Name())
+			err := gen.generate(subdir)
+			if err != nil {
+				return errors.WithMessagef(err, "failed to generate subdir: %s", subdir)
+			}
+			continue
 		}
 
 		if strings.HasPrefix(entry.Name(), "~$") {
@@ -91,7 +96,6 @@ func (gen *Generator) convertWorkbook(dir, filename string) error {
 	if err != nil {
 		return errors.WithMessagef(err, "get relative path failed")
 	}
-	atom.Log.Infof("workbook: %s, %s, %s", gen.InputDir, dir, relativePath)
 	book, err := excel.NewBookExt(filepath.Join(dir, filename), confgen.NewSheetParser(tableauProtoPackage, gen.LocationName))
 	if err != nil {
 		return errors.Wrapf(err, "failed to create new workbook: %s", relativePath)
@@ -99,6 +103,7 @@ func (gen *Generator) convertWorkbook(dir, filename string) error {
 	if len(book.Sheets) == 0 {
 		return nil
 	}
+	atom.Log.Infof("workbook: %s, %s", gen.InputDir, relativePath)
 	// creat a book parser
 	bp := newBookParser(relativePath, gen.FilenameWithSubdirPrefix, gen.Imports)
 	for _, sheet := range book.Sheets {
