@@ -22,12 +22,11 @@ var listRegexp *regexp.Regexp
 var structRegexp *regexp.Regexp
 var enumRegexp *regexp.Regexp
 
-
 func init() {
-	mapRegexp = regexp.MustCompile(`^map<(.+),(.+)>`)              // e.g.: map<uint32,Type>
-	listRegexp = regexp.MustCompile(`^\[(.*)\](.+)`)               // e.g.: [Type]uint32
-	structRegexp = regexp.MustCompile(`^\{(.+)\}(.+)`)             // e.g.: {Type}uint32
-	enumRegexp = regexp.MustCompile(`^enum<(.+)>`)                 // e.g.: enum<Type>
+	mapRegexp = regexp.MustCompile(`^map<(.+),(.+)>`)  // e.g.: map<uint32,Type>
+	listRegexp = regexp.MustCompile(`^\[(.*)\](.+)`)   // e.g.: [Type]uint32
+	structRegexp = regexp.MustCompile(`^\{(.+)\}(.+)`) // e.g.: {Type}uint32
+	enumRegexp = regexp.MustCompile(`^enum<(.+)>`)     // e.g.: enum<Type>
 }
 
 type bookParser struct {
@@ -55,7 +54,7 @@ func newBookParser(relativePath string, filenameWithSubdirPrefix bool, imports [
 			Options: &tableaupb.WorkbookOptions{
 				// NOTE(wenchyzhu): all OS platforms use path slash separator `/`
 				// see: https://stackoverflow.com/questions/9371031/how-do-i-create-crossplatform-file-paths-in-go
-				Name: relSlashPath, 
+				Name: relSlashPath,
 			},
 			Worksheets: []*tableaupb.Worksheet{},
 			Name:       filename,
@@ -166,10 +165,33 @@ func (p *bookParser) parseListField(field *tableaupb.Field, header *sheetHeader,
 	index := -1
 	if index = strings.Index(trimmedNameCell, "1"); index > 0 {
 		layout = tableaupb.Layout_LAYOUT_HORIZONTAL
+		if cursor+1 < len(header.namerow) {
+			// Header:
+			//
+			// TaskParamList1	TaskParamList2	TaskParamList3
+			// []int32			[]int32			[]int32
+
+			// check next cursor
+			nextNameCell := header.getNameCell(cursor + 1)
+			trimmedNextNameCell := strings.TrimPrefix(nextNameCell, prefix)
+			if index2 := strings.Index(trimmedNextNameCell, "2"); index2 > 0 {
+				nextTypeCell := header.getTypeCell(cursor + 1)
+				if matches := listRegexp.FindStringSubmatch(nextTypeCell); len(matches) > 0 {
+					// The next type cell is also a list type declaration.
+					if isScalarType {
+						layout = tableaupb.Layout_LAYOUT_DEFAULT // incell list
+					}
+				}
+			} else {
+				// only one list item, treat it as incell list
+				if isScalarType {
+					layout = tableaupb.Layout_LAYOUT_DEFAULT // incell list
+				}
+			}
+		}
 	} else {
 		if isScalarType {
-			// incell list
-			layout = tableaupb.Layout_LAYOUT_DEFAULT
+			layout = tableaupb.Layout_LAYOUT_DEFAULT // incell list
 		}
 	}
 

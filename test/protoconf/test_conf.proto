@@ -43,7 +43,10 @@ message Activity {
           int32 param_1 = 2 [(tableau.field) = {name:"Param1"}];
           int32 param_2 = 3 [(tableau.field) = {name:"Param2"}];
           int32 param_3 = 4 [(tableau.field) = {name:"Param3"}];
-          int32 target = 5 [(tableau.field) = {name:"Target"}];
+          repeated int32 param_list_1 = 5 [(tableau.field) = {name:"ParamList1" type:TYPE_INCELL_LIST}];
+          repeated int32 param_list_2 = 6 [(tableau.field) = {name:"ParamList2" type:TYPE_INCELL_LIST}];
+          repeated int32 param_list_3 = 7 [(tableau.field) = {name:"ParamList3" type:TYPE_INCELL_LIST}];
+          int32 target = 8 [(tableau.field) = {name:"Target"}];
         }
         Info warn_info = 7 [(tableau.field) = {name:"WarnInfo" type:TYPE_INCELL_STRUCT}];
 
