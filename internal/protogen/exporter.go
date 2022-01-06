@@ -211,7 +211,7 @@ func (x *sheetExporter) exportField(depth int, tagid int, field *tableaupb.Field
 		// bookkeeping this nested msessage, so we can check if we can reuse it later.
 		x.nestedMessages[nestedMsgName] = field
 
-		x.g.P("")
+		// x.g.P("")
 		x.g.P(printer.Indent(depth), "message ", nestedMsgName, " {")
 		for i, f := range field.Fields {
 			tagid := i + 1

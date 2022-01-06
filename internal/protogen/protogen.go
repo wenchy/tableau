@@ -130,6 +130,7 @@ func (gen *Generator) convertWorkbook(dir, filename string) error {
 				Tags:      "",
 				Nameline:  sheet.Meta.Nameline,
 				Typeline:  sheet.Meta.Typeline,
+				Nested:    sheet.Meta.Nested,
 			},
 			Fields: []*tableaupb.Field{},
 			Name:   sheetMsgName,
@@ -144,7 +145,7 @@ func (gen *Generator) convertWorkbook(dir, filename string) error {
 		var ok bool
 		for cursor := 0; cursor < len(shHeader.namerow); cursor++ {
 			field := &tableaupb.Field{}
-			cursor, ok = bp.parseField(field, shHeader, cursor, "")
+			cursor, ok = bp.parseField(field, shHeader, cursor, "", sheet.Meta.Nested)
 			if ok {
 				ws.Fields = append(ws.Fields, field)
 			}

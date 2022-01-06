@@ -42,6 +42,7 @@ message WorksheetOptions {
                        // means all servers.
   int32 nameline = 8;  // [default = 0]; // specify which line in cell as name, '0' means the whole cell is name.
   int32 typeline = 9;  // [default = 0]; // specify which line in cell as type,'0' means the whole cell is type.
+  bool nested = 10;    // [default = false]; // whether the naming of name row is nested.
 }
 
 message FieldOptions {

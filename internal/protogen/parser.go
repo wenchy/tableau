@@ -31,8 +31,8 @@ func init() {
 
 type bookParser struct {
 	wb       *tableaupb.Workbook
-	withNote bool
 	types    map[string]bool // type name -> existed
+	withNote bool
 }
 
 func newBookParser(relativePath string, filenameWithSubdirPrefix bool, imports []string) *bookParser {
@@ -70,7 +70,7 @@ func newBookParser(relativePath string, filenameWithSubdirPrefix bool, imports [
 	return bp
 }
 
-func (p *bookParser) parseField(field *tableaupb.Field, header *sheetHeader, cursor int, prefix string) (cur int, ok bool) {
+func (p *bookParser) parseField(field *tableaupb.Field, header *sheetHeader, cursor int, prefix string, nested bool) (cur int, ok bool) {
 	nameCell := header.getNameCell(cursor)
 	typeCell := header.getTypeCell(cursor)
 	noteCell := header.getNoteCell(cursor)
@@ -82,11 +82,11 @@ func (p *bookParser) parseField(field *tableaupb.Field, header *sheetHeader, cur
 	trimmedNameCell := strings.TrimPrefix(nameCell, prefix)
 
 	if matches := mapRegexp.FindStringSubmatch(typeCell); len(matches) > 0 {
-		cursor = p.parseMapField(field, header, cursor, prefix)
+		cursor = p.parseMapField(field, header, cursor, prefix, nested)
 	} else if matches := listRegexp.FindStringSubmatch(typeCell); len(matches) > 0 {
-		cursor = p.parseListField(field, header, cursor, prefix)
+		cursor = p.parseListField(field, header, cursor, prefix, nested)
 	} else if matches := structRegexp.FindStringSubmatch(typeCell); len(matches) > 0 {
-		cursor = p.parseStructField(field, header, cursor, prefix)
+		cursor = p.parseStructField(field, header, cursor, prefix, nested)
 	} else {
 		// scalar
 		*field = *p.parseScalarField(trimmedNameCell, typeCell, noteCell)
@@ -95,29 +95,28 @@ func (p *bookParser) parseField(field *tableaupb.Field, header *sheetHeader, cur
 	return cursor, true
 }
 
-func (p *bookParser) parseSubField(field *tableaupb.Field, header *sheetHeader, cursor int, prefix string) int {
+func (p *bookParser) parseSubField(field *tableaupb.Field, header *sheetHeader, cursor int, prefix string, nested bool) int {
 	subField := &tableaupb.Field{}
-	cursor, ok := p.parseField(subField, header, cursor, prefix)
+	cursor, ok := p.parseField(subField, header, cursor, prefix, nested)
 	if ok {
 		field.Fields = append(field.Fields, subField)
 	}
 	return cursor
 }
 
-func (p *bookParser) parseMapField(field *tableaupb.Field, header *sheetHeader, cursor int, prefix string) int {
+func (p *bookParser) parseMapField(field *tableaupb.Field, header *sheetHeader, cursor int, prefix string, nested bool) int {
 	nameCell := header.getNameCell(cursor)
 	typeCell := header.getTypeCell(cursor)
 	noteCell := header.getNoteCell(cursor)
-
-	trimmedNameCell := strings.TrimPrefix(nameCell, prefix)
 
 	// map syntax pattern
 	matches := mapRegexp.FindStringSubmatch(typeCell)
 	keyType := strings.TrimSpace(matches[1])
 	valueType := strings.TrimSpace(matches[2])
-
+	// TODO: process pre-defined valueType
 	if types.IsScalarType(valueType) {
 		// incell map
+		trimmedNameCell := strings.TrimPrefix(nameCell, prefix)
 		field.Name = strcase.ToSnake(trimmedNameCell)
 		field.Type, field.TypeDefined = p.parseType(typeCell)
 		field.Options = &tableaupb.FieldOptions{
@@ -125,6 +124,11 @@ func (p *bookParser) parseMapField(field *tableaupb.Field, header *sheetHeader, 
 			Type: tableaupb.Type_TYPE_INCELL_MAP,
 		}
 	} else {
+		valueType, _ = p.parseType(valueType)
+		if nested {
+			prefix += valueType // add prefix with value type
+		}
+		trimmedNameCell := strings.TrimPrefix(nameCell, prefix)
 		field.Name = strcase.ToSnake(valueType) + "_map"
 		field.Type, field.TypeDefined = p.parseType(typeCell)
 		field.MapEntry = &tableaupb.MapEntry{
@@ -134,15 +138,25 @@ func (p *bookParser) parseMapField(field *tableaupb.Field, header *sheetHeader, 
 		field.Options = &tableaupb.FieldOptions{
 			Key: trimmedNameCell,
 		}
+		if nested {
+			field.Options.Name = valueType
+		}
 		field.Fields = append(field.Fields, p.parseScalarField(trimmedNameCell, keyType, noteCell))
 		for cursor++; cursor < len(header.namerow); cursor++ {
-			cursor = p.parseSubField(field, header, cursor, prefix)
+			if nested {
+				nameCell := header.getNameCell(cursor)
+				if !strings.HasPrefix(nameCell, prefix) {
+					cursor--
+					return cursor
+				}
+			}
+			cursor = p.parseSubField(field, header, cursor, prefix, nested)
 		}
 	}
 	return cursor
 }
 
-func (p *bookParser) parseListField(field *tableaupb.Field, header *sheetHeader, cursor int, prefix string) int {
+func (p *bookParser) parseListField(field *tableaupb.Field, header *sheetHeader, cursor int, prefix string, nested bool) int {
 	nameCell := header.getNameCell(cursor)
 	typeCell := header.getTypeCell(cursor)
 	noteCell := header.getNoteCell(cursor)
@@ -207,12 +221,25 @@ func (p *bookParser) parseListField(field *tableaupb.Field, header *sheetHeader,
 		}
 
 		if isScalarType {
-			// TODO: support list of scalar type when lyout is vertical?
-			// NOTE(wenchyzhu): we don't support list of scalar type when layout is vertical
+			// TODO: support list of scalar type when layout is vertical?
+			atom.Log.Errorf("vertical list of scalar type is not supported")
 		} else {
+			if nested {
+				prefix += field.Type // add prefix with value type
+				field.Options.Name = field.Type
+			}
+			trimmedNameCell := strings.TrimPrefix(nameCell, prefix)
+			
 			field.Fields = append(field.Fields, p.parseScalarField(trimmedNameCell, colType, noteCell))
 			for cursor++; cursor < len(header.namerow); cursor++ {
-				cursor = p.parseSubField(field, header, cursor, prefix)
+				if nested {
+					nameCell := header.getNameCell(cursor)
+					if !strings.HasPrefix(nameCell, prefix) {
+						cursor--
+						return cursor
+					}
+				}
+				cursor = p.parseSubField(field, header, cursor, prefix, nested)
 			}
 		}
 	case tableaupb.Layout_LAYOUT_HORIZONTAL:
@@ -230,14 +257,11 @@ func (p *bookParser) parseListField(field *tableaupb.Field, header *sheetHeader,
 		if isScalarType {
 			for cursor++; cursor < len(header.namerow); cursor++ {
 				nameCell := header.getNameCell(cursor)
-				if nameCell == "" {
-					continue
-				}
-				if strings.HasPrefix(nameCell, prefix) {
+				if nameCell == "" || strings.HasPrefix(nameCell, prefix) {
 					continue
 				} else {
 					cursor--
-					break
+					return cursor
 				}
 			}
 		} else {
@@ -246,12 +270,12 @@ func (p *bookParser) parseListField(field *tableaupb.Field, header *sheetHeader,
 			for cursor++; cursor < len(header.namerow); cursor++ {
 				nameCell := header.getNameCell(cursor)
 				if strings.HasPrefix(nameCell, prefix+"1") {
-					cursor = p.parseSubField(field, header, cursor, prefix+"1")
+					cursor = p.parseSubField(field, header, cursor, prefix+"1", nested)
 				} else if strings.HasPrefix(nameCell, prefix) {
 					continue
 				} else {
 					cursor--
-					break
+					return cursor
 				}
 			}
 		}
@@ -268,7 +292,7 @@ func (p *bookParser) parseListField(field *tableaupb.Field, header *sheetHeader,
 	return cursor
 }
 
-func (p *bookParser) parseStructField(field *tableaupb.Field, header *sheetHeader, cursor int, prefix string) int {
+func (p *bookParser) parseStructField(field *tableaupb.Field, header *sheetHeader, cursor int, prefix string, nested bool) int {
 	nameCell := header.getNameCell(cursor)
 	typeCell := header.getTypeCell(cursor)
 	noteCell := header.getNoteCell(cursor)
@@ -296,10 +320,12 @@ func (p *bookParser) parseStructField(field *tableaupb.Field, header *sheetHeade
 		}
 	} else {
 		// cross cell struct
+		// NOTE(wenchy): treated as nested named struct
 		field.Type, field.TypeDefined = p.parseType(elemType)
 		field.Name = strcase.ToSnake(field.Type)
-		index := len(field.Type)
-		structName := trimmedNameCell[:index]
+		// index := len(field.Type)
+		// structName := trimmedNameCell[:index]
+		structName := field.Type
 		field.Options = &tableaupb.FieldOptions{
 			Name: structName,
 		}
@@ -309,12 +335,11 @@ func (p *bookParser) parseStructField(field *tableaupb.Field, header *sheetHeade
 		field.Fields = append(field.Fields, p.parseScalarField(name, colType, noteCell))
 		for cursor++; cursor < len(header.namerow); cursor++ {
 			nameCell := header.getNameCell(cursor)
-			if strings.HasPrefix(nameCell, prefix) {
-				cursor = p.parseSubField(field, header, cursor, prefix)
-			} else {
+			if !strings.HasPrefix(nameCell, prefix) {
 				cursor--
-				break
+				return cursor
 			}
+			cursor = p.parseSubField(field, header, cursor, prefix, nested)
 		}
 	}
 
