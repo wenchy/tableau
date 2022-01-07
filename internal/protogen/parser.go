@@ -105,6 +105,14 @@ func (p *bookParser) parseSubField(field *tableaupb.Field, header *sheetHeader, 
 }
 
 func (p *bookParser) parseMapField(field *tableaupb.Field, header *sheetHeader, cursor int, prefix string, nested bool) int {
+	// refer: https://developers.google.com/protocol-buffers/docs/proto3#maps
+	//
+	//	map<key_type, value_type> map_field = N;
+	//
+	// where the key_type can be any integral or string type (so, any scalar type
+	// except for floating point types and bytes). Note that enum is not a valid
+	// key_type. The value_type can be any type except another map.
+
 	nameCell := header.getNameCell(cursor)
 	typeCell := header.getTypeCell(cursor)
 	noteCell := header.getNoteCell(cursor)
@@ -113,33 +121,65 @@ func (p *bookParser) parseMapField(field *tableaupb.Field, header *sheetHeader, 
 	matches := mapRegexp.FindStringSubmatch(typeCell)
 	keyType := strings.TrimSpace(matches[1])
 	valueType := strings.TrimSpace(matches[2])
-	// TODO: process pre-defined valueType
-	if types.IsScalarType(valueType) {
-		// incell map
-		trimmedNameCell := strings.TrimPrefix(nameCell, prefix)
-		field.Name = strcase.ToSnake(trimmedNameCell)
-		field.Type, field.TypeDefined = p.parseType(typeCell)
-		field.Options = &tableaupb.FieldOptions{
-			Name: trimmedNameCell,
-			Type: tableaupb.Type_TYPE_INCELL_MAP,
+	parsedValueType, _ := p.parseType(valueType)
+
+	isScalarType := types.IsScalarType(valueType)
+	trimmedNameCell := strings.TrimPrefix(nameCell, prefix)
+
+	// preprocess
+	layout := tableaupb.Layout_LAYOUT_VERTICAL // default layout is vertical.
+	index := -1
+	if index = strings.Index(trimmedNameCell, "1"); index > 0 {
+		layout = tableaupb.Layout_LAYOUT_HORIZONTAL
+		if cursor+1 < len(header.namerow) {
+			// Header:
+			//
+			// TaskParamMap1		TaskParamMap2		TaskParamMap3
+			// map<int32, int32>	map<int32, int32>	map<int32, int32>
+
+			// check next cursor
+			nextNameCell := header.getNameCell(cursor + 1)
+			trimmedNextNameCell := strings.TrimPrefix(nextNameCell, prefix)
+			if index2 := strings.Index(trimmedNextNameCell, "2"); index2 > 0 {
+				nextTypeCell := header.getTypeCell(cursor + 1)
+				if matches := mapRegexp.FindStringSubmatch(nextTypeCell); len(matches) > 0 {
+					// The next type cell is also a map type declaration.
+					if isScalarType {
+						layout = tableaupb.Layout_LAYOUT_DEFAULT // incell map
+					}
+				}
+			} else {
+				// only one map item, treat it as incell map
+				if isScalarType {
+					layout = tableaupb.Layout_LAYOUT_DEFAULT // incell map
+				}
+			}
 		}
 	} else {
-		valueType, _ = p.parseType(valueType)
-		if nested {
-			prefix += valueType // add prefix with value type
+		if isScalarType {
+			layout = tableaupb.Layout_LAYOUT_DEFAULT // incell map
 		}
-		trimmedNameCell := strings.TrimPrefix(nameCell, prefix)
-		field.Name = strcase.ToSnake(valueType) + "_map"
+	}
+
+	switch layout {
+	case tableaupb.Layout_LAYOUT_VERTICAL:
+		if nested {
+			prefix += parsedValueType // add prefix with value type
+		}
+		field.Name = strcase.ToSnake(parsedValueType) + "_map"
 		field.Type, field.TypeDefined = p.parseType(typeCell)
 		field.MapEntry = &tableaupb.MapEntry{
 			KeyType:   keyType,
-			ValueType: valueType,
+			ValueType: parsedValueType,
 		}
+
+		trimmedNameCell := strings.TrimPrefix(nameCell, prefix)
 		field.Options = &tableaupb.FieldOptions{
-			Key: trimmedNameCell,
+			Key:    trimmedNameCell,
+			Layout: layout,
 		}
 		if nested {
-			field.Options.Name = valueType
+			field.Options.Name = parsedValueType
 		}
 		field.Fields = append(field.Fields, p.parseScalarField(trimmedNameCell, keyType, noteCell))
 		for cursor++; cursor < len(header.namerow); cursor++ {
@@ -152,7 +192,51 @@ func (p *bookParser) parseMapField(field *tableaupb.Field, header *sheetHeader, 
 			}
 			cursor = p.parseSubField(field, header, cursor, prefix, nested)
 		}
+	case tableaupb.Layout_LAYOUT_HORIZONTAL:
+		if nested {
+			prefix += parsedValueType // add prefix with value type
+		}
+		field.Name = strcase.ToSnake(parsedValueType) + "_map"
+		field.Type, field.TypeDefined = p.parseType(typeCell)
+		field.MapEntry = &tableaupb.MapEntry{
+			KeyType:   keyType,
+			ValueType: parsedValueType,
+		}
+
+		trimmedNameCell := strings.TrimPrefix(nameCell, prefix+"1")
+		field.Options = &tableaupb.FieldOptions{
+			Key:    trimmedNameCell,
+			Layout: layout,
+		}
+		if nested {
+			field.Options.Name = parsedValueType
+		}
+
+		name := strings.TrimPrefix(nameCell, prefix+"1")
+		field.Fields = append(field.Fields, p.parseScalarField(name, keyType, noteCell))
+		for cursor++; cursor < len(header.namerow); cursor++ {
+			nameCell := header.getNameCell(cursor)
+			if strings.HasPrefix(nameCell, prefix+"1") {
+				cursor = p.parseSubField(field, header, cursor, prefix+"1", nested)
+			} else if strings.HasPrefix(nameCell, prefix) {
+				continue
+			} else {
+				cursor--
+				return cursor
+			}
+		}
+
+	case tableaupb.Layout_LAYOUT_DEFAULT:
+		// incell map
+		trimmedNameCell := strings.TrimPrefix(nameCell, prefix)
+		field.Name = strcase.ToSnake(trimmedNameCell)
+		field.Type, field.TypeDefined = p.parseType(typeCell)
+		field.Options = &tableaupb.FieldOptions{
+			Name: trimmedNameCell,
+			Type: tableaupb.Type_TYPE_INCELL_MAP,
+		}
 	}
+
 	return cursor
 }
 
@@ -229,7 +313,7 @@ func (p *bookParser) parseListField(field *tableaupb.Field, header *sheetHeader,
 				field.Options.Name = field.Type
 			}
 			trimmedNameCell := strings.TrimPrefix(nameCell, prefix)
-			
+
 			field.Fields = append(field.Fields, p.parseScalarField(trimmedNameCell, colType, noteCell))
 			for cursor++; cursor < len(header.namerow); cursor++ {
 				if nested {
