@@ -18,7 +18,7 @@ import (
 
 const (
 	app                 = "tableauc"
-	version             = "0.1.0"
+	version             = "0.1.1"
 	tableauProtoPackage = "tableau"
 )
 

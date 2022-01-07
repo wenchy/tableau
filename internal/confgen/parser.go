@@ -290,6 +290,12 @@ func (sp *sheetParser) parseMapField(field *Field, msg protoreflect.Message, rc 
 		emptyMapValue := reflectMap.NewValue()
 		if valueFd.Kind() == protoreflect.MessageKind {
 			if field.opts.Layout == tableaupb.Layout_LAYOUT_HORIZONTAL {
+				if msg.Has(field.fd) {
+					// When the map's layout is horizontal, only parse field
+					// if it is not already present. This means the first not
+					// empty related row part (related to this map) is parsed.
+					return nil
+				}
 				size := rc.GetCellCountWithPrefix(prefix + field.opts.Name)
 				// atom.Log.Debug("prefix size: ", size)
 				for i := 1; i <= size; i++ {
@@ -412,6 +418,7 @@ func (sp *sheetParser) parseListField(field *Field, msg protoreflect.Message, rc
 	} else {
 		emptyListValue := reflectList.NewElement()
 		if field.opts.Layout == tableaupb.Layout_LAYOUT_VERTICAL {
+			// vertical list
 			newListValue := reflectList.NewElement()
 			if field.fd.Kind() == protoreflect.MessageKind {
 				// struct list
@@ -427,6 +434,13 @@ func (sp *sheetParser) parseListField(field *Field, msg protoreflect.Message, rc
 				// NOTE(wenchyzhu): we don't support list of scalar type when layout is vertical
 			}
 		} else {
+			// horizontal list
+			if msg.Has(field.fd) {
+				// When the list's layout is horizontal, only parse field
+				// if it is not already present. This means the first not
+				// empty related row part (part related to this list) is parsed.
+				return nil
+			}
 			size := rc.GetCellCountWithPrefix(prefix + field.opts.Name)
 			if size <= 0 {
 				return errors.Errorf("%s|horizontal list: no cell found with digit suffix", rc.CellDebugString(prefix+field.opts.Name))
@@ -485,10 +499,14 @@ func (sp *sheetParser) parseStructField(field *Field, msg protoreflect.Message, 
 	// `Message.Mutable` will allocate new "empty message", and is not equal to "nil"
 	//
 	// Solution:
-	// 1. spawn two values: `emptyValue` and `newValue`
-	// 2. set `newValue` back to field if `newValue` is not equal to `emptyValue`
-	emptyValue := msg.NewField(field.fd)
-	newValue := msg.NewField(field.fd)
+	// 1. spawn two values: `emptyValue` and `structValue`
+	// 2. set `structValue` back to field if `structValue` is not equal to `emptyValue`
+
+	structValue := msg.NewField(field.fd)
+	if msg.Has(field.fd) {
+		// Get existed field value if it is already present.
+		structValue = msg.Mutable(field.fd)
+	}
 
 	colName := prefix + field.opts.Name
 	if field.opts.Type == tableaupb.Type_TYPE_INCELL_STRUCT {
@@ -501,7 +519,7 @@ func (sp *sheetParser) parseStructField(field *Field, msg protoreflect.Message, 
 			// If s does not contain sep and sep is not empty, Split returns a
 			// slice of length 1 whose only element is s.
 			splits := strings.Split(cell.Data, field.opts.Sep)
-			subMd := newValue.Message().Descriptor()
+			subMd := structValue.Message().Descriptor()
 			for i := 0; i < subMd.Fields().Len() && i < len(splits); i++ {
 				fd := subMd.Fields().Get(i)
 				// atom.Log.Debugf("fd.FullName().Name(): ", fd.FullName().Name())
@@ -510,40 +528,49 @@ func (sp *sheetParser) parseStructField(field *Field, msg protoreflect.Message, 
 				if err != nil {
 					return errors.WithMessagef(err, "%s|incell struct: failed to parse field value: %s", rc.CellDebugString(colName), incell)
 				}
-				newValue.Message().Set(fd, value)
+				structValue.Message().Set(fd, value)
 			}
 		}
 	} else {
-		// built-in struct
 		subMsgName := string(field.fd.Message().FullName())
 		_, found := specialMessageMap[subMsgName]
 		if found {
+			// built-in struct
 			cell := rc.Cell(colName, field.opts.Optional)
 			if cell == nil {
-				return errors.Errorf("%s|builtin type: column not found", rc.CellDebugString(colName))
+				return errors.Errorf("%s|built-in type: column not found", rc.CellDebugString(colName))
 			}
-			newValue, err = sp.parseFieldValue(field.fd, cell.Data)
+			structValue, err = sp.parseFieldValue(field.fd, cell.Data)
 			if err != nil {
-				return errors.WithMessagef(err, "%s|builtin type: failed to parse field value: %s", rc.CellDebugString(colName), cell.Data)
+				return errors.WithMessagef(err, "%s|built-in type: failed to parse field value: %s", rc.CellDebugString(colName), cell.Data)
 			}
 		} else {
-			pkgName := newValue.Message().Descriptor().ParentFile().Package()
+			pkgName := structValue.Message().Descriptor().ParentFile().Package()
 			if string(pkgName) != sp.ProtoPackage {
-				return errors.Errorf("%s|builtin type: unknown message %v in package %s", rc.CellDebugString(colName), subMsgName, pkgName)
+				return errors.Errorf("%s|struct: unknown message %v in package %s", rc.CellDebugString(colName), subMsgName, pkgName)
 			}
-			err = sp.parseFieldOptions(newValue.Message(), rc, depth+1, prefix+field.opts.Name)
+			err = sp.parseFieldOptions(structValue.Message(), rc, depth+1, prefix+field.opts.Name)
 			if err != nil {
-				return errors.WithMessagef(err, "%s|builtin type: failed to parse field options with prefix: %s", rc.CellDebugString(colName), prefix+field.opts.Name)
+				return errors.WithMessagef(err, "%s|struct: failed to parse field options with prefix: %s", rc.CellDebugString(colName), prefix+field.opts.Name)
 			}
 		}
 	}
-	if !MessageValueEqual(emptyValue, newValue) {
-		msg.Set(field.fd, newValue)
+
+	emptyValue := msg.NewField(field.fd)
+	if !MessageValueEqual(emptyValue, structValue) {
+		// only set field if it is not empty
+		msg.Set(field.fd, structValue)
 	}
 	return nil
 }
 
 func (sp *sheetParser) parseEnumField(field *Field, msg protoreflect.Message, rc *excel.RowCells, depth int, prefix string) (err error) {
+	if msg.Has(field.fd) {
+		// Only parse field if it is not already present. This means the first not
+		// empty related row part (related to enum) is parsed.
+		return nil
+	}
+
 	newValue := msg.NewField(field.fd)
 	colName := prefix + field.opts.Name
 	cell := rc.Cell(colName, field.opts.Optional)
@@ -596,6 +623,12 @@ func (sp *sheetParser) parseEnumField(field *Field, msg protoreflect.Message, rc
 }
 
 func (sp *sheetParser) parseScalarField(field *Field, msg protoreflect.Message, rc *excel.RowCells, depth int, prefix string) (err error) {
+	if msg.Has(field.fd) {
+		// Only parse field if it is not already present. This means the first not
+		// empty related row part (related to scalar) is parsed.
+		return nil
+	}
+
 	newValue := msg.NewField(field.fd)
 	colName := prefix + field.opts.Name
 	cell := rc.Cell(colName, field.opts.Optional)
