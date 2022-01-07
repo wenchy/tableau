@@ -4,6 +4,7 @@ package mexporter
 
 import (
 	"io/ioutil"
+	"path/filepath"
 
 	"github.com/Wenchy/tableau/options"
 	"github.com/iancoleman/strcase"
@@ -61,7 +62,7 @@ func (x *messageExporter) Export() error {
 		return errors.Errorf("unknown output format: %v", x.outputOpt.Format)
 	}
 
-	fpath := x.outputDir + filename
+	fpath := filepath.Join(x.outputDir, filename)
 	err = ioutil.WriteFile(fpath, out, 0644)
 	if err != nil {
 		return errors.Wrapf(err, "failed to write file: %s", fpath)

@@ -88,7 +88,7 @@ func Xml2Conf(protoPackage, indir, outdir string, setters ...options.Option) {
 	g := confgen.Generator{
 		ProtoPackage: protoPackage,
 		LocationName: opts.LocationName,
-		InputDir:     indir,
+		InputDir:     filepath.Join(indir, ".xml2xlsx"),
 		OutputDir:    outdir,
 		Output:       opts.Output,
 	}

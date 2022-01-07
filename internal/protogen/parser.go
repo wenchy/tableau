@@ -443,8 +443,8 @@ func (p *bookParser) parseStructField(field *tableaupb.Field, header *sheetHeade
 		field.Type, field.TypeDefined = p.parseType(elemType)
 		field.Name = strcase.ToSnake(field.Type)
 		// index := len(field.Type)
-		// structName := trimmedNameCell[:index]
-		structName := field.Type
+		index := strings.Index(trimmedNameCell, field.Type) + len(field.Type)
+		structName := trimmedNameCell[:index]
 		field.Options = &tableaupb.FieldOptions{
 			Name: structName,
 		}
@@ -561,7 +561,7 @@ func (gen *XmlGenerator) parseXml(nav *xmlquery.NodeNavigator, metaSheet *xlsxge
 		default:
 			attrName := attr.Name.Local
 			attrValue := attr.Value
-			t, d := gen.guessType(attrValue)
+			t, d := guessType(attrValue)
 			colName := prefix + attrName
 			if defineDefault {
 				metaSheet.SetDefaultValue(colName, attrValue)
@@ -583,7 +583,7 @@ func (gen *XmlGenerator) parseXml(nav *xmlquery.NodeNavigator, metaSheet *xlsxge
 				} else {
 					metaSheet.SetColType(colName, fmt.Sprintf("{%s}%s", nav.LocalName(), t))
 				}
-			} else if metaSheet.Cell(int(metaSheet.Typerow)-1, colName).Data == "" {
+			} else if typ := metaSheet.GetColType(colName); prior(t, typ) {
 				metaSheet.SetColType(colName, t)
 			}
 		}
@@ -611,7 +611,7 @@ func (gen *XmlGenerator) parseXml(nav *xmlquery.NodeNavigator, metaSheet *xlsxge
 	return nil
 }
 
-func (gen *XmlGenerator) guessType(value string) (string, string) {
+func guessType(value string) (string, string) {
 	var t, d string
 	if _, err := strconv.Atoi(value); err == nil {
 		t, d = "int32", "0"
@@ -621,4 +621,17 @@ func (gen *XmlGenerator) guessType(value string) (string, string) {
 		t, d = "string", ""
 	}
 	return t, d
+}
+
+func prior(t1, t2 string) bool {
+	if t1 == "int32" && t2 == "" {
+		return true
+	}
+	if t1 == "int64" && (t2 == "" || t2 == "int32") {
+		return true
+	}
+	if t1 == "string" && (t2 == "" || t2 == "int32" || t2 == "int64") {
+		return true
+	}
+	return false
 }

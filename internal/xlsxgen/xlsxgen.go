@@ -102,6 +102,10 @@ func (sheet *MetaSheet) SetColType(col, typ string) {
 	sheet.Cell(int(sheet.Typerow-1), col).Data = typ
 }
 
+func (sheet *MetaSheet) GetColType(col string) string {
+	return sheet.Cell(int(sheet.Typerow-1), col).Data
+}
+
 func (sheet *MetaSheet) SetColNote(col, note string) {
 	sheet.Cell(int(sheet.Noterow-1), col).Data = note
 }
