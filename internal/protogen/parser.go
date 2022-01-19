@@ -2,7 +2,6 @@ package protogen
 
 import (
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/Wenchy/tableau/internal/atom"
@@ -16,18 +15,6 @@ const (
 	timestampProtoPath = "google/protobuf/timestamp.proto"
 	durationProtoPath  = "google/protobuf/duration.proto"
 )
-
-var mapRegexp *regexp.Regexp
-var listRegexp *regexp.Regexp
-var structRegexp *regexp.Regexp
-var enumRegexp *regexp.Regexp
-
-func init() {
-	mapRegexp = regexp.MustCompile(`^map<(.+),(.+)>`)  // e.g.: map<uint32,Type>
-	listRegexp = regexp.MustCompile(`^\[(.*)\](.+)`)   // e.g.: [Type]uint32
-	structRegexp = regexp.MustCompile(`^\{(.+)\}(.+)`) // e.g.: {Type}uint32
-	enumRegexp = regexp.MustCompile(`^enum<(.+)>`)     // e.g.: enum<Type>
-}
 
 type bookParser struct {
 	wb       *tableaupb.Workbook
@@ -81,11 +68,11 @@ func (p *bookParser) parseField(field *tableaupb.Field, header *sheetHeader, cur
 	}
 	trimmedNameCell := strings.TrimPrefix(nameCell, prefix)
 
-	if matches := mapRegexp.FindStringSubmatch(typeCell); len(matches) > 0 {
+	if matches := types.MatchMap(typeCell); len(matches) > 0 {
 		cursor = p.parseMapField(field, header, cursor, prefix, nested)
-	} else if matches := listRegexp.FindStringSubmatch(typeCell); len(matches) > 0 {
+	} else if matches := types.MatchList(typeCell); len(matches) > 0 {
 		cursor = p.parseListField(field, header, cursor, prefix, nested)
-	} else if matches := structRegexp.FindStringSubmatch(typeCell); len(matches) > 0 {
+	} else if matches := types.MatchStruct(typeCell); len(matches) > 0 {
 		cursor = p.parseStructField(field, header, cursor, prefix, nested)
 	} else {
 		// scalar
@@ -118,7 +105,7 @@ func (p *bookParser) parseMapField(field *tableaupb.Field, header *sheetHeader, 
 	noteCell := header.getNoteCell(cursor)
 
 	// map syntax pattern
-	matches := mapRegexp.FindStringSubmatch(typeCell)
+	matches := types.MatchMap(typeCell)
 	keyType := strings.TrimSpace(matches[1])
 	valueType := strings.TrimSpace(matches[2])
 	parsedValueType, _ := p.parseType(valueType)
@@ -142,7 +129,7 @@ func (p *bookParser) parseMapField(field *tableaupb.Field, header *sheetHeader, 
 			trimmedNextNameCell := strings.TrimPrefix(nextNameCell, prefix)
 			if index2 := strings.Index(trimmedNextNameCell, "2"); index2 > 0 {
 				nextTypeCell := header.getTypeCell(cursor + 1)
-				if matches := mapRegexp.FindStringSubmatch(nextTypeCell); len(matches) > 0 {
+				if matches := types.MatchMap(nextTypeCell); len(matches) > 0 {
 					// The next type cell is also a map type declaration.
 					if isScalarType {
 						layout = tableaupb.Layout_LAYOUT_DEFAULT // incell map
@@ -248,7 +235,7 @@ func (p *bookParser) parseListField(field *tableaupb.Field, header *sheetHeader,
 	trimmedNameCell := strings.TrimPrefix(nameCell, prefix)
 
 	// list syntax pattern
-	matches := listRegexp.FindStringSubmatch(typeCell)
+	matches := types.MatchList(typeCell)
 	colType := strings.TrimSpace(matches[2])
 	var isScalarType bool
 	elemType := strings.TrimSpace(matches[1])
@@ -274,7 +261,7 @@ func (p *bookParser) parseListField(field *tableaupb.Field, header *sheetHeader,
 			trimmedNextNameCell := strings.TrimPrefix(nextNameCell, prefix)
 			if index2 := strings.Index(trimmedNextNameCell, "2"); index2 > 0 {
 				nextTypeCell := header.getTypeCell(cursor + 1)
-				if matches := listRegexp.FindStringSubmatch(nextTypeCell); len(matches) > 0 {
+				if matches := types.MatchList(nextTypeCell); len(matches) > 0 {
 					// The next type cell is also a list type declaration.
 					if isScalarType {
 						layout = tableaupb.Layout_LAYOUT_DEFAULT // incell list
@@ -384,7 +371,7 @@ func (p *bookParser) parseStructField(field *tableaupb.Field, header *sheetHeade
 	trimmedNameCell := strings.TrimPrefix(nameCell, prefix)
 
 	// struct syntax pattern
-	matches := structRegexp.FindStringSubmatch(typeCell)
+	matches := types.MatchStruct(typeCell)
 	elemType := strings.TrimSpace(matches[1])
 	colType := strings.TrimSpace(matches[2])
 
@@ -432,7 +419,7 @@ func (p *bookParser) parseStructField(field *tableaupb.Field, header *sheetHeade
 
 func (p *bookParser) parseScalarField(name, typ, note string) *tableaupb.Field {
 	// enum syntax pattern
-	if matches := enumRegexp.FindStringSubmatch(typ); len(matches) > 0 {
+	if matches := types.MatchEnum(typ); len(matches) > 0 {
 		enumType := strings.TrimSpace(matches[1])
 		typ = enumType
 	}

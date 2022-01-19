@@ -1,5 +1,34 @@
 package types
 
+import "regexp"
+
+var mapRegexp *regexp.Regexp
+var listRegexp *regexp.Regexp
+var structRegexp *regexp.Regexp
+var enumRegexp *regexp.Regexp
+
+func init() {
+	mapRegexp = regexp.MustCompile(`^map<(.+),(.+)>`)  // e.g.: map<uint32,Type>
+	listRegexp = regexp.MustCompile(`^\[(.*)\](.+)`)   // e.g.: [Type]uint32
+	structRegexp = regexp.MustCompile(`^\{(.+)\}(.+)`) // e.g.: {Type}uint32
+	enumRegexp = regexp.MustCompile(`^enum<(.+)>`)     // e.g.: enum<Type>
+}
+
+func MatchMap(text string) []string {
+	return mapRegexp.FindStringSubmatch(text)
+}
+
+func MatchList(text string) []string {
+	return listRegexp.FindStringSubmatch(text)
+}
+
+func MatchStruct(text string) []string {
+	return structRegexp.FindStringSubmatch(text)
+}
+func MatchEnum(text string) []string {
+	return enumRegexp.FindStringSubmatch(text)
+}
+
 type Kind int
 
 const (

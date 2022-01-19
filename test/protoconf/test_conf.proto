@@ -73,6 +73,19 @@ message ExchangeInfo {
   }
 }
 
+message Loader {
+  option (tableau.worksheet) = {name:"Loader" namerow:1 typerow:2 noterow:3 datarow:5 nameline:1 typeline:1 nested:true};
+
+  map<string, Server> server_map = 1 [(tableau.field) = {name:"Server" key:"Name" layout:LAYOUT_VERTICAL}];
+  message Server {
+    string name = 1 [(tableau.field) = {name:"Name"}];
+    repeated Conf conf_list = 2 [(tableau.field) = {name:"Conf" layout:LAYOUT_VERTICAL}];
+    message Conf {
+      string name = 1 [(tableau.field) = {name:"Name"}];
+    }
+  }
+}
+
 message MatchConf {
   option (tableau.worksheet) = {name:"Match" namerow:1 typerow:2 noterow:3 datarow:5 nameline:1 typeline:1 nested:true};
 

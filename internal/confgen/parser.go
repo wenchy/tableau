@@ -72,8 +72,9 @@ func (sp *sheetParser) Parse(protomsg proto.Message, sheet *excel.Sheet, wsOpts 
 		// namerow: name column
 		// [datarow, MaxCol]: data column
 		// kvRow := make(map[string]string)
+		var prev *excel.RowCells
 		for col := int(wsOpts.Datarow) - 1; col < sheet.MaxCol; col++ {
-			rc := excel.NewRowCells(col)
+			curr := excel.NewRowCells(col, prev)
 			for row := 0; row < sheet.MaxRow; row++ {
 				nameCol := int(wsOpts.Namerow) - 1
 				nameCell, err := sheet.Cell(row, nameCol)
@@ -81,22 +82,36 @@ func (sp *sheetParser) Parse(protomsg proto.Message, sheet *excel.Sheet, wsOpts 
 					return errors.WithMessagef(err, "failed to get name cell: %d, %d", row, nameCol)
 				}
 				name := excel.ExtractFromCell(nameCell, wsOpts.Nameline)
+
+				typ := ""
+				if wsOpts.Typerow > 0 {
+					// if typerow is set!
+					typeCol := int(wsOpts.Typerow) - 1
+					typeCell, err := sheet.Cell(row, typeCol)
+					if err != nil {
+						return errors.WithMessagef(err, "failed to get name cell: %d, %d", row, typeCol)
+					}
+					typ = excel.ExtractFromCell(typeCell, wsOpts.Typeline)
+				}
+
 				data, err := sheet.Cell(row, col)
 				if err != nil {
 					return errors.WithMessagef(err, "failed to get data cell: %d, %d", row, col)
 				}
-				rc.SetCell(name, row, data)
+				curr.SetCell(name, row, data, typ)
 			}
-			err := sp.parseFieldOptions(msg, rc, 0, "")
+			err := sp.parseFieldOptions(msg, curr, 0, "")
 			if err != nil {
 				return err
 			}
+			prev = curr
 		}
 	} else {
 		// namerow: name row
 		// [datarow, MaxRow]: data row
+		var prev *excel.RowCells
 		for row := int(wsOpts.Datarow) - 1; row < sheet.MaxRow; row++ {
-			rc := excel.NewRowCells(row)
+			curr := excel.NewRowCells(row, prev)
 			for col := 0; col < sheet.MaxCol; col++ {
 				nameRow := int(wsOpts.Namerow) - 1
 				nameCell, err := sheet.Cell(nameRow, col)
@@ -104,16 +119,29 @@ func (sp *sheetParser) Parse(protomsg proto.Message, sheet *excel.Sheet, wsOpts 
 					return errors.WithMessagef(err, "failed to get name cell: %d, %d", nameRow, col)
 				}
 				name := excel.ExtractFromCell(nameCell, wsOpts.Nameline)
+
+				typ := ""
+				if wsOpts.Typerow > 0 {
+					// if typerow is set!
+					typeRow := int(wsOpts.Typerow) - 1
+					typeCell, err := sheet.Cell(typeRow, col)
+					if err != nil {
+						return errors.WithMessagef(err, "failed to get type cell: %d, %d", typeRow, col)
+					}
+					typ = excel.ExtractFromCell(typeCell, wsOpts.Typeline)
+				}
+
 				data, err := sheet.Cell(row, col)
 				if err != nil {
 					return errors.WithMessagef(err, "failed to get data cell: %d, %d", row, col)
 				}
-				rc.SetCell(name, col, data)
+				curr.SetCell(name, col, data, typ)
 			}
-			err := sp.parseFieldOptions(msg, rc, 0, "")
+			err := sp.parseFieldOptions(msg, curr, 0, "")
 			if err != nil {
 				return err
 			}
+			prev = curr
 		}
 	}
 	return nil

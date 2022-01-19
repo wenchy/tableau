@@ -7,6 +7,8 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/Wenchy/tableau/internal/atom"
+	"github.com/Wenchy/tableau/internal/types"
 	"github.com/pkg/errors"
 	"github.com/xuri/excelize/v2"
 )
@@ -106,12 +108,27 @@ func parseSheet(file *excelize.File, sheetName string) (*Sheet, error) {
 }
 
 type RowCells struct {
+	// This previous row cells is for auto-populating the currernt row's missing data.
+	// As the user doesn't fill the duplicate map key for easy use and clear reading.
+	//
+	// ServerName			ServerConfName
+	// map<string, Server>	[Conf]string
+	//
+	// gamesvr				HeadFrameConf
+	// activitysvr			ActivityConf
+	// *MISSING-KEY*		ChapterConf
+	// *MISSING-KEY*		CollectionConf
+
+	prev *RowCells
+
 	Row   int                 // row number
-	cells map[string]*RowCell // name row -> data row cell
+	cells map[string]*RowCell // name -> RowCell
 }
 
-func NewRowCells(row int) *RowCells {
+func NewRowCells(row int, prev *RowCells) *RowCells {
 	return &RowCells{
+		prev: prev,
+
 		Row:   row,
 		cells: make(map[string]*RowCell),
 	}
@@ -120,6 +137,7 @@ func NewRowCells(row int) *RowCells {
 type RowCell struct {
 	Col  int    // colum number
 	Data string // cell data
+	Type string // cell type
 }
 
 func (r *RowCells) Cell(name string, optional bool) *RowCell {
@@ -142,10 +160,22 @@ func (r *RowCells) CellDebugString(name string) string {
 	return fmt.Sprintf("(%d,%d)%s:%s", r.Row+1, rc.Col+1, name, rc.Data)
 }
 
-func (r *RowCells) SetCell(name string, col int, data string) {
+func (r *RowCells) SetCell(name string, col int, data, typ string) {
 	r.cells[name] = &RowCell{
 		Col:  col,
 		Data: data,
+		Type: typ,
+	}
+
+	if data == "" {
+		if matches := types.MatchMap(typ); matches != nil && r.prev != nil {
+			// NOTE: populate the missing map key from the prev row's corresponding cell.
+			if cell := r.prev.Cell(name, false); cell != nil {
+				r.cells[name].Data = cell.Data
+			} else {
+				atom.Log.Errorf("failed to find prev cell for name: %s, row: %d", name, r.Row)
+			}
+		}
 	}
 }
 
