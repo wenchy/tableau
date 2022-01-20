@@ -4,14 +4,16 @@ import "regexp"
 
 var mapRegexp *regexp.Regexp
 var listRegexp *regexp.Regexp
+var keyedListRegexp *regexp.Regexp
 var structRegexp *regexp.Regexp
 var enumRegexp *regexp.Regexp
 
 func init() {
-	mapRegexp = regexp.MustCompile(`^map<(.+),(.+)>`)  // e.g.: map<uint32,Type>
-	listRegexp = regexp.MustCompile(`^\[(.*)\](.+)`)   // e.g.: [Type]uint32
-	structRegexp = regexp.MustCompile(`^\{(.+)\}(.+)`) // e.g.: {Type}uint32
-	enumRegexp = regexp.MustCompile(`^enum<(.+)>`)     // e.g.: enum<Type>
+	mapRegexp = regexp.MustCompile(`^map<(.+),(.+)>`)       // e.g.: map<uint32,Type>
+	listRegexp = regexp.MustCompile(`^\[(.*)\](.+)`)        // e.g.: [Type]uint32
+	keyedListRegexp = regexp.MustCompile(`^\[(.*)\]<(.+)>`) // e.g.: [Type]<uint32>
+	structRegexp = regexp.MustCompile(`^\{(.+)\}(.+)`)      // e.g.: {Type}uint32
+	enumRegexp = regexp.MustCompile(`^enum<(.+)>`)          // e.g.: enum<Type>
 }
 
 func MatchMap(text string) []string {
@@ -20,6 +22,10 @@ func MatchMap(text string) []string {
 
 func MatchList(text string) []string {
 	return listRegexp.FindStringSubmatch(text)
+}
+
+func MatchKeyedList(text string) []string {
+	return keyedListRegexp.FindStringSubmatch(text)
 }
 
 func MatchStruct(text string) []string {

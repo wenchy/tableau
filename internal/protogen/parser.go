@@ -301,6 +301,12 @@ func (p *bookParser) parseListField(field *tableaupb.Field, header *sheetHeader,
 			}
 			trimmedNameCell := strings.TrimPrefix(nameCell, prefix)
 
+			if matches := types.MatchKeyedList(typeCell); matches != nil {
+				// set column type and key if this is a keyed list.
+				colType = strings.TrimSpace(matches[2])
+				field.Options.Key = trimmedNameCell
+			}
+
 			field.Fields = append(field.Fields, p.parseScalarField(trimmedNameCell, colType, noteCell))
 			for cursor++; cursor < len(header.namerow); cursor++ {
 				if nested {

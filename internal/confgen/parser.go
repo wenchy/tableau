@@ -9,6 +9,7 @@ import (
 	"github.com/Wenchy/tableau/internal/confgen/mexporter"
 	"github.com/Wenchy/tableau/internal/excel"
 	"github.com/Wenchy/tableau/internal/printer"
+	"github.com/Wenchy/tableau/internal/types"
 	"github.com/Wenchy/tableau/options"
 	"github.com/Wenchy/tableau/proto/tableaupb"
 	"github.com/iancoleman/strcase"
@@ -348,7 +349,7 @@ func (sp *sheetParser) parseMapField(field *Field, msg protoreflect.Message, rc 
 					if err != nil {
 						return errors.WithMessagef(err, "%s|horizontal map: failed to parse field options with prefix: %s", rc.CellDebugString(keyColName), prefix+field.opts.Name+strconv.Itoa(i))
 					}
-					if !MessageValueEqual(emptyMapValue, newMapValue) {
+					if !types.EqualMessage(emptyMapValue, newMapValue) {
 						reflectMap.Set(newMapKey, newMapValue)
 					}
 				}
@@ -374,7 +375,7 @@ func (sp *sheetParser) parseMapField(field *Field, msg protoreflect.Message, rc 
 				if err != nil {
 					return errors.WithMessagef(err, "%s|vertical map: failed to parse field options with prefix: %s", rc.CellDebugString(keyColName), prefix+field.opts.Name)
 				}
-				if !MessageValueEqual(emptyMapValue, newMapValue) {
+				if !types.EqualMessage(emptyMapValue, newMapValue) {
 					reflectMap.Set(newMapKey, newMapValue)
 				}
 			}
@@ -447,15 +448,63 @@ func (sp *sheetParser) parseListField(field *Field, msg protoreflect.Message, rc
 		emptyListValue := reflectList.NewElement()
 		if field.opts.Layout == tableaupb.Layout_LAYOUT_VERTICAL {
 			// vertical list
-			newListValue := reflectList.NewElement()
 			if field.fd.Kind() == protoreflect.MessageKind {
 				// struct list
-				err = sp.parseFieldOptions(newListValue.Message(), rc, depth+1, prefix+field.opts.Name)
-				if err != nil {
-					return errors.WithMessagef(err, "...|vertical list: failed to parse field options with prefix: %s", prefix+field.opts.Name)
-				}
-				if !MessageValueEqual(emptyListValue, newListValue) {
-					reflectList.Append(newListValue)
+				if field.opts.Key != "" {
+					// KeyedList means the list is keyed by the first field with tag number 1.
+					listItemValue := reflectList.NewElement()
+					keyedListItemExisted := false
+					for i := 0; i < reflectList.Len(); i++ {
+						keyMatched := false
+						val := reflectList.Get(i)
+						val.Message().Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
+							if fd.Number() == 1 {
+								opts := fd.Options().(*descriptorpb.FieldOptions)
+								fieldOpts := proto.GetExtension(opts, tableaupb.E_Field).(*tableaupb.FieldOptions)
+								if fieldOpts == nil {
+									atom.Log.Errorf("...|vertical list: get field extension failed: %s", fd.FullName())
+									return false
+								}
+								colName := prefix + field.opts.Name + fieldOpts.Name
+								cell := rc.Cell(colName, field.opts.Optional)
+								if cell == nil {
+									atom.Log.Errorf("%s|vertical list: column not found", rc.CellDebugString(colName))
+									return false
+								}
+								key, err := sp.parseFieldValue(fd, cell.Data)
+								if err != nil {
+									atom.Log.Errorf("%s|vertical list: failed to parse field value: %s, err: %+v", rc.CellDebugString(colName), cell.Data, err)
+									return false
+								}
+								if types.EqualValue(fd, v, key) {
+									keyMatched = true
+									return false
+								}
+							}
+							return true
+						})
+						if keyMatched {
+							listItemValue = val
+							keyedListItemExisted = true
+							break
+						}
+					}
+					err = sp.parseFieldOptions(listItemValue.Message(), rc, depth+1, prefix+field.opts.Name)
+					if err != nil {
+						return errors.WithMessagef(err, "...|vertical list: failed to parse field options with prefix: %s", prefix+field.opts.Name)
+					}
+					if !keyedListItemExisted && !types.EqualMessage(emptyListValue, listItemValue) {
+						reflectList.Append(listItemValue)
+					}
+				} else {
+					newListValue := reflectList.NewElement()
+					err = sp.parseFieldOptions(newListValue.Message(), rc, depth+1, prefix+field.opts.Name)
+					if err != nil {
+						return errors.WithMessagef(err, "...|vertical list: failed to parse field options with prefix: %s", prefix+field.opts.Name)
+					}
+					if !types.EqualMessage(emptyListValue, newListValue) {
+						reflectList.Append(newListValue)
+					}
 				}
 			} else {
 				// TODO: support list of scalar type when layout is vertical?
@@ -481,7 +530,7 @@ func (sp *sheetParser) parseListField(field *Field, msg protoreflect.Message, rc
 					if err != nil {
 						return errors.WithMessagef(err, "...|horizontal list: failed to parse field options with prefix: %s", prefix+field.opts.Name+strconv.Itoa(i))
 					}
-					if !MessageValueEqual(emptyListValue, newListValue) {
+					if !types.EqualMessage(emptyListValue, newListValue) {
 						reflectList.Append(newListValue)
 					}
 				} else {
@@ -585,7 +634,7 @@ func (sp *sheetParser) parseStructField(field *Field, msg protoreflect.Message, 
 	}
 
 	emptyValue := msg.NewField(field.fd)
-	if !MessageValueEqual(emptyValue, structValue) {
+	if !types.EqualMessage(emptyValue, structValue) {
 		// only set field if it is not empty
 		msg.Set(field.fd, structValue)
 	}
@@ -652,8 +701,8 @@ func (sp *sheetParser) parseEnumField(field *Field, msg protoreflect.Message, rc
 
 func (sp *sheetParser) parseScalarField(field *Field, msg protoreflect.Message, rc *excel.RowCells, depth int, prefix string) (err error) {
 	if msg.Has(field.fd) {
-		// Only parse field if it is not already present. This means the first not
-		// empty related row part (related to scalar) is parsed.
+		// Only parse field if it is not already present. This means the first
+		// none-empty related row part (related to scalar) is parsed.
 		return nil
 	}
 
@@ -832,12 +881,4 @@ func parseDuration(duration string) (time.Duration, error) {
 	}
 
 	return time.ParseDuration(duration)
-}
-
-func MessageValueEqual(v1, v2 protoreflect.Value) bool {
-	if proto.Equal(v1.Message().Interface(), v2.Message().Interface()) {
-		// atom.Log.Debug("empty message exists")
-		return true
-	}
-	return false
 }

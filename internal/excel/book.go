@@ -135,9 +135,10 @@ func NewRowCells(row int, prev *RowCells) *RowCells {
 }
 
 type RowCell struct {
-	Col  int    // colum number
-	Data string // cell data
-	Type string // cell type
+	Col           int    // colum number
+	Data          string // cell data
+	Type          string // cell type
+	autoPopulated bool   // auto-populated
 }
 
 func (r *RowCells) Cell(name string, optional bool) *RowCell {
@@ -157,7 +158,11 @@ func (r *RowCells) CellDebugString(name string) string {
 	if rc == nil {
 		return fmt.Sprintf("(%d,%d)%s:%s", r.Row+1, -1, name, "")
 	}
-	return fmt.Sprintf("(%d,%d)%s:%s", r.Row+1, rc.Col+1, name, rc.Data)
+	dataFlag := ""
+	if rc.autoPopulated {
+		dataFlag = "~"
+	}
+	return fmt.Sprintf("(%d,%d)%s:%s%s", r.Row+1, rc.Col+1, name, rc.Data, dataFlag)
 }
 
 func (r *RowCells) SetCell(name string, col int, data, typ string) {
@@ -168,10 +173,11 @@ func (r *RowCells) SetCell(name string, col int, data, typ string) {
 	}
 
 	if data == "" {
-		if matches := types.MatchMap(typ); matches != nil && r.prev != nil {
+		if (types.MatchMap(typ) != nil || types.MatchKeyedList(typ) != nil) && r.prev != nil {
 			// NOTE: populate the missing map key from the prev row's corresponding cell.
 			if cell := r.prev.Cell(name, false); cell != nil {
 				r.cells[name].Data = cell.Data
+				r.cells[name].autoPopulated = true
 			} else {
 				atom.Log.Errorf("failed to find prev cell for name: %s, row: %d", name, r.Row)
 			}
