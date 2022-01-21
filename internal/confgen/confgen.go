@@ -30,56 +30,90 @@ var specialMessageMap = map[string]int{
 	"google.protobuf.Duration":  1,
 }
 
-func (gen *Generator) Generate() (err error) {
+func (gen *Generator) Generate(relWorkbookPath string, worksheetName string) (err error) {
+	if relWorkbookPath != "" {
+		relCleanSlashPath := filepath.ToSlash(filepath.Clean(relWorkbookPath))
+		if err != nil {
+			return errors.Wrapf(err, "failed to get relative path from %s to %s", gen.InputDir, relWorkbookPath)
+		}
+		atom.Log.Debugf("relWorkbookPath: %s -> %s", relWorkbookPath, relCleanSlashPath)
+		relWorkbookPath = relCleanSlashPath
+	}
+
 	// create output dir
 	err = os.MkdirAll(gen.OutputDir, 0700)
 	if err != nil {
 		return errors.WithMessagef(err, "failed to create output dir: %s", gen.OutputDir)
 	}
 
+	workbookFound := false
+	worksheetFound := false
+
 	protoregistry.GlobalFiles.RangeFilesByPackage(
 		protoreflect.FullName(gen.ProtoPackage),
 		func(fd protoreflect.FileDescriptor) bool {
 			// atom.Log.Debugf("filepath: %s", fd.Path())
-			opts := fd.Options().(*descriptorpb.FileOptions)
-			workbook := proto.GetExtension(opts, tableaupb.E_Workbook).(*tableaupb.WorkbookOptions)
-			if workbook == nil {
-				return true
-			}
-			var sheets []string
-			sheetMap := map[string]string{} // sheet name -> message name
-			msgs := fd.Messages()
-			for i := 0; i < msgs.Len(); i++ {
-				md := msgs.Get(i)
-				opts := md.Options().(*descriptorpb.MessageOptions)
-				worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(*tableaupb.WorksheetOptions)
-				if worksheet != nil {
-					sheetMap[worksheet.Name] = string(md.Name())
-					sheets = append(sheets, worksheet.Name)
+			err = func() error {
+				opts := fd.Options().(*descriptorpb.FileOptions)
+				workbook := proto.GetExtension(opts, tableaupb.E_Workbook).(*tableaupb.WorkbookOptions)
+				if workbook == nil {
+					return nil
 				}
-			}
-			var book *excel.Book
-			wbPath := filepath.Join(gen.InputDir, workbook.Name)
-			book, err = excel.NewBook(wbPath, sheets)
-			if err != nil {
-				atom.Log.Errorf("failed to create new workbook: %s", wbPath)
-				return false
-			}
-			// atom.Log.Debugf("proto: %s, workbook %s", fd.Path(), workbook)
-			for sheetName, msgName := range sheetMap {
-				md := msgs.ByName(protoreflect.Name(msgName))
-				// atom.Log.Debugf("%s", md.FullName())
-				atom.Log.Infof("generate: %s#%s <-> %s#%s", fd.Path(), md.Name(), workbook.Name, sheetName)
-				newMsg := dynamicpb.NewMessage(md)
-				parser := NewSheetParser(gen.ProtoPackage, gen.LocationName)
-				exporter := NewSheetExporter(gen.OutputDir, gen.Output)
-				err = exporter.Export(book, parser, newMsg)
+				if relWorkbookPath != "" && relWorkbookPath != workbook.Name {
+					return nil
+				}
+				workbookFound = true
+
+				var sheets []string
+				sheetMap := map[string]string{} // sheet name -> message name
+				msgs := fd.Messages()
+				for i := 0; i < msgs.Len(); i++ {
+					md := msgs.Get(i)
+					opts := md.Options().(*descriptorpb.MessageOptions)
+					worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(*tableaupb.WorksheetOptions)
+					if worksheet != nil {
+						sheetMap[worksheet.Name] = string(md.Name())
+						sheets = append(sheets, worksheet.Name)
+					}
+				}
+				wbPath := filepath.Join(gen.InputDir, workbook.Name)
+				book, err := excel.NewBook(wbPath, sheets)
 				if err != nil {
-					// Due to closure, this err will be returned by func Generate().
-					return false
+					return errors.Errorf("failed to create new workbook: %s", wbPath)
 				}
-			}
-			return true
+				// atom.Log.Debugf("proto: %s, workbook %s", fd.Path(), workbook)
+				for sheetName, msgName := range sheetMap {
+					if worksheetName != "" && worksheetName != sheetName {
+						continue
+					}
+					worksheetFound = true
+
+					md := msgs.ByName(protoreflect.Name(msgName))
+					// atom.Log.Debugf("%s", md.FullName())
+					atom.Log.Infof("generate: %s#%s <-> %s#%s", fd.Path(), md.Name(), workbook.Name, sheetName)
+					newMsg := dynamicpb.NewMessage(md)
+					parser := NewSheetParser(gen.ProtoPackage, gen.LocationName)
+					exporter := NewSheetExporter(gen.OutputDir, gen.Output)
+					err := exporter.Export(book, parser, newMsg)
+					if err != nil {
+						return err
+					}
+				}
+				return nil
+			}()
+
+			// Due to closure, this err will be returned by func Generate().
+			return err == nil
 		})
-	return err
+
+	if err != nil {
+		return err
+	}
+	if !workbookFound {
+		return errors.Errorf("workbook not found: %s", relWorkbookPath)
+	}
+	if !worksheetFound {
+		return errors.Errorf("worksheet not found: %s", worksheetName)
+	}
+	return nil
 }

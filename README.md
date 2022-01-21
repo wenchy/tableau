@@ -1,13 +1,16 @@
 # Tableau
+
 A powerful configuration conversion tool based on Protobuf(proto3).
 
 ## Features
+
 - Convert **xlsx** to **JSON**, JSON is the first-class citizen of exporting targets.
 - Use **protobuf** as the IDL(Interface Description Language) to define the structure of **xlsx**.
 - Use **golang** to develop the conversion engine.
 - Support multiple programming languages, thanks to **protobuf**.
 
 ## Concepts
+
 - Importer: xlsx/xml importer.
 - IR: Intermediate Representation.
 - Filter: filter the IR.
@@ -15,9 +18,11 @@ A powerful configuration conversion tool based on Protobuf(proto3).
 - Protoconf: a configuration metadata format based on protobuf.
 
 ## Workflow
+
 xlsx -> Importer -> Protoconf -> Exporter -> JSON/protowire/prototext
 
 ## Types
+
 - Scalar
 - Message(struct)
 - List
@@ -28,6 +33,7 @@ xlsx -> Importer -> Protoconf -> Exporter -> JSON/protowire/prototext
 ## TODO
 
 ### protoc plugins
+
 - [ ] Golang
 - [ ] C++
 - [ ] C#/.NET
@@ -37,6 +43,7 @@ xlsx -> Importer -> Protoconf -> Exporter -> JSON/protowire/prototext
 - [ ] Java
 
 ### Metadata
+
 - [ ] metatable: a message to describe the worksheet's metadata.
 - [ ] metafield: a message to describe the caption's metadata.
 - [x] captrow: caption row, the exact row number of captions at worksheet. **Newline** in caption is allowed for more readability, and will be trimmed in conversion. 
@@ -56,10 +63,12 @@ xlsx -> Importer -> Protoconf -> Exporter -> JSON/protowire/prototext
 > [Mac OS X](https://www.oreilly.com/library/view/mac-os-x/0596004605/ch01s06.html)
 
 ### Generator
+
 - [x] generate protoconf by xlsx(header): **xlsx -> protoconf**
 - [ ] generate xlsx(header) by protoconf: **protoconf -> xlsx**
 
 ### Conversion
+
 - [x] xlsx -> JSON(default format and human readable)
 - [x] xlsx -> protowire(small size)
 - [x] xlsx -> prototext(human debugging)
@@ -68,15 +77,18 @@ xlsx -> Importer -> Protoconf -> Exporter -> JSON/protowire/prototext
 - [ ] prototext -> xlsx
 
 ### Pretty Print
+
 - [x] Multiline: every textual element on a new line
 - [x] Indent: 4 space characters
 - [x] JSON support
 - [x] prototext support
 
 ### EmitUnpopulated
+
 - [x] JSON: `EmitUnpopulated` specifies whether to emit unpopulated fields.
 
 ### Scalar Types
+
 - [x] interger: int32, uint32, int64 and uint64
 - [x] float: float and double
 - [x] bool
@@ -85,6 +97,7 @@ xlsx -> Importer -> Protoconf -> Exporter -> JSON/protowire/prototext
 - [x] datetime, date, time, duration 
 
 ### Enumerations
+
 - [x] enum: The Parser accepts three enum value forms: 
   - enum value number
   - enum value name
@@ -92,11 +105,13 @@ xlsx -> Importer -> Protoconf -> Exporter -> JSON/protowire/prototext
 - [x] enum: validate the enum value.
 
 ### Composite Types
+
 - [x] message: horizontal(row direction) layout, fields located in cells.
 - [x] message: simple in-cell message, each field must be **scalar** type. It is a comma-separated list of fields. E.g.: `1,test,3.0`. List's size need not to be equal to fields' size, as fields will be filled in order. Fields not configured will be filled default values due to its scalar type.
 - [x] list: horizontal(row direction) layout, which is list's default layout, and each item can be **message** or **scalar**.
 - [x] list: vertical(column direction) layout. and each item should be **message**.
 - [x] list: simple in-cell list, element must be **scalar** type. It is a comma-separated list of elements. E.g.: `1,2,3`. 
+- [x] list: keyed list, auto aggregate the struct with the same key field.
 - [x] list: scalable or dynamic list size.
 - [x] list: smart recognition of empty element at any position.
 - [x] map: horizontal(row direction) layout.
@@ -110,6 +125,7 @@ xlsx -> Importer -> Protoconf -> Exporter -> JSON/protowire/prototext
 - [ ] nesting: the composite type's first element can be composite type.
 
 ### Default Values
+
 Each scalar type's default value is same as protobuf.
 
 - [x] interger: `0` 
@@ -123,6 +139,7 @@ Each scalar type's default value is same as protobuf.
 - [x] message: all fields have default values
 
 ### Empty
+
 - [x] scalar: default value same as protobuf.
 - [x] message: empty message will not be spawned if all fields are empty.
 - [x] list: empty list will not be spawned if list's size is 0.
@@ -132,10 +149,12 @@ Each scalar type's default value is same as protobuf.
 - [x] nesting: recursively empty.
 
 ### Merge
+
 - [ ] merge multiple workbooks
 - [ ] merge multiple worksheets
 
-### Workbook meta 
+### Workbook meta
+
 workbook meta sheet **@TABLEAU**:
 - specify which sheets to be parsed
 - specify parser options for each sheet
@@ -145,6 +164,7 @@ workbook meta sheet **@TABLEAU**:
 | Sheet1 | ExchangeInfo | 2        | 2        |
 
 ### Datetime
+
 > [Understanding about RFC 3339 for Datetime and Timezone Formatting in Software Engineering](https://medium.com/easyread/understanding-about-rfc-3339-for-datetime-formatting-in-software-engineering-940aa5d5f68a)
 > ```
 > # This is acceptable in ISO 8601 and RFC 3339 (with T)
@@ -167,9 +187,11 @@ Use [RFC 3339](https://tools.ietf.org/html/rfc3339) , which is following [ISO 86
 - [x] Duration: excel format: `form "72h3m0.5s"`, see [golang duration string form](https://golang.org/pkg/time/#Duration.String)
   
 ### Transpose
+
 - [x] Interchange the rows and columns of a worksheet.
 
 ### Validation
+
 - [ ] Min
 - [ ] Max
 - [ ] Range
@@ -177,15 +199,18 @@ Use [RFC 3339](https://tools.ietf.org/html/rfc3339) , which is following [ISO 86
 - [ ] Foreign key
 
 ### Error Message
+
 - [ ] Report clear and precise error messages when converter failed, please refer to the programming language compiler
 - [ ] Use golang template to define error message template
 - [ ] Multiple languages support, focused on English and Simplified Chinese
 
 ### Performace
+
 - [ ] Stress test
 - [ ] Each goroutine process one worksheet
 - [ ] Mutiple process model
 
 ### Optimization
+
 - [ ] Error: [https://github.com/pkg/errors](https://github.com/pkg/errors)
 - [ ] Log: [https://github.com/uber-go/zap](https://github.com/uber-go/zap)

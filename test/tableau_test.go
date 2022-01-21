@@ -37,7 +37,7 @@ func Test_Xlsx2Proto(t *testing.T) {
 		),
 		options.Output(
 			&options.OutputOption{
-				FilenameSuffix: "_conf",
+				FilenameSuffix:           "_conf",
 				FilenameWithSubdirPrefix: true,
 			},
 		),
@@ -52,5 +52,17 @@ func Test_Xlsx2JSON(t *testing.T) {
 		"./_output/json/",
 		options.LogLevel("debug"),
 	)
-	// tableau.Generate("test", "./testdata/", "./_output/xlsx/")
+}
+
+func Test_Xlsx2JSON_Select(t *testing.T) {
+	tableau.Xlsx2Conf(
+		"test",
+		"./testdata/",
+		"./_output/json/",
+		options.LogLevel("debug"),
+		// options.Workbook("hero/Test.xlsx"),
+		// options.Workbook("./hero/Test.xlsx"),
+		options.Workbook(".\\hero\\Test.xlsx"),
+		options.Worksheet("Hero"),
+	)
 }

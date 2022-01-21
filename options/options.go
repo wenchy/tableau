@@ -17,6 +17,8 @@ type Options struct {
 	Header       *HeaderOption // header rows of excel file.
 	Output       *OutputOption // output settings.
 	Imports      []string      // imported common proto file paths
+	Workbook     string        // workbook path or name
+	Worksheet    string        // worksheet name
 }
 
 type HeaderOption struct {
@@ -88,6 +90,17 @@ func Imports(imports []string) Option {
 	}
 }
 
+func Workbook(wb string) Option {
+	return func(opts *Options) {
+		opts.Workbook = wb
+	}
+}
+
+func Worksheet(ws string) Option {
+	return func(opts *Options) {
+		opts.Worksheet = ws
+	}
+}
 func newDefaultOptions() *Options {
 	return &Options{
 		LocationName: "Asia/Shanghai",

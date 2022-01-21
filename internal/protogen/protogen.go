@@ -83,16 +83,19 @@ func (gen *Generator) generate(dir string) error {
 	return nil
 }
 
-func getRelativePath(rootdir, dir, filename string) (string, error) {
+func getRelCleanSlashPath(rootdir, dir, filename string) (string, error) {
 	relativeDir, err := filepath.Rel(rootdir, dir)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to get relative path from %s to %s", rootdir, dir)
 	}
-	return filepath.Join(relativeDir, filename), nil
+	// relative slash separated path
+	relativePath := filepath.Join(relativeDir, filename)
+	relSlashPath := filepath.ToSlash(filepath.Clean(relativePath))
+	return relSlashPath, nil
 }
 
 func (gen *Generator) convertWorkbook(dir, filename string) error {
-	relativePath, err := getRelativePath(gen.InputDir, dir, filename)
+	relativePath, err := getRelCleanSlashPath(gen.InputDir, dir, filename)
 	if err != nil {
 		return errors.WithMessagef(err, "get relative path failed")
 	}
