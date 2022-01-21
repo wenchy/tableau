@@ -2,9 +2,11 @@ package tableau
 
 import (
 	"os"
+	"path/filepath"
 
 	"github.com/Wenchy/tableau/internal/atom"
 	"github.com/Wenchy/tableau/internal/confgen"
+	"github.com/Wenchy/tableau/internal/excel"
 	"github.com/Wenchy/tableau/internal/protogen"
 	"github.com/Wenchy/tableau/internal/xlsxgen"
 	"github.com/Wenchy/tableau/options"
@@ -61,4 +63,12 @@ func Proto2Xlsx(protoPackage, indir, outdir string) {
 		OutputDir:    outdir,
 	}
 	g.Generate()
+}
+
+// ParseMeta parses the @TABLEAU sheet in a workboot.
+func ParseMeta(indir, relWorkbookPath string) (*excel.BookExt, error) {
+	return excel.NewBookExt(
+		filepath.Join(indir, relWorkbookPath),
+		confgen.NewSheetParser(protogen.TableauProtoPackage, ""),
+	)
 }

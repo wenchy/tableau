@@ -19,7 +19,7 @@ import (
 const (
 	app                 = "tableauc"
 	version             = "0.1.1"
-	tableauProtoPackage = "tableau"
+	TableauProtoPackage = "tableau"
 )
 
 type Generator struct {
@@ -99,7 +99,7 @@ func (gen *Generator) convertWorkbook(dir, filename string) error {
 	if err != nil {
 		return errors.WithMessagef(err, "get relative path failed")
 	}
-	book, err := excel.NewBookExt(filepath.Join(dir, filename), confgen.NewSheetParser(tableauProtoPackage, gen.LocationName))
+	book, err := excel.NewBookExt(filepath.Join(dir, filename), confgen.NewSheetParser(TableauProtoPackage, gen.LocationName))
 	if err != nil {
 		return errors.Wrapf(err, "failed to create new workbook: %s", relativePath)
 	}
