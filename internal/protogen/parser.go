@@ -526,65 +526,82 @@ func ParseIncellStruct(elemType string) []string {
 	return fieldPairs
 }
 
+// TODO(shannonzhu):
+// 1. FeatureToggle下多次出现META导致list类型被覆盖为普通类型
+// 2. 自动检测@TYPE="repeated"
 func (gen *XmlGenerator) parseXml(nav *xmlquery.NodeNavigator, metaSheet *xlsxgen.MetaSheet, cursor int) error {
 	// preprocess
-	prefix, navCopy, defineStruct, defineDefault, realParent := nav.LocalName(), *nav, false, false, nav.Current().Parent
+	prefix, navCopy, defineType, defineDefault, realParent := nav.LocalName(), *nav, false, false, nav.Current().Parent
+	// skip `TABLEAU` to find real parent
 	for flag := navCopy.MoveToParent(); flag && navCopy.LocalName() != metaSheet.Worksheet; flag = navCopy.MoveToParent() {
-		if navCopy.LocalName() == "StructFormatSupplement" || navCopy.LocalName() == "StructSupplement" {
-			defineStruct = true
-			if navCopy.LocalName() == "StructSupplement" {
-				defineDefault = true
-			}
-			if navCopy.Current() == nav.Current().Parent {
-				realParent = navCopy.Current().Parent
-			}
-			continue
+		if navCopy.LocalName() == "META" {
+			defineType = true
+		} else if navCopy.LocalName() == "DEFAULT" {
+			defineDefault = true
+		} else if navCopy.LocalName() != "TABLEAU" {
+			// skip `TABLEAU` `META` `DEFAULT`
+			prefix = strcase.ToCamel(navCopy.LocalName()) + prefix
 		}
-		prefix = navCopy.LocalName() + prefix
+		if navCopy.Current().Parent != nil && (navCopy.Current().Parent.Data == "META" || navCopy.Current().Parent.Data == "DEFAULT") {
+			realParent = navCopy.Current().Parent.Parent.Parent
+		}
 	}
-	repeated := len(xmlquery.Find(realParent, nav.LocalName())) > 1
 	keyCol := xmlquery.FindOne(realParent, "@KeyCol")
-	needType := xmlquery.Find(nav.Current().Parent, "/StructFormatSupplement") == nil && xmlquery.FindOne(nav.Current().Parent, "/StructSupplement") == nil
+	typeAttr := xmlquery.FindOne(nav.Current(), "@TYPE")
+	repeated := len(xmlquery.Find(realParent, nav.LocalName())) > 1 || (typeAttr != nil && typeAttr.InnerText() == "repeated")
 
-	// iterate over attributes
-	for i, attr := range nav.Current().Attr {
-		switch strings.ToLower(attr.Name.Local) {
-		case "keycol":
-			tagName := strings.Split(attr.Value, ".")[0]
-			attrName := strings.Split(attr.Value, ".")[1]
-			keyNode := xmlquery.FindOne(nav.Current(), fmt.Sprintf("/%s/@%s", tagName, attrName))
-			if keyNode == nil {
-				atom.Log.Panicf("KeyCol:%s not found in the immediately following nodes of %s", attr.Value, nav.LocalName())
-				continue
+	if nav.LocalName() != metaSheet.Worksheet {
+		// iterate over attributes
+		for i, attr := range nav.Current().Attr {
+			if typeAttr != nil {
+				i--
 			}
-		case "desc":
-		default:
-			attrName := attr.Name.Local
-			attrValue := attr.Value
-			t, d := guessType(attrValue)
-			colName := prefix + attrName
-			if defineDefault {
-				metaSheet.SetDefaultValue(colName, attrValue)
-			} else {
-				metaSheet.SetDefaultValue(colName, d)
-			}
-			for tmpCusor := cursor; tmpCusor < len(metaSheet.Rows); tmpCusor++ {
-				if !defineStruct {
-					metaSheet.Cell(tmpCusor, colName).Data = attrValue
-				} else {
-					metaSheet.Cell(tmpCusor, colName).Data = metaSheet.GetDefaultValue(colName)
+			switch attr.Name.Local {
+			case "KeyCol":
+				tagName := strings.Split(attr.Value, ".")[0]
+				attrName := strings.Split(attr.Value, ".")[1]
+				keyNode := xmlquery.FindOne(nav.Current(), fmt.Sprintf("/%s/@%s", tagName, attrName))
+				if keyNode == nil {
+					atom.Log.Panicf("KeyCol:%s not found in the immediately following nodes of %s", attr.Value, nav.LocalName())
+					continue
 				}
-			}
-			if keyCol != nil && strings.Split(keyCol.InnerText(), ".")[1] == attrName {
-				metaSheet.SetColType(colName, fmt.Sprintf("map<%s, %s>", t, nav.LocalName()))
-			} else if i == 0 && needType {
-				if repeated {
-					metaSheet.SetColType(colName, fmt.Sprintf("[%s]%s", nav.LocalName(), t))
+			case "TYPE":
+			default:
+				attrName := attr.Name.Local
+				attrValue := attr.Value
+				t, d := guessType(attrValue)
+				colName := prefix + strcase.ToCamel(attrName)
+				lastColName := metaSheet.GetLastColName()
+				if defineDefault {
+					metaSheet.SetDefaultValue(colName, attrValue)
 				} else {
-					metaSheet.SetColType(colName, fmt.Sprintf("{%s}%s", nav.LocalName(), t))
+					metaSheet.SetDefaultValue(colName, d)
 				}
-			} else if typ := metaSheet.GetColType(colName); prior(t, typ) {
-				metaSheet.SetColType(colName, t)
+				if defineType {
+					t = attrValue
+				}
+				// fill values to the bottom when backtrace to top line and add a new column
+				for tmpCusor := cursor; tmpCusor < len(metaSheet.Rows); tmpCusor++ {
+					if !defineType {
+						metaSheet.Cell(tmpCusor, colName).Data = attrValue
+					}
+				}
+				curType := metaSheet.GetColType(colName)
+				matches := structRegexp.FindStringSubmatch(curType)
+				needChangeType := defineType || curType == "" || (len(matches) > 0 && repeated)
+				if keyCol != nil && strings.Split(keyCol.InnerText(), ".")[1] == attrName {
+					metaSheet.SetColType(colName, fmt.Sprintf("map<%s, %s>", t, strcase.ToCamel(nav.LocalName())))
+				} else if needChangeType {
+					if i == 0 && !strings.HasPrefix(lastColName, prefix) {
+					   if repeated {
+						   metaSheet.SetColType(colName, fmt.Sprintf("[%s]%s", strcase.ToCamel(nav.LocalName()), t))
+					   } else {
+						   metaSheet.SetColType(colName, fmt.Sprintf("{%s}%s", strcase.ToCamel(nav.LocalName()), t))
+					   }
+				   } else {
+					   metaSheet.SetColType(colName, t)
+				   }
+				}
 			}
 		}
 	}

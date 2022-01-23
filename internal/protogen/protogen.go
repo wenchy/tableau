@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/Wenchy/tableau/internal/atom"
@@ -338,17 +339,25 @@ func (gen *XmlGenerator) convert(dir, filename string) error {
 	// open xml file and parse the document
 	xmlPath := filepath.Join(dir, filename)
 	atom.Log.Debugf("xml: %s", xmlPath)
-	f, err := os.Open(xmlPath)
+	buf, err := os.ReadFile(xmlPath)
 	if err != nil {
 		return errors.Wrapf(err, "failed to open %s", xmlPath)
 	}
-	p, err := xmlquery.CreateStreamParser(f, "/")
+	// replacement for `<` and `>` not allowed in attribute values
+	enumRegexp := regexp.MustCompile(`"enum<(.+)>"`)
+	nudeRegexp := regexp.MustCompile(`<([A-Za-z0-9]+)>`)
+	keywordRegexp := regexp.MustCompile(`@([A-Z]+)`)
+	replaced_str := enumRegexp.ReplaceAllString(string(buf), `"enum&lt;$1&gt;"`)
+	replaced_str = nudeRegexp.ReplaceAllString(replaced_str, `<$1 TableauPlaceholder="0">`)
+	replaced_str = keywordRegexp.ReplaceAllString(replaced_str, `$1`)
+	s := strings.NewReader(replaced_str)
+	p, err := xmlquery.CreateStreamParser(s, "/")
 	if err != nil {
-		return errors.Wrapf(err, "failed to create parsee for file %s", xmlPath)
+		return errors.Wrapf(err, "failed to create parser for string %s", s)
 	}
 	n, err := p.Read()
 	if err != nil {
-		return errors.Wrapf(err, "failed to read from file %s", xmlPath)
+		return errors.Wrapf(err, "failed to read from string %s", s)
 	}
 	root := xmlquery.CreateXPathNavigator(n)
 	// relatice path with filename
@@ -373,6 +382,7 @@ func (gen *XmlGenerator) convert(dir, filename string) error {
 				{Data: "Alias"},
 				{Data: "Nameline"},
 				{Data: "Typeline"},
+				{Data: "Nested"},
 			},
 		},{
 			Index: int(metaSheet.Datarow)-1,
@@ -381,6 +391,7 @@ func (gen *XmlGenerator) convert(dir, filename string) error {
 				{Data: root.LocalName()},
 				{Data: "1"},
 				{Data: "1"},
+				{Data: "true"},
 			},
 		},
 	}

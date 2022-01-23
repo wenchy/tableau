@@ -4,9 +4,14 @@
 
     <FeatureToggle EnvID="0" desc="common: 通用环境的配置，需要包含全量的开关。common没有且对应环境也没有的开关会被默认为关闭。">
         <!-- 格式细节，匆删 -->
-        <StructSupplement>
-            <Toggle ID="protocol::TOGGLE_SAMPLE" OpenRate="0" WorldID="0" ZoneID="0" OpenTime="0,0" CloseTime="0,0" UserLimitType="0" UserSourceType="0" SysKey1="0" SysKey2="0" SysKey3="0" NotifyClosed="0" ErrCode="0" />
-        </StructSupplement>
+        <@TABLEAU>
+            <@META>
+                <Toggle @TYPE="repeated" ID="enum<.FeatureToggleMacroType>" WorldID="uint32" ZoneID="uint32" OpenTime="datetime" CloseTime="datetime" NotifyClosed="bool"/>
+            </@META>
+            <@DEFAULT>
+                <Toggle ID="protocol::TOGGLE_SAMPLE" OpenRate="0" WorldID="0" ZoneID="0" OpenTime="0,0" CloseTime="0,0" UserLimitType="0" UserSourceType="0" SysKey1="0" SysKey2="0" SysKey3="0" NotifyClosed="0" ErrCode="0" />
+            </@DEFAULT>
+        </@TABLEAU>
         <!-- 格式细节，匆删 -->
 
         <!--
@@ -79,12 +84,6 @@
     </FeatureToggle>
 
     <FeatureToggle EnvID="21" desc="审核服: 以下开关配置只会在审核服生效，会覆盖上面common的配置。">
-        <!-- 格式细节，匆删 -->
-        <StructSupplement>
-            <Toggle ID="protocol::TOGGLE_SAMPLE" OpenRate="0" WorldID="0" ZoneID="0" OpenTime="0,0" CloseTime="0,0" UserLimitType="0" UserSourceType="0" SysKey1="0" SysKey2="0" SysKey3="0" NotifyClosed="0" ErrCode="0" />
-        </StructSupplement>
-        <!-- 格式细节，匆删 -->
-
         <Toggle name="会员、超会入口" ID="protocol::TOGGLE_VIP_ENTRY" OpenRate="10000" />
         <Toggle name="邀请" ID="protocol::TOGGLE_INVITE" OpenRate="10000" />
         <Toggle name="游戏特权" ID="protocol::TOGGLE_GAME_PRIVILEGE" OpenRate="10000" />

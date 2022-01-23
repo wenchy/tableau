@@ -1,55 +1,53 @@
-<MatchCfg> 
-    <!-- 匹配确认超时惩罚时间 --> 
-    <ConfirmTimeOutPunish Time="2" /> 
-    <MatchRoom MaxLoop="100" /> 
+<MatchCfg>
+    <!-- 匹配确认超时惩罚时间 -->
+    <ConfirmTimeOutPunish Time="2" />
+    <MatchRoom MaxLoop="100" />
     <MatchPlayer MaxLoop="100" />
     <MatchStatInfo ReportInterval="5"/>
-	
-	<StructFormatSupplement>
-		<MatchMode MissionType="protocol::MT_CLASSIC_PVP_1V1" desc="匹配模式">
-			<Time MinTime="5" MaxTime="90" Freq="3" ConfirmTime="0" />
-			<Open BeginDate="20201216" BeginTime="200000"  EndDate="20201220" EndTime="203000" />
-			<Camp     CampID="0" PlayerNum="1" desc="阵营1" />
-			<Camp     CampID="1" PlayerNum="1" desc="阵营2" />
-			<Strategy StrategyID="protocol::MatchStrategy_Unify" desc="匹配策略" />
-			<Scope    ScopeID="protocol::MatchScope_All"  desc="范围" />
-			<Filter   FilterID="protocol::MatchFilter_Platform" Open="0" Value="1" desc="平台过滤器Open为1表示开启" />
-			<Filter   FilterID="protocol::MatchFilter_MaxLevelGap" Open="1" Value="10"  UpdInterval="5" desc="过滤器">
-				<Param RankLimit="0" Value="20"/>
-				<Param RankLimit="0" Value="40"/>
-			</Filter>
-			<Route    Key="1" desc="路由哈希值" />
-      <!-- PlayerOnlyOneCamp: 匹配到AI的玩家都在一个阵营 GuaranteeAIRatio:保底AI概率万分比 -->
-      <MatchAI IsOpen="1" PlayerOnlyOneCamp="0" GuaranteeAIRatio="0">
-			  <AI Type="protocol::ENM_AI_NEWER"   IsOpen="1" MinTime="2" MaxTime="5"  desc="新手温暖局" />
-			  <AI Type="protocol::ENM_AI_DAILY"   IsOpen="1" MinTime="5" MaxTime="15"  desc="每日温暖局" />
-			  <AI Type="protocol::ENM_AI_TIMEOUT" IsOpen="1" MinTime="20" MaxTime="40"  desc="匹配超时AI" />
-			  <AI Type="protocol::ENM_AI_CMD"     IsOpen="1" MinTime="2" MaxTime="5"  desc="CMD匹配AI" />
-			  <AI Type="protocol::ENM_AI_RETURN"  IsOpen="1" MinTime="5" MaxTime="15"  desc="回归玩家AI" />
-			  <AI Type="protocol::ENM_AI_TRAIN"   IsOpen="0" MinTime="5" MaxTime="15"  desc="训练玩家AI" />
-      </MatchAI>
-      <!-- 优先级, 随机模式随机先后顺序的权重，用于控制随机模式各个模式的比例 -->
-		</MatchMode>
-	</StructFormatSupplement>
+
+    <@TABLEAU>
+        <@META>
+            <MatchMode @TYPE="repeated" MissionType="enum<.MissionType>" desc="string">
+                <Time MinTime="duration" MaxTime="duration" Freq="int32" ConfirmTime="int32" />
+                <Open BeginDate="date" BeginTime="time"  EndDate="date" EndTime="time" />
+                <Camp @TYPE="repeated" CampID="uint32" PlayerNum="int32" desc="string" />
+                <Strategy StrategyID="enum<.ENMMatchStrategy>" desc="string" />
+
+                <Scope    ScopeID="enum<.ENMMatchScope>"  desc="string" />
+                <Filter @TYPE="repeated" FilterID="enum<.ENMMatchFilter>" Open="bool" Value="int32"  UpdInterval="duration" desc="string">
+                    <Power @TYPE="repeated" HornorPower="int32">
+                        <Param @TYPE="repeated" Value="int32"/>
+                    </Power>
+                </Filter>
+                <Route    Key="int32" desc="string" />
+                <!-- PlayerOnlyOneCamp: 匹配到AI的玩家都在一个阵营 GuaranteeAIRatio:保底AI概率万分比 -->
+                <MatchAI IsOpen="bool" PlayerOnlyOneCamp="bool" GuaranteeAIRatio="int32">
+                    <AI Type="enum<.ENMAIWarmType>" IsOpen="bool" MinTime="duration" MaxTime="duration"  desc="string" />
+                </MatchAI>
+                <!-- 优先级, 随机模式随机先后顺序的权重，用于控制随机模式各个模式的比例 -->
+                <Random @TYPE="repeated" MissionType="enum<.MissionType>" Priority="int32" />
+            </MatchMode>
+        </@META>
+    </@TABLEAU>
 
     <TeamRatingWeight>
-        <Weight Num="1"> 
+        <Weight Num="1">
             <Param Value="100"/>
-        </Weight> 
-        <Weight Num="2"> 
+        </Weight>
+        <Weight Num="2">
             <Param Value="30"/>
             <Param Value="70"/>
-        </Weight> 
-        <Weight Num="3"> 
+        </Weight>
+        <Weight Num="3">
             <Param Value="20"/>
             <Param Value="30"/>
             <Param Value="50"/>
-        </Weight> 
+        </Weight>
     </TeamRatingWeight>
 
 
 
-    
+
 
     <MatchMode MissionType="protocol::MT_PVP_Low_Rank_RoundBattle_1V1" desc="排位赛">
         <!-- 之前的“低分段排位赛”，当前版本实际使用的排位赛MissionType-->
@@ -129,7 +127,7 @@
 		      <AI Type="protocol::ENM_AI_TRAIN"   IsOpen="0" MinTime="5" MaxTime="15"  desc="训练玩家AI" />
         </MatchAI>
     </MatchMode>
-    
+
 
    <MatchMode MissionType="protocol::MT_PVP_ELIMINATION_GAME" desc="1v1v1v1 多人淘汰赛-乱斗玩法">
         <!-- 匹配最短时间 匹配最长时间 每隔少秒匹配一次 ConfirmTime临时调整0，这个不为0，客户端目前单局流程进不去-->
@@ -232,7 +230,7 @@
 		      <AI Type="protocol::ENM_AI_TRAIN"   IsOpen="0" MinTime="5" MaxTime="15"  desc="训练玩家AI" />
         </MatchAI>
     </MatchMode>
-    
+
    <MatchMode MissionType="protocol::MT_PVP_SUPERKILL_FRIENDPK" desc="约战1V1">
         <!-- 匹配最短时间 匹配最长时间 每隔少秒匹配一次-->
         <Time MinTime="1" MaxTime="90" Freq="3" ConfirmTime="15" />
@@ -259,7 +257,7 @@
 		      <AI Type="protocol::ENM_AI_TRAIN"   IsOpen="0" MinTime="5" MaxTime="15"  desc="训练玩家AI" />
         </MatchAI>
     </MatchMode>
-    
+
     <MatchMode MissionType="protocol::MT_PVP_SUPERKILL_MULTI_FRIENDPK" desc="约战2V2">
         <!-- 匹配最短时间 匹配最长时间 每隔少秒匹配一次-->
         <Time MinTime="1" MaxTime="90" Freq="3" ConfirmTime="15" />
@@ -285,7 +283,7 @@
 		      <AI Type="protocol::ENM_AI_TRAIN"   IsOpen="0" MinTime="5" MaxTime="15"  desc="训练玩家AI" />
         </MatchAI>
     </MatchMode>
-    
+
     <MatchMode MissionType="protocol::MT_PVP_TEAM_DEATH_MATCH_FRIENDPK" desc="约战4v4">
         <!-- 匹配最短时间 匹配最长时间 每隔少秒匹配一次-->
         <Time MinTime="1" MaxTime="90" Freq="3" ConfirmTime="15" />
@@ -393,7 +391,7 @@
 		      <AI Type="protocol::ENM_AI_TRAIN"   IsOpen="0" MinTime="5" MaxTime="15"  desc="训练玩家AI" />
         </MatchAI>
     </MatchMode>
-    
+
     <MatchMode MissionType="protocol::MT_PVP_SUPERKILL_MULTI_COMPETITION" desc="比赛2V2">
         <!-- 匹配最短时间 匹配最长时间 每隔少秒匹配一次-->
         <Time MinTime="1" MaxTime="90" Freq="3" ConfirmTime="15" />
@@ -419,7 +417,7 @@
 		      <AI Type="protocol::ENM_AI_TRAIN"   IsOpen="0" MinTime="5" MaxTime="15"  desc="训练玩家AI" />
         </MatchAI>
     </MatchMode>
-    
+
     <MatchMode MissionType="protocol::MT_PVP_TEAM_DEATH_MATCH_COMPETITION" desc="比赛4v4">
         <!-- 匹配最短时间 匹配最长时间 每隔少秒匹配一次-->
         <Time MinTime="1" MaxTime="90" Freq="3" ConfirmTime="15" />
@@ -479,7 +477,7 @@
     <!--············································-->
     <!--·············································-->
     <!-- 以下玩法为已废弃的旧玩法，匹配配置先保留，但后置-->
-    
+
    <MatchMode MissionType="protocol::MT_CLASSIC_PVP_HeadCount_1V1" desc="旧1V1-已废弃">
         <!-- 匹配最短时间 匹配最长时间 每隔少秒匹配一次-->
         <Time MinTime="5" MaxTime="90" Freq="3" ConfirmTime="15" />
@@ -562,8 +560,8 @@
 		      <AI Type="protocol::ENM_AI_TRAIN"   IsOpen="0" MinTime="5" MaxTime="15"  desc="训练玩家AI" />
         </MatchAI>
     </MatchMode>
-    
-    
+
+
 
     <MatchMode MissionType="protocol::MT_PVP_High_Rank_RoundBattle_1V1" desc="旧高段位排位赛">
         <!-- 匹配最短时间 匹配最长时间 每隔少秒匹配一次-->
@@ -610,7 +608,7 @@
 		      <AI Type="protocol::ENM_AI_TRAIN"   IsOpen="0" MinTime="5" MaxTime="15"  desc="训练玩家AI" />
         </MatchAI>
     </MatchMode>
-    
+
     <MatchMode MissionType="protocol::MT_PVP_GroupBattle_2V2" desc="匹配模式 团体对战2v2">
         <!-- 匹配最短时间 匹配最长时间 每隔少秒匹配一次-->
         <Time MinTime="5" MaxTime="90" Freq="3" ConfirmTime="15" />
@@ -694,7 +692,7 @@
 		      <AI Type="protocol::ENM_AI_TRAIN"   IsOpen="0" MinTime="5" MaxTime="15"  desc="训练玩家AI" />
         </MatchAI>
     </MatchMode>
-    
+
 
 
         <MatchMode MissionType="protocol::MT_CLASSIC_PVP_3v3" desc="旧 3v3 玩法">
@@ -719,8 +717,8 @@
 		      <AI Type="protocol::ENM_AI_TRAIN"   IsOpen="0" MinTime="5" MaxTime="15"  desc="训练玩家AI" />
         </MatchAI>
     </MatchMode>
- 
-    
+
+
     <MatchMode MissionType="protocol::MT_BOUNTY_FUBEN" desc="旧 悬赏副本玩法" >
         <Time MinTime="5" MaxTime="90" Freq="3" ConfirmTime="0" />
         <Open BeginDate="20200506" BeginTime="000000"  EndDate="20500506" EndTime="235959" />
@@ -805,7 +803,7 @@
     </MatchAI>
 
     </MatchMode>
-    
+
 
 
 

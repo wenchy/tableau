@@ -76,19 +76,6 @@ message ExchangeInfo {
     google.protobuf.Timestamp begin_time = 3 [(tableau.field) = {name:"BeginTime"}];
     google.protobuf.Timestamp date = 4 [(tableau.field) = {name:"Date"}];
     google.protobuf.Duration time = 5 [(tableau.field) = {name:"Time"}];
-    repeated Item reward_item_list = 3 [(tableau.field) = {name:"RewardItem" layout:LAYOUT_HORIZONTAL list_max_len:2}];
-    repeated Exchange exchange_list = 4 [(tableau.field) = {layout:LAYOUT_VERTICAL}];
-
-    message Exchange {
-      uint32 exchange_id = 1 [(tableau.field) = {name:"ExchangeId"}];
-      repeated ExchangeItem input_item_list = 2 [(tableau.field) = {name:"InputItem" layout:LAYOUT_HORIZONTAL list_max_len:3}];
-
-      message ExchangeItem {
-        int32 id = 1 [(tableau.field) = {name:"Id"}];
-        int32 num = 2 [(tableau.field) = {name:"Num"}];
-      }
-      repeated ExchangeItem output_item_list = 3 [(tableau.field) = {name:"OutputItem" layout:LAYOUT_HORIZONTAL list_max_len:2}];
-    }
   }
 }
 
@@ -116,8 +103,13 @@ message MatchConf {
   Task task = 5 [(tableau.field) = {name:"Task"}];
   message Task {
     int32 type = 1 [(tableau.field) = {name:"Type"}];
+<<<<<<< 6d0bd943b9ee672479aa9a33307d11a6ec01539d
     repeated int32 param_list = 2 [(tableau.field) = {name:"Param" layout:LAYOUT_HORIZONTAL}];
     map<uint32, Filter> filter_map = 3 [(tableau.field) = {name:"Filter" key:"Type" layout:LAYOUT_VERTICAL}];
+=======
+    repeated int32 param_list = 2 [(tableau.field) = {name:"Param" layout:LAYOUT_HORIZONTAL list_max_len:2}];
+    map<uint32,Filter> filter_map = 3 [(tableau.field) = {name:"Filter" key:"Type" layout:LAYOUT_VERTICAL}];
+>>>>>>> feat: TABLEAU meta and default
     message Filter {
       uint32 type = 1 [(tableau.field) = {name:"Type"}];
       bool open = 2 [(tableau.field) = {name:"Open"}];
@@ -130,7 +122,7 @@ message MatchConf {
       message Section {
         uint32 id = 1 [(tableau.field) = {name:"ID"}];
         string name = 2 [(tableau.field) = {name:"Name"}];
-        repeated Item item_list = 3 [(tableau.field) = {name:"Item" layout:LAYOUT_HORIZONTAL}];
+        repeated Item item_list = 3 [(tableau.field) = {name:"Item" layout:LAYOUT_HORIZONTAL list_max_len:2}];
         message Item {
           int32 id = 1 [(tableau.field) = {name:"Id"}];
           int32 num = 2 [(tableau.field) = {name:"Num"}];

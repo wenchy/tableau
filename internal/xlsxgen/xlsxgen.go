@@ -94,7 +94,9 @@ func (sheet *MetaSheet) Cell(row int, name string) *Cell {
 	if sheet.Noterow < sheet.Datarow {
 		sheet.Rows[sheet.Noterow-1].Cells = append(sheet.Rows[sheet.Noterow-1].Cells, Cell{Data: "Note"})
 	}
-	sheet.Rows[row].Cells = append(sheet.Rows[row].Cells, Cell{Data: ""})
+	if row + 1 >= int(sheet.Datarow) {
+		sheet.Rows[row].Cells = append(sheet.Rows[row].Cells, Cell{Data: ""})
+	}
 	return &sheet.Rows[row].Cells[len(sheet.Rows[row].Cells)-1]
 }
 
@@ -123,6 +125,14 @@ func (sheet *MetaSheet) GetDefaultValue(col string) string {
 		return ""
 	}
 	return sheet.defaultMap[col]
+}
+
+func (sheet *MetaSheet) GetLastColName() string {
+	row := sheet.Rows[sheet.Namerow - 1].Cells
+	if len(row) == 0 {
+		return ""
+	}
+	return row[len(row) - 1].Data
 }
 
 func (gen *Generator) Generate() {
