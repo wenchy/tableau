@@ -721,28 +721,51 @@ func (sp *sheetParser) parseScalarField(field *Field, msg protoreflect.Message, 
 }
 
 func (sp *sheetParser) parseFieldValue(fd protoreflect.FieldDescriptor, value string) (protoreflect.Value, error) {
+	purifyInteger := func(s string) string {
+		// trim integer boring suffix matched by regexp `.0*$`
+		if matches := types.MatchBoringInteger(s); matches != nil {
+			return matches[1]
+		}
+		return s
+	}
+
 	switch fd.Kind() {
 	case protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Sfixed32Kind:
 		if value != "" {
-			val, err := strconv.ParseInt(value, 10, 32)
+			// val, err := strconv.ParseInt(value, 10, 32)
+
+			// Keep compatibility with excel number format.
+			// maybe: 
+			// - decimal fraction: 1.0
+			// - scientific notation: 1.0000001e7
+			val, err := strconv.ParseFloat(value, 64)
 			return protoreflect.ValueOf(int32(val)), err
 		}
 		return protoreflect.ValueOf(int32(0)), nil
 	case protoreflect.Uint32Kind, protoreflect.Fixed32Kind:
 		if value != "" {
-			val, err := strconv.ParseUint(value, 10, 32)
+			// val, err := strconv.ParseUint(value, 10, 32)
+
+			// Keep compatibility with excel number format.
+			val, err := strconv.ParseFloat(value, 64)
 			return protoreflect.ValueOf(uint32(val)), err
 		}
 		return protoreflect.ValueOf(uint32(0)), nil
 	case protoreflect.Int64Kind, protoreflect.Sint64Kind, protoreflect.Sfixed64Kind:
 		if value != "" {
-			val, err := strconv.ParseInt(value, 10, 64)
+			// val, err := strconv.ParseInt(value, 10, 64)
+
+			// Keep compatibility with excel number format.
+			val, err := strconv.ParseFloat(value, 64)
 			return protoreflect.ValueOf(int64(val)), err
 		}
 		return protoreflect.ValueOf(int64(0)), nil
 	case protoreflect.Uint64Kind, protoreflect.Fixed64Kind:
 		if value != "" {
-			val, err := strconv.ParseUint(value, 10, 64)
+			// val, err := strconv.ParseUint(value, 10, 64)
+
+			// Keep compatibility with excel number format.
+			val, err := strconv.ParseFloat(value, 64)
 			return protoreflect.ValueOf(uint64(val)), err
 		}
 		return protoreflect.ValueOf(uint64(0)), nil
@@ -752,7 +775,8 @@ func (sp *sheetParser) parseFieldValue(fd protoreflect.FieldDescriptor, value st
 		return protoreflect.ValueOf([]byte(value)), nil
 	case protoreflect.BoolKind:
 		if value != "" {
-			val, err := strconv.ParseBool(value)
+			// Keep compatibility with excel number format.
+			val, err := strconv.ParseBool(purifyInteger(value))
 			return protoreflect.ValueOf(val), err
 		}
 		return protoreflect.ValueOf(false), nil
