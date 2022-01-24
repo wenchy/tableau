@@ -125,6 +125,8 @@ func Test_Xml2JSON(t *testing.T) {
 		"./testdata/xml",
 		"./_output/json",
 		options.LogLevel("debug"),
+		options.Workbook("FeatureToggle.xlsx"),
+		options.Worksheet("ToggleCfg"),
 	)
 	// tableau.Generate("test", "./testdata/", "./_output/xml/")
 }

@@ -156,11 +156,6 @@ func getRelCleanSlashPath(rootdir, dir, filename string) (string, error) {
 	return relSlashPath, nil
 }
 
-func (gen *Generator) convertWorkbook(dir, filename string) error {
-	relativePath, err := getRelCleanSlashPath(gen.InputDir, dir, filename)
-	return err
-}
-
 func (gen *Generator) convert(dir, filename string) error {
 	return gen.i.convert(dir, filename)
 }
@@ -182,7 +177,7 @@ func (gen XlsxGenerator) GetSuffix() string {
 }
 
 func (gen *XlsxGenerator) convert(dir, filename string) error {
-	relativePath, err := getRelativePath(gen.InputDir, dir, filename)
+	relativePath, err := getRelCleanSlashPath(gen.InputDir, dir, filename)
 	if err != nil {
 		return errors.WithMessagef(err, "get relative path failed")
 	}
@@ -258,14 +253,6 @@ func (gen *XlsxGenerator) convert(dir, filename string) error {
 func (gen *XlsxGenerator) GenOneWorkbook(relativeWorkbookPath string) error {
 	absPath := filepath.Join(gen.InputDir, relativeWorkbookPath)
 	return gen.convert(filepath.Dir(absPath), filepath.Base(absPath))
-}
-
-func getRelativePath(rootdir, dir, filename string) (string, error) {
-	relativeDir, err := filepath.Rel(rootdir, dir)
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to get relative path from %s to %s", rootdir, dir)
-	}
-	return filepath.Join(relativeDir, filename), nil
 }
 
 type sheetHeader struct {
@@ -344,7 +331,7 @@ func (gen *XmlGenerator) convert(dir, filename string) error {
 		return errors.Wrapf(err, "failed to open %s", xmlPath)
 	}
 	// replacement for `<` and `>` not allowed in attribute values
-	enumRegexp := regexp.MustCompile(`"enum<(.+)>"`)
+	enumRegexp := regexp.MustCompile(`"enum<([.A-Za-z0-9]+)>"`)
 	nudeRegexp := regexp.MustCompile(`<([A-Za-z0-9]+)>`)
 	keywordRegexp := regexp.MustCompile(`@([A-Z]+)`)
 	replaced_str := enumRegexp.ReplaceAllString(string(buf), `"enum&lt;$1&gt;"`)
@@ -361,7 +348,7 @@ func (gen *XmlGenerator) convert(dir, filename string) error {
 	}
 	root := xmlquery.CreateXPathNavigator(n)
 	// relatice path with filename
-	relativePath, err := getRelativePath(gen.InputDir, dir, filename)
+	relativePath, err := getRelCleanSlashPath(gen.InputDir, dir, filename)
 	if err != nil {
 		return errors.WithMessagef(err, "get relative path failed")
 	}

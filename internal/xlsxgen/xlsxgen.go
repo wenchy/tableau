@@ -72,6 +72,7 @@ func (sheet *MetaSheet) NewRow() *Row {
 		Cells: make([]Cell, len(sheet.Rows[len(sheet.Rows) - 1].Cells)),
 		Index: len(sheet.Rows),
 	}
+	// Critical!!! copy common value from parent node
 	copy(row.Cells, sheet.Rows[len(sheet.Rows) - 1].Cells)
 	sheet.Rows = append(sheet.Rows, row)
 	return &row
@@ -114,7 +115,7 @@ func (sheet *MetaSheet) SetColNote(col, note string) {
 
 func (sheet *MetaSheet) SetDefaultValue(col, defaultVal string) {
 	// modification is not allowed
-	if _, existed := sheet.defaultMap[col]; existed {
+	if d, existed := sheet.defaultMap[col]; existed && d != "" {
 		return
 	}
 	sheet.defaultMap[col] = defaultVal
@@ -133,6 +134,16 @@ func (sheet *MetaSheet) GetLastColName() string {
 		return ""
 	}
 	return row[len(row) - 1].Data
+}
+
+func (sheet *MetaSheet) ForEachCol(rowId int, f func(name string, cell *Cell) error) error {
+	for name, i := range sheet.colMap {
+		cell := sheet.Cell(rowId, name)
+		if err := f(name, cell); err != nil {
+			return errors.Wrapf(err, "call user-defined failed when iterating col %s (%d, %d)", name, rowId, i)
+		}
+	}
+	return nil
 }
 
 func (gen *Generator) Generate() {

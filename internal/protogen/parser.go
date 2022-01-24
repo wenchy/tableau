@@ -529,11 +529,12 @@ func ParseIncellStruct(elemType string) []string {
 // TODO(shannonzhu):
 // 1. FeatureToggle下多次出现META导致list类型被覆盖为普通类型
 // 2. 自动检测@TYPE="repeated"
+// 3. 转出来的excel的col同一个struct或者list可能不连续的问题
 func (gen *XmlGenerator) parseXml(nav *xmlquery.NodeNavigator, metaSheet *xlsxgen.MetaSheet, cursor int) error {
 	// preprocess
-	prefix, navCopy, defineType, defineDefault, realParent := nav.LocalName(), *nav, false, false, nav.Current().Parent
+	realParent, prefix, defineType, defineDefault := nav.Current().Parent, "", false, false
 	// skip `TABLEAU` to find real parent
-	for flag := navCopy.MoveToParent(); flag && navCopy.LocalName() != metaSheet.Worksheet; flag = navCopy.MoveToParent() {
+	for flag, navCopy := true, *nav; flag && navCopy.LocalName() != metaSheet.Worksheet; flag = navCopy.MoveToParent() {
 		if navCopy.LocalName() == "META" {
 			defineType = true
 		} else if navCopy.LocalName() == "DEFAULT" {
@@ -549,6 +550,19 @@ func (gen *XmlGenerator) parseXml(nav *xmlquery.NodeNavigator, metaSheet *xlsxge
 	keyCol := xmlquery.FindOne(realParent, "@KeyCol")
 	typeAttr := xmlquery.FindOne(nav.Current(), "@TYPE")
 	repeated := len(xmlquery.Find(realParent, nav.LocalName())) > 1 || (typeAttr != nil && typeAttr.InnerText() == "repeated")
+
+	// clear
+	if navCopy := *nav; !navCopy.MoveToChild() {
+		metaSheet.ForEachCol(cursor, func(name string, cell *xlsxgen.Cell) error {
+			if strings.HasPrefix(name, prefix) {
+				if name == "MatchModeMissionType" {
+					atom.Log.Debug(name, " ", prefix, " ", cell)
+				}
+				cell.Data = metaSheet.GetDefaultValue(name)
+			}
+			return nil
+		})
+	}
 
 	if nav.LocalName() != metaSheet.Worksheet {
 		// iterate over attributes
@@ -580,21 +594,30 @@ func (gen *XmlGenerator) parseXml(nav *xmlquery.NodeNavigator, metaSheet *xlsxge
 				if defineType {
 					t = attrValue
 				}
-				// fill values to the bottom when backtrace to top line and add a new column
-				for tmpCusor := cursor; tmpCusor < len(metaSheet.Rows); tmpCusor++ {
-					if !defineType {
+				// fill values to the bottom when backtrace to top line
+				if !defineType && !defineDefault {
+					if colName == "MatchModeMissionType" {
+						atom.Log.Debug(cursor, " ", len(metaSheet.Rows))
+					}
+					for tmpCusor := cursor; tmpCusor < len(metaSheet.Rows); tmpCusor++ {
 						metaSheet.Cell(tmpCusor, colName).Data = attrValue
 					}
 				}
 				curType := metaSheet.GetColType(colName)
 				matches := structRegexp.FindStringSubmatch(curType)
+				// 1. <META>
+				// 2. type not set
+				// 3. {struct}int32 -> [struct]int32
 				needChangeType := defineType || curType == "" || (len(matches) > 0 && repeated)
-				if keyCol != nil && strings.Split(keyCol.InnerText(), ".")[1] == attrName {
-					metaSheet.SetColType(colName, fmt.Sprintf("map<%s, %s>", t, strcase.ToCamel(nav.LocalName())))
-				} else if needChangeType {
-					if i == 0 && !strings.HasPrefix(lastColName, prefix) {
+				// 1. new struct(list), not subsequent
+				// 2. {struct}int32 -> [struct]int32
+				setKeyedType := !strings.HasPrefix(lastColName, prefix) || (len(matches) > 0 && repeated)
+				if needChangeType {
+					if keyCol != nil && strings.Split(keyCol.InnerText(), ".")[1] == attrName {
+						metaSheet.SetColType(colName, fmt.Sprintf("map<%s, %s>", t, strcase.ToCamel(nav.LocalName())))
+					} else if i == 0 && setKeyedType {
 					   if repeated {
-						   metaSheet.SetColType(colName, fmt.Sprintf("[%s]%s", strcase.ToCamel(nav.LocalName()), t))
+						   metaSheet.SetColType(colName, fmt.Sprintf("[%s]<%s>", strcase.ToCamel(nav.LocalName()), t))
 					   } else {
 						   metaSheet.SetColType(colName, fmt.Sprintf("{%s}%s", strcase.ToCamel(nav.LocalName()), t))
 					   }
@@ -608,7 +631,7 @@ func (gen *XmlGenerator) parseXml(nav *xmlquery.NodeNavigator, metaSheet *xlsxge
 
 	// iterate over child nodes
 	nodeMap := make(map[string]int)
-	navCopy = *nav
+	navCopy := *nav
 	for flag := navCopy.MoveToChild(); flag; flag = navCopy.MoveToNext() {
 		// commentNode, documentNode and other meaningless nodes should be filtered
 		if navCopy.NodeType() != xpath.ElementNode {
@@ -616,6 +639,7 @@ func (gen *XmlGenerator) parseXml(nav *xmlquery.NodeNavigator, metaSheet *xlsxge
 		}
 		tagName := navCopy.LocalName()
 		if _, existed := nodeMap[tagName]; existed {
+			// duplicate means a list, should expand vertically
 			row := metaSheet.NewRow()
 			gen.parseXml(&navCopy, metaSheet, row.Index)
 			nodeMap[tagName]++
@@ -638,17 +662,4 @@ func guessType(value string) (string, string) {
 		t, d = "string", ""
 	}
 	return t, d
-}
-
-func prior(t1, t2 string) bool {
-	if t1 == "int32" && t2 == "" {
-		return true
-	}
-	if t1 == "int64" && (t2 == "" || t2 == "int32") {
-		return true
-	}
-	if t1 == "string" && (t2 == "" || t2 == "int32" || t2 == "int64") {
-		return true
-	}
-	return false
 }

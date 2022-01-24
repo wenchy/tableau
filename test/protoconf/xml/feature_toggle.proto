@@ -16,21 +16,21 @@ message ToggleCfg {
   message FeatureToggle {
     int32 env_id = 1 [(tableau.field) = {name:"EnvID"}];
     string desc = 2 [(tableau.field) = {name:"Desc"}];
-    repeated Toggle toggle_list = 3 [(tableau.field) = {name:"Toggle" layout:LAYOUT_VERTICAL}];
+    repeated Toggle toggle_list = 3 [(tableau.field) = {name:"Toggle" key:"WorldID" layout:LAYOUT_VERTICAL}];
     message Toggle {
-      FeatureToggleMacroType id = 1 [(tableau.field) = {name:"Id"}];
-      uint32 world_id = 2 [(tableau.field) = {name:"WorldID"}];
+      uint32 world_id = 1 [(tableau.field) = {name:"WorldID"}];
+      FeatureToggleMacroType id = 2 [(tableau.field) = {name:"Id"}];
       uint32 zone_id = 3 [(tableau.field) = {name:"ZoneID"}];
       google.protobuf.Timestamp open_time = 4 [(tableau.field) = {name:"OpenTime"}];
       google.protobuf.Timestamp close_time = 5 [(tableau.field) = {name:"CloseTime"}];
       bool notify_closed = 6 [(tableau.field) = {name:"NotifyClosed"}];
-      int32 open_rate = 7 [(tableau.field) = {name:"OpenRate"}];
-      int32 user_limit_type = 8 [(tableau.field) = {name:"UserLimitType"}];
-      int32 user_source_type = 9 [(tableau.field) = {name:"UserSourceType"}];
-      int32 sys_key_1 = 10 [(tableau.field) = {name:"SysKey1"}];
-      int32 sys_key_2 = 11 [(tableau.field) = {name:"SysKey2"}];
-      int32 sys_key_3 = 12 [(tableau.field) = {name:"SysKey3"}];
-      int32 err_code = 13 [(tableau.field) = {name:"ErrCode"}];
+      Code err_code = 7 [(tableau.field) = {name:"ErrCode"}];
+      int32 open_rate = 8 [(tableau.field) = {name:"OpenRate"}];
+      int32 user_limit_type = 9 [(tableau.field) = {name:"UserLimitType"}];
+      int32 user_source_type = 10 [(tableau.field) = {name:"UserSourceType"}];
+      int32 sys_key_1 = 11 [(tableau.field) = {name:"SysKey1"}];
+      int32 sys_key_2 = 12 [(tableau.field) = {name:"SysKey2"}];
+      int32 sys_key_3 = 13 [(tableau.field) = {name:"SysKey3"}];
       string name = 14 [(tableau.field) = {name:"Name"}];
       string desc = 15 [(tableau.field) = {name:"Desc"}];
     }
