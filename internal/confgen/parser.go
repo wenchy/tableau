@@ -452,37 +452,25 @@ func (sp *sheetParser) parseListField(field *Field, msg protoreflect.Message, rc
 					// KeyedList means the list is keyed by the first field with tag number 1.
 					listItemValue := reflectList.NewElement()
 					keyedListItemExisted := false
+					keyColName := prefix + field.opts.Name + field.opts.Key
 					for i := 0; i < reflectList.Len(); i++ {
-						keyMatched := false
-						val := reflectList.Get(i)
-						val.Message().Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
-							if fd.Number() == 1 {
-								opts := fd.Options().(*descriptorpb.FieldOptions)
-								fieldOpts := proto.GetExtension(opts, tableaupb.E_Field).(*tableaupb.FieldOptions)
-								if fieldOpts == nil {
-									atom.Log.Errorf("...|vertical list: get field extension failed: %s", fd.FullName())
-									return false
-								}
-								colName := prefix + field.opts.Name + fieldOpts.Name
-								cell := rc.Cell(colName, field.opts.Optional)
-								if cell == nil {
-									atom.Log.Errorf("%s|vertical list: column not found", rc.CellDebugString(colName))
-									return false
-								}
-								key, err := sp.parseFieldValue(fd, cell.Data)
-								if err != nil {
-									atom.Log.Errorf("%s|vertical list: failed to parse field value: %s, err: %+v", rc.CellDebugString(colName), cell.Data, err)
-									return false
-								}
-								if types.EqualValue(fd, v, key) {
-									keyMatched = true
-									return false
-								}
-							}
-							return true
-						})
-						if keyMatched {
-							listItemValue = val
+						item := reflectList.Get(i)
+						md := item.Message().Descriptor()
+						keyProtoName := protoreflect.Name(strcase.ToSnake(field.opts.Key))
+						fd := md.Fields().ByName(keyProtoName)
+						if fd == nil {
+							return errors.Errorf("%s|vertical keyed list: key field not found in proto definition: %s", rc.CellDebugString(keyColName), keyProtoName)
+						}
+						cell := rc.Cell(keyColName, field.opts.Optional)
+						if cell == nil {
+							return errors.Errorf("%s|vertical keyed list: key column not found", rc.CellDebugString(keyColName))
+						}
+						key, err := sp.parseFieldValue(fd, cell.Data)
+						if err != nil {
+							return errors.Errorf("%s|vertical keyed list: failed to parse field value: %s", rc.CellDebugString(keyColName), cell.Data)
+						}
+						if types.EqualValue(fd, item.Message().Get(fd), key) {
+							listItemValue = item
 							keyedListItemExisted = true
 							break
 						}
@@ -493,6 +481,9 @@ func (sp *sheetParser) parseListField(field *Field, msg protoreflect.Message, rc
 					}
 					if !keyedListItemExisted && !types.EqualMessage(emptyListValue, listItemValue) {
 						reflectList.Append(listItemValue)
+						if prefix+field.opts.Name == "ServerConfCondition" {
+							atom.Log.Debugf("append list item: %+v", listItemValue)
+						}
 					}
 				} else {
 					newListValue := reflectList.NewElement()

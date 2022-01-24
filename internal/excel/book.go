@@ -8,6 +8,7 @@ import (
 	"unicode"
 
 	"github.com/Wenchy/tableau/internal/atom"
+	"github.com/Wenchy/tableau/internal/camelcase"
 	"github.com/Wenchy/tableau/internal/types"
 	"github.com/pkg/errors"
 	"github.com/xuri/excelize/v2"
@@ -121,23 +122,26 @@ type RowCells struct {
 
 	prev *RowCells
 
-	Row   int                 // row number
-	cells map[string]*RowCell // name -> RowCell
+	Row          int                 // row number
+	cells        map[string]*RowCell // name -> RowCell
+	indexedCells map[int]*RowCell    // column index -> RowCell
 }
 
 func NewRowCells(row int, prev *RowCells) *RowCells {
 	return &RowCells{
 		prev: prev,
 
-		Row:   row,
-		cells: make(map[string]*RowCell),
+		Row:          row,
+		cells:        make(map[string]*RowCell),
+		indexedCells: make(map[int]*RowCell),
 	}
 }
 
 type RowCell struct {
-	Col           int    // colum number
+	Col           int    // cell column (0-based)
 	Data          string // cell data
 	Type          string // cell type
+	Name          string // cell name
 	autoPopulated bool   // auto-populated
 }
 
@@ -166,23 +170,58 @@ func (r *RowCells) CellDebugString(name string) string {
 }
 
 func (r *RowCells) SetCell(name string, col int, data, typ string) {
-	r.cells[name] = &RowCell{
+	cell := &RowCell{
 		Col:  col,
 		Data: data,
 		Type: typ,
+		Name: name,
 	}
 
+	// TODO: Parser(first-pass), check if this sheet is nested.
 	if data == "" {
 		if (types.MatchMap(typ) != nil || types.MatchKeyedList(typ) != nil) && r.prev != nil {
 			// NOTE: populate the missing map key from the prev row's corresponding cell.
-			if cell := r.prev.Cell(name, false); cell != nil {
-				r.cells[name].Data = cell.Data
-				r.cells[name].autoPopulated = true
+			// TODO(wenchy): this is a flawed hack, need to be taken into more consideration.
+			// Check: reverse backward to find the previous same nested-level keyed cell and
+			// compare them to make sure they are the same.
+			prefix := ""
+			splits := camelcase.Split(name)
+			if len(splits) >= 2 {
+				prefix = strings.Join(splits[:len(splits)-2], "")
+			}
+			needPopulate := false
+			if prefix == "" {
+				needPopulate = true
 			} else {
-				atom.Log.Errorf("failed to find prev cell for name: %s, row: %d", name, r.Row)
+				for i := col - 1; i >= 0; i-- {
+					// prevData := r.prev.indexedCells[col].Data
+					backCell := r.indexedCells[i]
+					if !strings.HasPrefix(backCell.Name, prefix) {
+						break
+					}
+					if types.MatchMap(backCell.Type) != nil || types.MatchKeyedList(backCell.Type) != nil {
+						if r.prev.indexedCells[i].Data == r.indexedCells[i].Data {
+							needPopulate = true
+							break
+						}
+					}
+				}
+			}
+
+			if needPopulate {
+				if prevCell := r.prev.Cell(name, false); prevCell != nil {
+					cell.Data = prevCell.Data
+					cell.autoPopulated = true
+				} else {
+					atom.Log.Errorf("failed to find prev cell for name: %s, row: %d", name, r.Row)
+				}
 			}
 		}
 	}
+
+	// add new cell
+	r.cells[name] = cell
+	r.indexedCells[col] = cell
 }
 
 func (r *RowCells) GetCellCountWithPrefix(prefix string) int {

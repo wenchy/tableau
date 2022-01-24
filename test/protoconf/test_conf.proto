@@ -83,7 +83,7 @@ message Loader {
     repeated Conf conf_list = 2 [(tableau.field) = {name:"Conf" key:"Type" layout:LAYOUT_VERTICAL}];
     message Conf {
       ConfType type = 1 [(tableau.field) = {name:"Type"}];
-      repeated Condition condition_list = 2 [(tableau.field) = {name:"Condition" layout:LAYOUT_VERTICAL}];
+      repeated Condition condition_list = 2 [(tableau.field) = {name:"Condition" key:"Type" layout:LAYOUT_VERTICAL}];
       message Condition {
         int32 type = 1 [(tableau.field) = {name:"Type"}];
         int32 value = 2 [(tableau.field) = {name:"Value"}];
