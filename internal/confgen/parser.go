@@ -262,8 +262,6 @@ func (sp *sheetParser) parseField(field *Field, msg protoreflect.Message, rc *ex
 		return sp.parseListField(field, msg, rc, depth, prefix)
 	} else if field.fd.Kind() == protoreflect.MessageKind {
 		return sp.parseStructField(field, msg, rc, depth, prefix)
-	} else if field.fd.Kind() == protoreflect.EnumKind {
-		return sp.parseEnumField(field, msg, rc, depth, prefix)
 	} else {
 		return sp.parseScalarField(field, msg, rc, depth, prefix)
 	}
@@ -641,64 +639,6 @@ func (sp *sheetParser) parseStructField(field *Field, msg protoreflect.Message, 
 	return nil
 }
 
-func (sp *sheetParser) parseEnumField(field *Field, msg protoreflect.Message, rc *excel.RowCells, depth int, prefix string) (err error) {
-	if msg.Has(field.fd) {
-		// Only parse field if it is not already present. This means the first not
-		// empty related row part (related to enum) is parsed.
-		return nil
-	}
-
-	newValue := msg.NewField(field.fd)
-	colName := prefix + field.opts.Name
-	cell := rc.Cell(colName, field.opts.Optional)
-	if cell == nil {
-		return errors.Errorf("%s|enum: column not found", rc.CellDebugString(colName))
-	}
-	newValue, err = func() (protoreflect.Value, error) {
-		// default enum value
-		defaultValue := protoreflect.ValueOfEnum(protoreflect.EnumNumber(0))
-		if cell.Data == "" {
-			return defaultValue, nil
-		}
-		ed := field.fd.Enum() // get enum descriptor
-		// try enum value number
-		val, err := strconv.ParseInt(cell.Data, 10, 32)
-		if err == nil {
-			evd := ed.Values().ByNumber(protoreflect.EnumNumber(val))
-			if evd != nil {
-				return protoreflect.ValueOfEnum(evd.Number()), nil
-			}
-			return defaultValue, errors.Errorf("%s|enum: enum type(%s) has no enum value name: %s", rc.CellDebugString(colName), field.opts.Type, cell.Data)
-		}
-
-		// try enum value name
-		evd := ed.Values().ByName(protoreflect.Name(cell.Data))
-		if evd != nil {
-			return protoreflect.ValueOfEnum(evd.Number()), nil
-		}
-		// try enum value alias name
-		for i := 0; i < ed.Values().Len(); i++ {
-			// get enum value descriptor
-			evd := ed.Values().Get(i)
-			opts := evd.Options().(*descriptorpb.EnumValueOptions)
-			evalueOpts := proto.GetExtension(opts, tableaupb.E_Evalue).(*tableaupb.EnumValueOptions)
-			if evalueOpts == nil {
-				return defaultValue, errors.Errorf("%s|enum: enum type(%s) has no enum value options", rc.CellDebugString(colName), field.opts.Type)
-			}
-			if evalueOpts.Name == cell.Data {
-				return protoreflect.ValueOfEnum(evd.Number()), nil
-			}
-		}
-		return defaultValue, errors.Errorf("%s|enum: enum value alias name(%s) not found", rc.CellDebugString(colName), cell.Data)
-	}()
-
-	if err != nil {
-		return errors.WithMessagef(err, "%s|enum: failed to parse field value: %s", rc.CellDebugString(colName), cell.Data)
-	}
-	msg.Set(field.fd, newValue)
-	return nil
-}
-
 func (sp *sheetParser) parseScalarField(field *Field, msg protoreflect.Message, rc *excel.RowCells, depth int, prefix string) (err error) {
 	if msg.Has(field.fd) {
 		// Only parse field if it is not already present. This means the first
@@ -735,7 +675,7 @@ func (sp *sheetParser) parseFieldValue(fd protoreflect.FieldDescriptor, value st
 			// val, err := strconv.ParseInt(value, 10, 32)
 
 			// Keep compatibility with excel number format.
-			// maybe: 
+			// maybe:
 			// - decimal fraction: 1.0
 			// - scientific notation: 1.0000001e7
 			val, err := strconv.ParseFloat(value, 64)
@@ -792,8 +732,8 @@ func (sp *sheetParser) parseFieldValue(fd protoreflect.FieldDescriptor, value st
 			return protoreflect.ValueOf(float64(val)), err
 		}
 		return protoreflect.ValueOf(float64(0)), nil
-	// case protoreflect.EnumKind:
-	// 	atom.Log.Panicf("not supported key type: %s", fd.Kind().String())
+	case protoreflect.EnumKind:
+		return parseEnumValue(fd, value)
 	// case protoreflect.GroupKind:
 	// 	atom.Log.Panicf("not supported key type: %s", fd.Kind().String())
 	// 	return protoreflect.Value{}
@@ -838,6 +778,44 @@ func (sp *sheetParser) parseFieldValue(fd protoreflect.FieldDescriptor, value st
 	default:
 		return protoreflect.Value{}, errors.Errorf("not supported scalar type: %s", fd.Kind().String())
 	}
+}
+
+func parseEnumValue(fd protoreflect.FieldDescriptor, value string) (protoreflect.Value, error) {
+	// default enum value
+	defaultValue := protoreflect.ValueOfEnum(protoreflect.EnumNumber(0))
+	if value == "" {
+		return defaultValue, nil
+	}
+	ed := fd.Enum() // get enum descriptor
+	// try enum value number
+	val, err := strconv.ParseInt(value, 10, 32)
+	if err == nil {
+		evd := ed.Values().ByNumber(protoreflect.EnumNumber(val))
+		if evd != nil {
+			return protoreflect.ValueOfEnum(evd.Number()), nil
+		}
+		return defaultValue, errors.Errorf("enum: enum value name not defined: %v", value)
+	}
+
+	// try enum value name
+	evd := ed.Values().ByName(protoreflect.Name(value))
+	if evd != nil {
+		return protoreflect.ValueOfEnum(evd.Number()), nil
+	}
+	// try enum value alias name
+	for i := 0; i < ed.Values().Len(); i++ {
+		// get enum value descriptor
+		evd := ed.Values().Get(i)
+		opts := evd.Options().(*descriptorpb.EnumValueOptions)
+		evalueOpts := proto.GetExtension(opts, tableaupb.E_Evalue).(*tableaupb.EnumValueOptions)
+		if evalueOpts == nil {
+			return defaultValue, errors.Errorf("enum: enum value options not found: %v", value)
+		}
+		if evalueOpts.Name == value {
+			return protoreflect.ValueOfEnum(evd.Number()), nil
+		}
+	}
+	return defaultValue, errors.Errorf("enum: enum value alias name not found: %v", value)
 }
 
 // parseFileOptions is aimed to parse the options of a protobuf definition file.

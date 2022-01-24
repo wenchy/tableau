@@ -8,3 +8,10 @@ message Item {
   int32 id = 1 [(tableau.field).name = "Id"];
   int32 num = 2 [(tableau.field).name = "Num"];
 }
+
+enum ConfType {
+  CONF_TYPE_UNKNOWN = 0 [(tableau.evalue).name = "未知"];
+  CONF_TYPE_CLOUD = 1 [(tableau.evalue).name = "云上"];
+  CONF_TYPE_LOCAL = 2 [(tableau.evalue).name = "本地"];
+  CONF_TYPE_REMOTE = 3 [(tableau.evalue).name = "远程"];
+}
