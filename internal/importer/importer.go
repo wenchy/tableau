@@ -18,7 +18,7 @@ import (
 
 type Importer interface {
 	// GetSheet returns a Sheet of the specified sheet name.
-	GetSheets() []*Sheet
+	GetSheets() ([]*Sheet, error)
 	GetSheet(name string) (*Sheet, error)
 }
 

@@ -4,7 +4,6 @@ import (
 	"encoding/csv"
 	"os"
 
-	"github.com/Wenchy/tableau/internal/atom"
 	"github.com/pkg/errors"
 )
 
@@ -19,12 +18,12 @@ func NewCSVImporter(filename string) *CSVImporter {
 	}
 }
 
-func (x *CSVImporter) GetSheets() []*Sheet {
+func (x *CSVImporter) GetSheets() ([]*Sheet, error){
 	sheet, err := x.GetSheet(x.filename)
 	if err != nil {
-		atom.Log.Panicf("get sheet failed: %+v", err)
+		return nil, errors.WithMessagef(err, "get sheet failed: %s", x.filename)
 	}
-	return []*Sheet{sheet}
+	return []*Sheet{sheet}, nil
 }
 
 // GetSheet returns a Sheet of the specified sheet name.

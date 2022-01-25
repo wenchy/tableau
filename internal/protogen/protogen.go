@@ -99,12 +99,13 @@ func (gen *Generator) convertWorkbook(dir, filename string) error {
 	if err != nil {
 		return errors.WithMessagef(err, "get relative path failed")
 	}
+	absPath := filepath.Join(dir, filename)
 	parser := confgen.NewSheetParser(TableauProtoPackage, gen.LocationName)
-	imp := importer.New(filepath.Join(dir, filename), importer.Parser(parser))
+	imp := importer.New(absPath, importer.Parser(parser))
+	sheets, err := imp.GetSheets()
 	if err != nil {
-		return errors.Wrapf(err, "failed to create new workbook: %s", relativePath)
+		return errors.Wrapf(err, "failed to get sheet of workbook: %s", absPath)
 	}
-	sheets := imp.GetSheets()
 	if len(sheets) == 0 {
 		return nil
 	}

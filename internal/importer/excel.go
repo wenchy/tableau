@@ -31,16 +31,22 @@ func NewExcelImporter(filename string, sheets []string, parser SheetParser) *Exc
 	}
 }
 
-func (x *ExcelImporter) GetSheets() []*Sheet {
+func (x *ExcelImporter) GetSheets() ([]*Sheet, error) {
+	if x.sheetMap == nil {
+		if err := x.parse(); err != nil {
+			return nil, errors.WithMessagef(err, "failed to parse %s", x.filename)
+		}
+	}
+
 	sheets := []*Sheet{}
 	for _, name := range x.sheetNames {
 		sheet, err := x.GetSheet(name)
 		if err != nil {
-			atom.Log.Panicf("get sheet failed: %+v", err)
+			return nil, errors.WithMessagef(err, "get sheet failed: %s", name)
 		}
 		sheets = append(sheets, sheet)
 	}
-	return sheets
+	return sheets, nil
 }
 
 // GetSheet returns a Sheet of the specified sheet name.
@@ -88,6 +94,7 @@ func (x *ExcelImporter) NeedParseMeta() bool {
 
 func (x *ExcelImporter) parseWorkbookMeta(file *excelize.File) error {
 	if !x.NeedParseMeta() {
+		atom.Log.Debugf("skip parsing workbook meta: %s", x.filename)
 		return nil
 	}
 
