@@ -1,6 +1,8 @@
-package excel
+package importer
 
 import (
+	"bytes"
+	"encoding/csv"
 	"fmt"
 	"math"
 	"regexp"
@@ -10,18 +12,28 @@ import (
 	"github.com/Wenchy/tableau/internal/atom"
 	"github.com/Wenchy/tableau/internal/camelcase"
 	"github.com/Wenchy/tableau/internal/types"
+	"github.com/Wenchy/tableau/proto/tableaupb"
 	"github.com/pkg/errors"
-	"github.com/xuri/excelize/v2"
 )
 
-var newlineRegex *regexp.Regexp
-
-func init() {
-	newlineRegex = regexp.MustCompile(`\r?\n?`)
+type Importer interface {
+	// GetSheet returns a Sheet of the specified sheet name.
+	GetSheets() []*Sheet
+	GetSheet(name string) (*Sheet, error)
 }
 
-func clearNewline(s string) string {
-	return newlineRegex.ReplaceAllString(s, "")
+func New(filename string, setters ...Option) Importer {
+	opts := parseOptions(setters...)
+	switch opts.Format {
+	case Excel:
+		return NewExcelImporter(filename, opts.Sheets, opts.Parser)
+	case CSV:
+		return NewCSVImporter(filename)
+	// case XML:
+	// 	return NewXMLImporter()
+	default:
+		return nil
+	}
 }
 
 type Sheet struct {
@@ -29,9 +41,32 @@ type Sheet struct {
 	MaxRow int
 	MaxCol int
 
-	Rows [][]string
+	Rows [][]string // 2D array of string.
+
+	Meta *tableaupb.SheetMeta
 }
 
+// NewSheet creats a new Sheet.
+func NewSheet(name string, rows [][]string) *Sheet {
+	maxRow := len(rows)
+	maxCol := 0
+	// MOTE: different row may have different length.
+	// We need to find the max col.
+	for _, row := range rows {
+		n := len(row)
+		if n > maxCol {
+			maxCol = n
+		}
+	}
+	return &Sheet{
+		Name:   name,
+		MaxRow: maxRow,
+		MaxCol: maxCol,
+		Rows:   rows,
+	}
+}
+
+// Cell returns the cell at (row, col).
 func (s *Sheet) Cell(row, col int) (string, error) {
 	if row < 0 || row >= s.MaxRow {
 		return "", errors.Errorf("row %d out of range", row)
@@ -46,66 +81,36 @@ func (s *Sheet) Cell(row, col int) (string, error) {
 	return s.Rows[row][col], nil
 }
 
+// String returns the string representation (CSV) of the sheet.
 func (s *Sheet) String() string {
 	str := ""
-	for row := 0; row < s.MaxRow; row++ {
-		for col := 0; col < s.MaxCol; col++ {
-			cell, _ := s.Cell(row, col)
-			str += cell + "|"
-		}
-		str += "\n"
-	}
+	w := csv.NewWriter(bytes.NewBufferString(str))
+	w.WriteAll(s.Rows) // calls Flush internally
 	return str
 }
 
-type Book struct {
-	Filename string
-	Sheets   map[string]*Sheet // sheet name -> sheet
+var newlineRegex *regexp.Regexp
+
+func init() {
+	newlineRegex = regexp.MustCompile(`\r?\n?`)
 }
 
-func NewBook(filename string, sheets []string) (*Book, error) {
-	b := &Book{
-		Filename: filename,
-		Sheets:   make(map[string]*Sheet),
-	}
-
-	file, err := excelize.OpenFile(filename)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to open workbook: %s", filename)
-	}
-
-	for _, sheetName := range sheets {
-		s, err := parseSheet(file, sheetName)
-		if err != nil {
-			return nil, errors.WithMessagef(err, "failed to get rows of s: %s#%s", b.Filename, sheetName)
-		}
-		b.Sheets[sheetName] = s
-	}
-	return b, nil
+func clearNewline(s string) string {
+	return newlineRegex.ReplaceAllString(s, "")
 }
 
-func parseSheet(file *excelize.File, sheetName string) (*Sheet, error) {
-	rows, err := file.GetRows(sheetName)
-	if err != nil {
-		return nil, errors.WithMessagef(err, "failed to get rows of sheet: %s", sheetName)
+func ExtractFromCell(cell string, line int32) string {
+	if line == 0 {
+		// line 0 means the whole cell.
+		return clearNewline(strings.TrimSpace(cell))
 	}
-	maxRow := len(rows)
-	maxCol := 0
-	// MOTE: different row may have different length.
-	// We need to find the max col.
-	for _, row := range rows {
-		n := len(row)
-		if n > maxCol {
-			maxCol = n
-		}
+
+	lines := strings.Split(cell, "\n")
+	if int32(len(lines)) >= line {
+		return strings.TrimSpace(lines[line-1])
 	}
-	s := &Sheet{
-		Name:   sheetName,
-		MaxRow: maxRow,
-		MaxCol: maxCol,
-		Rows:   rows,
-	}
-	return s, nil
+	// atom.Log.Debugf("No enough lines in cell: %s, want at least %d lines", cell, line)
+	return ""
 }
 
 type RowCells struct {
@@ -244,18 +249,4 @@ func (r *RowCells) GetCellCountWithPrefix(prefix string) int {
 		}
 	}
 	return size
-}
-
-func ExtractFromCell(cell string, line int32) string {
-	if line == 0 {
-		// line 0 means the whole cell.
-		return clearNewline(strings.TrimSpace(cell))
-	}
-
-	lines := strings.Split(cell, "\n")
-	if int32(len(lines)) >= line {
-		return strings.TrimSpace(lines[line-1])
-	}
-	// atom.Log.Debugf("No enough lines in cell: %s, want at least %d lines", cell, line)
-	return ""
 }

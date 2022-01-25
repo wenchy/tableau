@@ -9,8 +9,8 @@ import (
 
 	"github.com/Wenchy/tableau/internal/atom"
 	"github.com/Wenchy/tableau/internal/confgen"
-	"github.com/Wenchy/tableau/internal/excel"
 	"github.com/Wenchy/tableau/internal/fs"
+	"github.com/Wenchy/tableau/internal/importer"
 	"github.com/Wenchy/tableau/options"
 	"github.com/Wenchy/tableau/proto/tableaupb"
 	"github.com/pkg/errors"
@@ -99,17 +99,19 @@ func (gen *Generator) convertWorkbook(dir, filename string) error {
 	if err != nil {
 		return errors.WithMessagef(err, "get relative path failed")
 	}
-	book, err := excel.NewBookExt(filepath.Join(dir, filename), confgen.NewSheetParser(TableauProtoPackage, gen.LocationName))
+	parser := confgen.NewSheetParser(TableauProtoPackage, gen.LocationName)
+	imp := importer.New(filepath.Join(dir, filename), importer.Parser(parser))
 	if err != nil {
 		return errors.Wrapf(err, "failed to create new workbook: %s", relativePath)
 	}
-	if len(book.Sheets) == 0 {
+	sheets := imp.GetSheets()
+	if len(sheets) == 0 {
 		return nil
 	}
 	atom.Log.Infof("workbook: %s, %s", gen.InputDir, relativePath)
 	// creat a book parser
 	bp := newBookParser(relativePath, gen.FilenameWithSubdirPrefix, gen.Imports)
-	for _, sheet := range book.Sheets {
+	for _, sheet := range sheets {
 		// parse sheet header
 		sheetMsgName := sheet.Name
 		if sheet.Meta.Alias != "" {
@@ -214,7 +216,7 @@ type sheetHeader struct {
 
 func getCell(row []string, cursor int, line int32) string {
 	cell := row[cursor]
-	return excel.ExtractFromCell(cell, line)
+	return importer.ExtractFromCell(cell, line)
 }
 
 func (sh *sheetHeader) getNameCell(cursor int) string {

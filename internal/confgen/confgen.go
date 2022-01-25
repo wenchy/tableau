@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/Wenchy/tableau/internal/atom"
-	"github.com/Wenchy/tableau/internal/excel"
+	"github.com/Wenchy/tableau/internal/importer"
 	"github.com/Wenchy/tableau/options"
 	"github.com/Wenchy/tableau/proto/tableaupb"
 	"github.com/pkg/errors"
@@ -77,10 +77,7 @@ func (gen *Generator) Generate(relWorkbookPath string, worksheetName string) (er
 					}
 				}
 				wbPath := filepath.Join(gen.InputDir, workbook.Name)
-				book, err := excel.NewBook(wbPath, sheets)
-				if err != nil {
-					return errors.Errorf("failed to create new workbook: %s", wbPath)
-				}
+				imp := importer.New(wbPath, importer.Sheets(sheets))
 				// atom.Log.Debugf("proto: %s, workbook %s", fd.Path(), workbook)
 				for sheetName, msgName := range sheetMap {
 					if worksheetName != "" && worksheetName != sheetName {
@@ -94,7 +91,7 @@ func (gen *Generator) Generate(relWorkbookPath string, worksheetName string) (er
 					newMsg := dynamicpb.NewMessage(md)
 					parser := NewSheetParser(gen.ProtoPackage, gen.LocationName)
 					exporter := NewSheetExporter(gen.OutputDir, gen.Output)
-					err := exporter.Export(book, parser, newMsg)
+					err := exporter.Export(imp, parser, newMsg)
 					if err != nil {
 						return err
 					}

@@ -7,7 +7,7 @@ import (
 
 	"github.com/Wenchy/tableau/internal/atom"
 	"github.com/Wenchy/tableau/internal/confgen/mexporter"
-	"github.com/Wenchy/tableau/internal/excel"
+	"github.com/Wenchy/tableau/internal/importer"
 	"github.com/Wenchy/tableau/internal/printer"
 	"github.com/Wenchy/tableau/internal/types"
 	"github.com/Wenchy/tableau/options"
@@ -35,14 +35,14 @@ func NewSheetExporter(outputDir string, output *options.OutputOption) *sheetExpo
 }
 
 // export the protomsg message.
-func (x *sheetExporter) Export(book *excel.Book, parser *sheetParser, protomsg proto.Message) error {
+func (x *sheetExporter) Export(imp importer.Importer, parser *sheetParser, protomsg proto.Message) error {
 	md := protomsg.ProtoReflect().Descriptor()
 	// _, workbook := parseFileOptions(md.ParentFile())
 	msgName, wsOpts := parseMessageOptions(md)
 
-	sheet := book.Sheets[wsOpts.Name]
-	if sheet == nil {
-		return errors.Errorf("not found worksheet: %s", wsOpts.Name)
+	sheet, err := imp.GetSheet(wsOpts.Name)
+	if err != nil {
+		return errors.WithMessagef(err, "get sheet failed: %s", wsOpts.Name)
 	}
 
 	if err := parser.Parse(protomsg, sheet, wsOpts); err != nil {
@@ -65,7 +65,7 @@ func NewSheetParser(protoPackage, locationName string) *sheetParser {
 	}
 }
 
-func (sp *sheetParser) Parse(protomsg proto.Message, sheet *excel.Sheet, wsOpts *tableaupb.WorksheetOptions) error {
+func (sp *sheetParser) Parse(protomsg proto.Message, sheet *importer.Sheet, wsOpts *tableaupb.WorksheetOptions) error {
 	// atom.Log.Debugf("parse sheet: %s", sheet.Name)
 	msg := protomsg.ProtoReflect()
 	if wsOpts.Transpose {
@@ -73,16 +73,16 @@ func (sp *sheetParser) Parse(protomsg proto.Message, sheet *excel.Sheet, wsOpts 
 		// namerow: name column
 		// [datarow, MaxCol]: data column
 		// kvRow := make(map[string]string)
-		var prev *excel.RowCells
+		var prev *importer.RowCells
 		for col := int(wsOpts.Datarow) - 1; col < sheet.MaxCol; col++ {
-			curr := excel.NewRowCells(col, prev)
+			curr := importer.NewRowCells(col, prev)
 			for row := 0; row < sheet.MaxRow; row++ {
 				nameCol := int(wsOpts.Namerow) - 1
 				nameCell, err := sheet.Cell(row, nameCol)
 				if err != nil {
 					return errors.WithMessagef(err, "failed to get name cell: %d, %d", row, nameCol)
 				}
-				name := excel.ExtractFromCell(nameCell, wsOpts.Nameline)
+				name := importer.ExtractFromCell(nameCell, wsOpts.Nameline)
 
 				typ := ""
 				if wsOpts.Typerow > 0 {
@@ -92,7 +92,7 @@ func (sp *sheetParser) Parse(protomsg proto.Message, sheet *excel.Sheet, wsOpts 
 					if err != nil {
 						return errors.WithMessagef(err, "failed to get name cell: %d, %d", row, typeCol)
 					}
-					typ = excel.ExtractFromCell(typeCell, wsOpts.Typeline)
+					typ = importer.ExtractFromCell(typeCell, wsOpts.Typeline)
 				}
 
 				data, err := sheet.Cell(row, col)
@@ -110,16 +110,16 @@ func (sp *sheetParser) Parse(protomsg proto.Message, sheet *excel.Sheet, wsOpts 
 	} else {
 		// namerow: name row
 		// [datarow, MaxRow]: data row
-		var prev *excel.RowCells
+		var prev *importer.RowCells
 		for row := int(wsOpts.Datarow) - 1; row < sheet.MaxRow; row++ {
-			curr := excel.NewRowCells(row, prev)
+			curr := importer.NewRowCells(row, prev)
 			for col := 0; col < sheet.MaxCol; col++ {
 				nameRow := int(wsOpts.Namerow) - 1
 				nameCell, err := sheet.Cell(nameRow, col)
 				if err != nil {
 					return errors.WithMessagef(err, "failed to get name cell: %d, %d", nameRow, col)
 				}
-				name := excel.ExtractFromCell(nameCell, wsOpts.Nameline)
+				name := importer.ExtractFromCell(nameCell, wsOpts.Nameline)
 
 				typ := ""
 				if wsOpts.Typerow > 0 {
@@ -129,7 +129,7 @@ func (sp *sheetParser) Parse(protomsg proto.Message, sheet *excel.Sheet, wsOpts 
 					if err != nil {
 						return errors.WithMessagef(err, "failed to get type cell: %d, %d", typeRow, col)
 					}
-					typ = excel.ExtractFromCell(typeCell, wsOpts.Typeline)
+					typ = importer.ExtractFromCell(typeCell, wsOpts.Typeline)
 				}
 
 				data, err := sheet.Cell(row, col)
@@ -154,7 +154,7 @@ type Field struct {
 }
 
 // parseFieldOptions is aimed to parse the options of all the fields of a protobuf message.
-func (sp *sheetParser) parseFieldOptions(msg protoreflect.Message, rc *excel.RowCells, depth int, prefix string) (err error) {
+func (sp *sheetParser) parseFieldOptions(msg protoreflect.Message, rc *importer.RowCells, depth int, prefix string) (err error) {
 	md := msg.Descriptor()
 	pkg := md.ParentFile().Package()
 	// opts := md.Options().(*descriptorpb.MessageOptions)
@@ -254,7 +254,7 @@ func (sp *sheetParser) parseFieldOptions(msg protoreflect.Message, rc *excel.Row
 	return nil
 }
 
-func (sp *sheetParser) parseField(field *Field, msg protoreflect.Message, rc *excel.RowCells, depth int, prefix string) (err error) {
+func (sp *sheetParser) parseField(field *Field, msg protoreflect.Message, rc *importer.RowCells, depth int, prefix string) (err error) {
 	// atom.Log.Debug(field.fd.ContainingMessage().FullName())
 	if field.fd.IsMap() {
 		return sp.parseMapField(field, msg, rc, depth, prefix)
@@ -267,7 +267,7 @@ func (sp *sheetParser) parseField(field *Field, msg protoreflect.Message, rc *ex
 	}
 }
 
-func (sp *sheetParser) parseMapField(field *Field, msg protoreflect.Message, rc *excel.RowCells, depth int, prefix string) (err error) {
+func (sp *sheetParser) parseMapField(field *Field, msg protoreflect.Message, rc *importer.RowCells, depth int, prefix string) (err error) {
 	// Mutable returns a mutable reference to a composite type.
 	newValue := msg.Mutable(field.fd)
 	reflectMap := newValue.Map()
@@ -419,7 +419,7 @@ func (sp *sheetParser) parseMapField(field *Field, msg protoreflect.Message, rc 
 	return nil
 }
 
-func (sp *sheetParser) parseListField(field *Field, msg protoreflect.Message, rc *excel.RowCells, depth int, prefix string) (err error) {
+func (sp *sheetParser) parseListField(field *Field, msg protoreflect.Message, rc *importer.RowCells, depth int, prefix string) (err error) {
 	// Mutable returns a mutable reference to a composite type.
 	newValue := msg.Mutable(field.fd)
 	reflectList := newValue.List()
@@ -545,7 +545,7 @@ func (sp *sheetParser) parseListField(field *Field, msg protoreflect.Message, rc
 	return nil
 }
 
-func (sp *sheetParser) parseStructField(field *Field, msg protoreflect.Message, rc *excel.RowCells, depth int, prefix string) (err error) {
+func (sp *sheetParser) parseStructField(field *Field, msg protoreflect.Message, rc *importer.RowCells, depth int, prefix string) (err error) {
 	// NOTE(wenchy): `proto.Equal` treats a nil message as not equal to an empty one.
 	// doc: [Equal](https://pkg.go.dev/google.golang.org/protobuf/proto?tab=doc#Equal)
 	// issue: [APIv2: protoreflect: consider Message nilness test](https://github.com/golang/protobuf/issues/966)
@@ -630,7 +630,7 @@ func (sp *sheetParser) parseStructField(field *Field, msg protoreflect.Message, 
 	return nil
 }
 
-func (sp *sheetParser) parseScalarField(field *Field, msg protoreflect.Message, rc *excel.RowCells, depth int, prefix string) (err error) {
+func (sp *sheetParser) parseScalarField(field *Field, msg protoreflect.Message, rc *importer.RowCells, depth int, prefix string) (err error) {
 	if msg.Has(field.fd) {
 		// Only parse field if it is not already present. This means the first
 		// none-empty related row part (related to scalar) is parsed.
