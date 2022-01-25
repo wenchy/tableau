@@ -96,6 +96,15 @@ func (s *Sheet) String() string {
 
 func (s *Sheet) ExportCSV(writer io.Writer) error {
 	w := csv.NewWriter(writer)
+	// FIXME(wenchy): will be something wrong if we add the empty cell?
+	// TODO: deepcopy a new rows!
+	for nrow, row := range s.Rows {
+		for i := len(row); i < s.MaxCol; i++ {
+			// atom.Log.Debugf("add empty cell: %s", s.Name)
+			row = append(row, "")
+		}
+		s.Rows[nrow] = row
+	}
 	// TODO: escape the cell value with `,` and `"`.
 	return w.WriteAll(s.Rows) // calls Flush internally
 }
