@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/csv"
 	"fmt"
+	"io"
 	"math"
 	"regexp"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"github.com/Wenchy/tableau/internal/types"
 	"github.com/Wenchy/tableau/proto/tableaupb"
 	"github.com/pkg/errors"
+	"github.com/xuri/excelize/v2"
 )
 
 type Importer interface {
@@ -26,7 +28,7 @@ func New(filename string, setters ...Option) Importer {
 	opts := parseOptions(setters...)
 	switch opts.Format {
 	case Excel:
-		return NewExcelImporter(filename, opts.Sheets, opts.Parser)
+		return NewExcelImporter(filename, opts.Sheets, opts.Parser, false)
 	case CSV:
 		return NewCSVImporter(filename)
 	// case XML:
@@ -83,10 +85,45 @@ func (s *Sheet) Cell(row, col int) (string, error) {
 
 // String returns the string representation (CSV) of the sheet.
 func (s *Sheet) String() string {
-	str := ""
-	w := csv.NewWriter(bytes.NewBufferString(str))
-	w.WriteAll(s.Rows) // calls Flush internally
-	return str
+	var buffer bytes.Buffer
+	w := csv.NewWriter(&buffer)
+	err := w.WriteAll(s.Rows) // calls Flush internally
+	if err != nil {
+		atom.Log.Panicf("write csv failed: %v", err)
+	}
+	return buffer.String()
+}
+
+func (s *Sheet) ExportCSV(writer io.Writer) error {
+	w := csv.NewWriter(writer)
+	// TODO: escape the cell value with `,` and `"`.
+	return w.WriteAll(s.Rows) // calls Flush internally
+}
+
+func (s *Sheet) ExportExcel(file *excelize.File) error {
+	file.NewSheet(s.Name)
+	// TODO: clean up the sheet by using RemoveRow API.
+
+	for nrow, row := range s.Rows {
+		// file.SetRowHeight(s.Name, nrow, 20)
+		for ncol, cell := range row {
+			colname, err := excelize.ColumnNumberToName(ncol + 1)
+			if err != nil {
+				return errors.Wrapf(err, "failed to convert column number %d to name", ncol+1)
+			}
+			file.SetColWidth(s.Name, colname, colname, 20)
+
+			axis, err := excelize.CoordinatesToCellName(ncol+1, nrow+1)
+			if err != nil {
+				return errors.Wrapf(err, "failed to convert coordinates (%d,%d) to cell name", ncol+1, nrow+1)
+			}
+			err = file.SetCellValue(s.Name, axis, cell)
+			if err != nil {
+				return errors.Wrapf(err, "failed to set cell value %s", axis)
+			}
+		}
+	}
+	return nil
 }
 
 var newlineRegex *regexp.Regexp

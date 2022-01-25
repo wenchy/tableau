@@ -1,6 +1,12 @@
 package importer
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
 	"github.com/Wenchy/tableau/internal/atom"
 	"github.com/Wenchy/tableau/proto/tableaupb"
 	"github.com/emirpasic/gods/maps/treemap"
@@ -13,17 +19,19 @@ const metaSheetName = "@TABLEAU"
 
 type ExcelImporter struct {
 	filename   string
-	sheetMap     map[string]*Sheet // sheet name -> sheet
+	sheetMap   map[string]*Sheet // sheet name -> sheet
 	sheetNames []string
+	includeMetaSheet bool
 
 	Meta       *tableaupb.WorkbookMeta
 	metaParser SheetParser
 }
-
-func NewExcelImporter(filename string, sheets []string, parser SheetParser) *ExcelImporter {
+// TODO: options
+func NewExcelImporter(filename string, sheets []string, parser SheetParser, includeMetaSheet bool) *ExcelImporter {
 	return &ExcelImporter{
 		filename:   filename,
 		sheetNames: sheets,
+		includeMetaSheet: includeMetaSheet,
 		metaParser: parser,
 		Meta: &tableaupb.WorkbookMeta{
 			SheetMetaMap: make(map[string]*tableaupb.SheetMeta),
@@ -174,10 +182,72 @@ func (x *ExcelImporter) collectSheetsInOrder(file *excelize.File) error {
 	x.sheetNames = nil
 	for _, val := range sortedMap.Values() {
 		sheetName := val.(string)
-		if sheetName != metaSheetName {
+		if  sheetName != metaSheetName || (x.includeMetaSheet && sheetName == metaSheetName) {
 			// exclude meta sheet
 			x.sheetNames = append(x.sheetNames, sheetName)
 		}
 	}
 	return nil
+}
+
+func (x *ExcelImporter) ExportCSV() error {
+	ext := filepath.Ext(x.filename)
+	basename := strings.TrimSuffix(x.filename, ext)
+	sheets, err := x.GetSheets()
+	if err != nil {
+		return errors.WithMessagef(err, "failed to get sheets: %s", x.filename)
+	}
+	for _, sheet := range sheets {
+		path := fmt.Sprintf("%s#%s.csv", basename, sheet.Name)
+		f, err := os.Create(path)
+		if err != nil {
+			return errors.Wrapf(err, "failed to create csv file: %s", path)
+		}
+		defer f.Close()
+
+		if err := sheet.ExportCSV(f); err != nil {
+			return errors.WithMessagef(err, "export sheet %s to excel failed", sheet.Name)
+		}
+	}
+	return nil
+}
+
+func OpenExcel(filename string, sheetName string) (*excelize.File, error) {
+	var wb *excelize.File
+	if _, err := os.Stat(filename); os.IsNotExist(err) {
+		fmt.Println("create file: ", filename)
+		wb = excelize.NewFile()
+		t := time.Now()
+		datetime := t.Format(time.RFC3339)
+		err := wb.SetDocProps(&excelize.DocProperties{
+			Category:       "category",
+			ContentStatus:  "Draft",
+			Created:        datetime,
+			Creator:        "Tableau",
+			Description:    "This file was created by Tableau",
+			Identifier:     "xlsx",
+			Keywords:       "Spreadsheet",
+			LastModifiedBy: "Tableau",
+			Modified:       datetime,
+			Revision:       "0",
+			Subject:        "Configuration",
+			Title:          filepath.Base(filename),
+			Language:       "en-US",
+			Version:        "1.0.0",
+		})
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to set doc props: %s", filename)
+		}
+		// The newly created workbook will by default contain a worksheet named `Sheet1`.
+		wb.SetSheetName("Sheet1", sheetName)
+		wb.SetDefaultFont("Courier")
+	} else {
+		fmt.Println("existed file: ", filename)
+		wb, err = excelize.OpenFile(filename)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to open file: %s", filename)
+		}
+		wb.NewSheet(sheetName)
+	}
+	return wb, nil
 }

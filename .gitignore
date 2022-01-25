@@ -19,3 +19,4 @@
 _*
 cmd/test/test
 test/protogen/protoconf
+*.xlsx

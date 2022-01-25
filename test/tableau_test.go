@@ -5,6 +5,7 @@ import (
 
 	"github.com/Wenchy/tableau"
 	"github.com/Wenchy/tableau/internal/atom"
+	"github.com/Wenchy/tableau/internal/importer"
 	"github.com/Wenchy/tableau/options"
 	_ "github.com/Wenchy/tableau/test/testpb"
 )
@@ -65,4 +66,41 @@ func Test_Xlsx2JSON_Select(t *testing.T) {
 		options.Workbook(".\\hero\\Test.xlsx"),
 		options.Worksheet("Hero"),
 	)
+}
+
+func Test_Excel2CSV(t *testing.T) {
+	paths := []string{
+		"./testdata/Test.xlsx",
+		"./testdata/hero/Test.xlsx",
+	}
+	for _, path := range paths {
+		imp := importer.NewExcelImporter(path, nil, nil, true)
+		err := imp.ExportCSV()
+		if err != nil {
+			t.Error(err)
+		}
+	}
+}
+
+func Test_CSV2Excel(t *testing.T) {
+	paths := []string{
+		"./testdata/Test#Activity.csv",
+		"./testdata/Test#Reward.csv",
+		"./testdata/Test#Exchange.csv",
+		"./testdata/Test#Match.csv",
+		"./testdata/Test#Loader.csv",
+		"./testdata/Test#@TABLEAU.csv",
+		"./testdata/Test#Sheet2.csv",
+
+
+		"./testdata/hero/Test#Hero.csv",
+		"./testdata/hero/Test#@TABLEAU.csv",
+	}
+	for _, path := range paths {
+		imp := importer.NewCSVImporter(path)
+		err := imp.ExportExcel()
+		if err != nil {
+			t.Errorf("%+v",err)
+		}
+	}
 }
