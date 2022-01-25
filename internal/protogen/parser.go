@@ -6,16 +6,16 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"fmt"
 
 	"github.com/Wenchy/tableau/internal/atom"
 	"github.com/Wenchy/tableau/internal/types"
 	"github.com/Wenchy/tableau/proto/tableaupb"
 	"github.com/iancoleman/strcase"
+	"github.com/pkg/errors"
 
+	"github.com/Wenchy/tableau/internal/xlsxgen"
 	"github.com/antchfx/xmlquery"
 	"github.com/antchfx/xpath"
-	"github.com/Wenchy/tableau/internal/xlsxgen"
 )
 
 const (
@@ -567,8 +567,7 @@ func (gen *XmlGenerator) parseXml(nav *xmlquery.NodeNavigator, metaSheet *xlsxge
 				attrName := strings.Split(attr.Value, ".")[1]
 				keyNode := xmlquery.FindOne(nav.Current(), fmt.Sprintf("/%s/@%s", tagName, attrName))
 				if keyNode == nil {
-					atom.Log.Panicf("KeyCol:%s not found in the immediately following nodes of %s", attr.Value, nav.LocalName())
-					continue
+					return fmt.Errorf("KeyCol:%s not found in the immediately following nodes of %s", attr.Value, nav.LocalName())
 				}
 			case "TYPE":
 			default:
@@ -626,13 +625,21 @@ func (gen *XmlGenerator) parseXml(nav *xmlquery.NodeNavigator, metaSheet *xlsxge
 			continue
 		}
 		tagName := navCopy.LocalName()
-		if _, existed := nodeMap[tagName]; existed {
+		if count, existed := nodeMap[tagName]; existed {
+			// `TABLEAU` can only be placed in the first child node
+			if xmlquery.FindOne(navCopy.Current(), "/TABLEAU") != nil {
+				return fmt.Errorf("`TABLEAU` found in node %s (index:%d) which is not the first child", tagName, count + 1)
+			}
 			// duplicate means a list, should expand vertically
 			row := metaSheet.NewRow()
-			gen.parseXml(&navCopy, metaSheet, row.Index)
+			if err := gen.parseXml(&navCopy, metaSheet, row.Index); err != nil {
+				return errors.Wrapf(err, "parseXml for node %s (index:%d) failed", tagName, count + 1)
+			}
 			nodeMap[tagName]++
 		} else {
-			gen.parseXml(&navCopy, metaSheet, cursor)
+			if err := gen.parseXml(&navCopy, metaSheet, cursor); err != nil {
+				return errors.Wrapf(err, "parseXml for the first node %s failed", tagName)
+			}
 			nodeMap[tagName] = 1
 		}
 	}
