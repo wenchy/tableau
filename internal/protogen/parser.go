@@ -551,14 +551,16 @@ func (gen *XmlGenerator) parseXml(nav *xmlquery.NodeNavigator, metaSheet *xlsxge
 	typeAttr := xmlquery.FindOne(nav.Current(), "@TYPE")
 	repeated := len(xmlquery.Find(realParent, nav.LocalName())) > 1 || (typeAttr != nil && typeAttr.InnerText() == "repeated")
 
-	// clear
+	// clear to the bottom
 	if navCopy := *nav; !navCopy.MoveToChild() {
-		metaSheet.ForEachCol(cursor, func(name string, cell *xlsxgen.Cell) error {
-			if strings.HasPrefix(name, prefix) {
-				cell.Data = metaSheet.GetDefaultValue(name)
-			}
-			return nil
-		})
+		for tmpCusor := cursor; tmpCusor < len(metaSheet.Rows); tmpCusor++ {
+			metaSheet.ForEachCol(tmpCusor, func(name string, cell *xlsxgen.Cell) error {
+				if strings.HasPrefix(name, prefix) {
+					cell.Data = metaSheet.GetDefaultValue(name)
+				}
+				return nil
+			})
+		}
 	}
 
 	if nav.LocalName() != metaSheet.Worksheet {
@@ -601,10 +603,10 @@ func (gen *XmlGenerator) parseXml(nav *xmlquery.NodeNavigator, metaSheet *xlsxge
 				matches := structRegexp.FindStringSubmatch(curType)
 				// 1. <META>
 				// 2. type not set
-				// 3. {struct}int32 -> [struct]int32
+				// 3. {Type}int32 -> [Type]int32
 				needChangeType := defineType || curType == "" || (len(matches) > 0 && repeated)
 				// 1. new struct(list), not subsequent
-				// 2. {struct}int32 -> [struct]int32
+				// 2. {Type}int32 -> [Type]int32
 				setKeyedType := !strings.HasPrefix(lastColName, prefix) || (len(matches) > 0 && repeated)
 				if needChangeType {
 					if keyCol != nil && strings.Split(keyCol.InnerText(), ".")[1] == attrName {
