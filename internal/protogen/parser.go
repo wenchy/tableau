@@ -24,22 +24,14 @@ const (
 	durationProtoPath  = "google/protobuf/duration.proto"
 )
 
-var mapRegexp *regexp.Regexp
-var listRegexp *regexp.Regexp
 var structRegexp *regexp.Regexp
-var enumRegexp *regexp.Regexp
-var numRegex *regexp.Regexp
 
 func init() {
-	mapRegexp = regexp.MustCompile(`^map<(.+),(.+)>`)  // e.g.: map<uint32,Type>
-	listRegexp = regexp.MustCompile(`^\[(.*)\](.+)`)   // e.g.: [Type]uint32
 	structRegexp = regexp.MustCompile(`^\{(.+)\}(.+)`) // e.g.: {Type}uint32
-	enumRegexp = regexp.MustCompile(`^enum<(.+)>`)     // e.g.: enum<Type>
 }
 
 type bookParser struct {
 	wb       *tableaupb.Workbook
-	types    map[string]bool // type name -> existed
 	withNote bool
 }
 
