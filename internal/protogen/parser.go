@@ -555,9 +555,6 @@ func (gen *XmlGenerator) parseXml(nav *xmlquery.NodeNavigator, metaSheet *xlsxge
 	if navCopy := *nav; !navCopy.MoveToChild() {
 		metaSheet.ForEachCol(cursor, func(name string, cell *xlsxgen.Cell) error {
 			if strings.HasPrefix(name, prefix) {
-				if name == "MatchModeMissionType" {
-					atom.Log.Debug(name, " ", prefix, " ", cell)
-				}
 				cell.Data = metaSheet.GetDefaultValue(name)
 			}
 			return nil
@@ -596,9 +593,6 @@ func (gen *XmlGenerator) parseXml(nav *xmlquery.NodeNavigator, metaSheet *xlsxge
 				}
 				// fill values to the bottom when backtrace to top line
 				if !defineType && !defineDefault {
-					if colName == "MatchModeMissionType" {
-						atom.Log.Debug(cursor, " ", len(metaSheet.Rows))
-					}
 					for tmpCusor := cursor; tmpCusor < len(metaSheet.Rows); tmpCusor++ {
 						metaSheet.Cell(tmpCusor, colName).Data = attrValue
 					}

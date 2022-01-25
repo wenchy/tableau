@@ -21,10 +21,10 @@ message MatchCfg {
   message MatchStatInfo {
     google.protobuf.Duration report_interval = 1 [(tableau.field) = {name:"ReportInterval"}];
   }
-  repeated MatchMode match_mode_list = 3 [(tableau.field) = {name:"MatchMode" key:"Desc" layout:LAYOUT_VERTICAL}];
+  repeated MatchMode match_mode_list = 3 [(tableau.field) = {name:"MatchMode" key:"MissionType" layout:LAYOUT_VERTICAL}];
   message MatchMode {
-    string desc = 1 [(tableau.field) = {name:"Desc"}];
-    MissionType mission_type = 2 [(tableau.field) = {name:"MissionType"}];
+    MissionType mission_type = 1 [(tableau.field) = {name:"MissionType"}];
+    string desc = 2 [(tableau.field) = {name:"Desc"}];
     Time time = 3 [(tableau.field) = {name:"Time"}];
     message Time {
       google.protobuf.Duration min_time = 1 [(tableau.field) = {name:"MinTime"}];

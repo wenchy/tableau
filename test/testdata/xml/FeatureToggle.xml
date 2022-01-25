@@ -6,10 +6,10 @@
         <!-- 格式细节，匆删 -->
         <@TABLEAU>
             <@META>
-                <Toggle @TYPE="repeated" WorldID="uint32" ID="enum<.FeatureToggleMacroType>" ZoneID="uint32" OpenTime="datetime" CloseTime="datetime" NotifyClosed="bool" ErrCode="enum<.Code>" />
+                <Toggle @TYPE="repeated" ID="enum<.FeatureToggleMacroType>" OpenRate="int32" WorldID="uint32" ZoneID="uint32" OpenTime="datetime" CloseTime="datetime" UserLimitType="int32" UserSourceType="int32" SysKey1="int64" SysKey2="int64" SysKey3="int64" NotifyClosed="bool" ErrCode="enum<.Code>" />
             </@META>
             <@DEFAULT>
-                <Toggle ID="TOGGLE_SAMPLE" OpenRate="0" WorldID="0" ZoneID="0" OpenTime="2022-01-23 15:40:00" CloseTime="2022-01-23 15:40:00" UserLimitType="0" UserSourceType="0" SysKey1="0" SysKey2="0" SysKey3="0" NotifyClosed="false" ErrCode="SUCCESS" />
+                <Toggle OpenTime="2022-01-23 15:40:00" CloseTime="2022-01-23 15:40:00" ErrCode="SUCCESS" />
             </@DEFAULT>
         </@TABLEAU>
         <!-- 格式细节，匆删 -->
@@ -20,7 +20,7 @@
         - WorldID			大区id, 0表示所有大区，支持','分隔配置多个，示例: 1,2；支持'-'配置连续大区,示例: 1-2 相当于配置1,2两个大区
         - ZoneID			小区id, 0表示所有小区，支持','分隔配置多个，示例: 1,2；支持'-'配置连续大区,示例: 1-2 相当于配置1,2两个小区
         - OpenTime			开启时间，逗号分隔日期和时间，示例：20190101, 0 表示20190101 0点开启; 20190101, 100000 表示20190101 10点0分0秒开启
-        - CloseTime			关闭时间，逗号分隔日期和时间，示例：20190101, 0 表示20190101 0点关闭; 20190101, 100000 表示20190101 10点0分0秒关闭
+        - CloseTime			关闭时间，逗号分隔日期和时间，示例：20190101, 0 表示20190101 0点关闭ui9; 20190101, 100000 表示20190101 10点0分0秒关闭
         - UserLimitType		限制用户类型，0表示不限制，1限制账号uid，2限制账号openid，3限制角色
         - UserSourceType	限制用户名单类型，0表示白名单，1表示黑名单
         - SysKey1-3			系统自定义筛选key
