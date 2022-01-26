@@ -55,7 +55,7 @@ func Excel2Proto(protoPackage, goPackage, indir, outdir string, setters ...optio
 	}
 }
 
-// Proto2Excel converts protoconf files to xlsx files (with meta header).
+// Proto2Excel converts protoconf files to excel files (with tableau header).
 func Proto2Excel(protoPackage, indir, outdir string) {
 	g := xlsxgen.Generator{
 		ProtoPackage: protoPackage,
