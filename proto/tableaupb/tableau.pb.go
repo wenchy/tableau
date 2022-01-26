@@ -367,7 +367,7 @@ type FieldOptions struct {
 	Layout   Layout `protobuf:"varint,5,opt,name=layout,proto3,enum=tableau.Layout" json:"layout,omitempty"` // default: LAYOUT_DEFAULT
 	Sep      string `protobuf:"bytes,6,opt,name=sep,proto3" json:"sep,omitempty"`                            // separator, default: ","
 	Subsep   string `protobuf:"bytes,7,opt,name=subsep,proto3" json:"subsep,omitempty"`                      // sub separator, default: ":"
-	Optional bool   `protobuf:"varint,8,opt,name=optional,proto3" json:"optional,omitempty"`                 // [default = false]; // whether the field is optional.
+	Optional bool   `protobuf:"varint,8,opt,name=optional,proto3" json:"optional,omitempty"`                 // whether the field is optional.
 	/////////////////////////////
 	// Simple Validators Below //
 	/////////////////////////////

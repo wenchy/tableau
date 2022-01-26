@@ -331,11 +331,10 @@ func (sp *sheetParser) parseMapField(field *Field, msg protoreflect.Message, rc 
 					if cell == nil {
 						return errors.Errorf("%s|horizontal map: key column not found", rc.CellDebugString(keyColName))
 					}
-					fieldValue, err := sp.parseFieldValue(keyFd, cell.Data)
+					newMapKey, err := sp.parseMapKey(reflectMap, strcase.ToSnake(field.opts.Key), cell.Data)
 					if err != nil {
-						return errors.WithMessagef(err, "%s|horizontal map: failed to parse field value: %s", rc.CellDebugString(keyColName), cell.Data)
+						return errors.WithMessagef(err, "%s|horizontal map: failed to parse key: %s", rc.CellDebugString(keyColName), cell.Data)
 					}
-					newMapKey := fieldValue.MapKey()
 
 					var newMapValue protoreflect.Value
 					if reflectMap.Has(newMapKey) {
@@ -357,11 +356,10 @@ func (sp *sheetParser) parseMapField(field *Field, msg protoreflect.Message, rc 
 				if cell == nil {
 					return errors.Errorf("%s|vertical map: key column not found", rc.CellDebugString(keyColName))
 				}
-				fieldValue, err := sp.parseFieldValue(keyFd, cell.Data)
+				newMapKey, err := sp.parseMapKey(reflectMap, strcase.ToSnake(field.opts.Key), cell.Data)
 				if err != nil {
-					return errors.WithMessagef(err, "%s|vertical map: failed to parse field value: %s", rc.CellDebugString(keyColName), cell.Data)
+					return errors.WithMessagef(err, "%s|vertical map: failed to parse key: %s", rc.CellDebugString(keyColName), cell.Data)
 				}
-				newMapKey := fieldValue.MapKey()
 
 				var newMapValue protoreflect.Value
 				if reflectMap.Has(newMapKey) {
@@ -417,6 +415,32 @@ func (sp *sheetParser) parseMapField(field *Field, msg protoreflect.Message, rc 
 		msg.Set(field.fd, newValue)
 	}
 	return nil
+}
+
+func (sp *sheetParser) parseMapKey(reflectMap protoreflect.Map, protoKeyName, cellData string) (protoreflect.MapKey, error) {
+	var mapKey protoreflect.MapKey
+
+	md := reflectMap.NewValue().Message().Descriptor()
+	fd := md.Fields().ByName(protoreflect.Name(protoKeyName))
+	if fd == nil {
+		return mapKey, errors.Errorf("%s|key '%s' not found in proto definition", protoKeyName)
+	}
+
+	if fd.Kind() == protoreflect.EnumKind {
+		fieldValue, err := sp.parseFieldValue(fd, cellData)
+		if err != nil {
+			return mapKey, errors.Errorf("failed to parse key: %s", cellData)
+		}
+		v := protoreflect.ValueOfInt32(int32(fieldValue.Enum()))
+		mapKey = v.MapKey()
+	} else {
+		fieldValue, err := sp.parseFieldValue(fd, cellData)
+		if err != nil {
+			return mapKey, errors.WithMessagef(err, "failed to parse key: %s", cellData)
+		}
+		mapKey = fieldValue.MapKey()
+	}
+	return mapKey, nil
 }
 
 func (sp *sheetParser) parseListField(field *Field, msg protoreflect.Message, rc *importer.RowCells, depth int, prefix string) (err error) {

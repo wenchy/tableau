@@ -1,6 +1,7 @@
 package protogen
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -105,9 +106,16 @@ func (p *bookParser) parseMapField(field *tableaupb.Field, header *sheetHeader, 
 	matches := types.MatchMap(typeCell)
 	keyType := strings.TrimSpace(matches[1])
 	valueType := strings.TrimSpace(matches[2])
-	parsedValueType, _ := p.parseType(valueType)
 
-	isScalarType := types.IsScalarType(valueType)
+	parsedKeyType := keyType
+	if types.MatchEnum(keyType) != nil {
+		// NOTE: support enum as map key, convert key type as `int32`.
+		parsedKeyType = "int32"
+	}
+	parsedValueType, valueTypeDefined := p.parseType(valueType)
+	mapType := fmt.Sprintf("map<%s, %s>", parsedKeyType, parsedValueType)
+
+	isScalarType := types.IsScalarType(parsedValueType)
 	trimmedNameCell := strings.TrimPrefix(nameCell, prefix)
 
 	// preprocess
@@ -151,9 +159,11 @@ func (p *bookParser) parseMapField(field *tableaupb.Field, header *sheetHeader, 
 			prefix += parsedValueType // add prefix with value type
 		}
 		field.Name = strcase.ToSnake(parsedValueType) + "_map"
-		field.Type, field.TypeDefined = p.parseType(typeCell)
+		field.Type = mapType
+		// For map type, TypeDefined indicates the ValueType of map has been defined.
+		field.TypeDefined = valueTypeDefined
 		field.MapEntry = &tableaupb.MapEntry{
-			KeyType:   keyType,
+			KeyType:   parsedKeyType,
 			ValueType: parsedValueType,
 		}
 
@@ -181,9 +191,11 @@ func (p *bookParser) parseMapField(field *tableaupb.Field, header *sheetHeader, 
 			prefix += parsedValueType // add prefix with value type
 		}
 		field.Name = strcase.ToSnake(parsedValueType) + "_map"
-		field.Type, field.TypeDefined = p.parseType(typeCell)
+		field.Type = mapType
+		// For map type, TypeDefined indicates the ValueType of map has been defined.
+		field.TypeDefined = valueTypeDefined
 		field.MapEntry = &tableaupb.MapEntry{
-			KeyType:   keyType,
+			KeyType:   parsedKeyType,
 			ValueType: parsedValueType,
 		}
 
@@ -214,7 +226,9 @@ func (p *bookParser) parseMapField(field *tableaupb.Field, header *sheetHeader, 
 		// incell map
 		trimmedNameCell := strings.TrimPrefix(nameCell, prefix)
 		field.Name = strcase.ToSnake(trimmedNameCell)
-		field.Type, field.TypeDefined = p.parseType(typeCell)
+		field.Type = mapType
+		// For map type, TypeDefined indicates the ValueType of map has been defined.
+		field.TypeDefined = valueTypeDefined
 		field.Options = &tableaupb.FieldOptions{
 			Name: trimmedNameCell,
 			Type: tableaupb.Type_TYPE_INCELL_MAP,
@@ -447,7 +461,7 @@ func (p *bookParser) genNote(note string) string {
 }
 
 func (p *bookParser) parseType(typ string) (string, bool) {
-	if strings.Contains(typ, ".") {
+	if strings.HasPrefix(typ, ".") {
 		// This messge type is defined in imported proto
 		typ = strings.TrimPrefix(typ, ".")
 		return typ, true

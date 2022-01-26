@@ -148,3 +148,37 @@ func TestMatchBoringInteger(t *testing.T) {
 		})
 	}
 }
+
+func TestMatchMap(t *testing.T) {
+	type args struct {
+		text string
+	}
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		// TODO: Add test cases.
+		{
+			name: "normal map",
+			args: args{
+				text: "map<int32, Server>",
+			},
+			want: []string{"map<int32, Server>", "int32", " Server"},
+		},
+		{
+			name: "enum keyed map",
+			args: args{
+				text: "map<enum<.ServerType>, Server>",
+			},
+			want: []string{"map<enum<.ServerType>, Server>", "enum<.ServerType>", " Server"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := MatchMap(tt.args.text); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("MatchMap() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

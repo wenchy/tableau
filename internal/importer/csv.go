@@ -23,7 +23,7 @@ func NewCSVImporter(filename string) *CSVImporter {
 	basename := strings.TrimSuffix(filepath.Base(filename), ext)
 	bookName := basename
 	sheetName := basename
-	// Recognize pattern: "<BookName>#<sheetName>.csv"
+	// Recognize pattern: "<BookName>#<SheetName>.csv"
 	if index := strings.Index(basename, "#"); index != -1 {
 		bookName = basename[:index]
 		if index+1 >= len(basename) {

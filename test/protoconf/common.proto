@@ -15,3 +15,10 @@ enum ConfType {
   CONF_TYPE_LOCAL = 2 [(tableau.evalue).name = "本地"];
   CONF_TYPE_REMOTE = 3 [(tableau.evalue).name = "远程"];
 }
+
+enum ServerType {
+  SERVER_TYPE_UNKNOWN = 0 [(tableau.evalue).name = "未知"];
+  SERVER_TYPE_GAME = 1 [(tableau.evalue).name = "游戏服"];
+  SERVER_TYPE_ACTIVITY = 2 [(tableau.evalue).name = "活动服"];
+  SERVER_TYPE_MATCH = 3 [(tableau.evalue).name = "匹配服"];
+}
