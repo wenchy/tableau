@@ -17,6 +17,5 @@
 ~$*
 .idea/
 _*
-cmd/test/test
-test/protogen/protoconf
+cmd/tableauc/tableauc
 *.xlsx

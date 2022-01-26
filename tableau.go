@@ -12,9 +12,9 @@ import (
 	"github.com/Wenchy/tableau/options"
 )
 
-// Xlsx2Conf converts xlsx files (with meta header) to different formatted configuration files.
+// Excel2Conf converts excel files (with tableau header) to different formatted configuration files.
 // Supported formats: json, prototext, and protowire.
-func Xlsx2Conf(protoPackage, indir, outdir string, setters ...options.Option) {
+func Excel2Conf(protoPackage, indir, outdir string, setters ...options.Option) {
 	opts := options.ParseOptions(setters...)
 	g := confgen.Generator{
 		ProtoPackage: protoPackage,
@@ -31,8 +31,8 @@ func Xlsx2Conf(protoPackage, indir, outdir string, setters ...options.Option) {
 	}
 }
 
-// Xlsx2Proto converts xlsx files (with meta header) to protoconf files.
-func Xlsx2Proto(protoPackage, goPackage, indir, outdir string, setters ...options.Option) {
+// Excel2Proto converts excel files (with tableau header) to protoconf files.
+func Excel2Proto(protoPackage, goPackage, indir, outdir string, setters ...options.Option) {
 	opts := options.ParseOptions(setters...)
 	g := protogen.Generator{
 		ProtoPackage: protoPackage,
@@ -55,8 +55,8 @@ func Xlsx2Proto(protoPackage, goPackage, indir, outdir string, setters ...option
 	}
 }
 
-// Proto2Xlsx converts protoconf files to xlsx files (with meta header).
-func Proto2Xlsx(protoPackage, indir, outdir string) {
+// Proto2Excel converts protoconf files to xlsx files (with meta header).
+func Proto2Excel(protoPackage, indir, outdir string) {
 	g := xlsxgen.Generator{
 		ProtoPackage: protoPackage,
 		InputDir:     indir,

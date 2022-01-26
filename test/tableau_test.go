@@ -14,8 +14,8 @@ func init() {
 	atom.InitZap("debug")
 }
 
-func Test_Xlsx2Proto(t *testing.T) {
-	tableau.Xlsx2Proto(
+func Test_Excel2Proto(t *testing.T) {
+	tableau.Excel2Proto(
 		"test",
 		"github.com/Wenchy/tableau/cmd/test/testpb",
 		"./testdata",
@@ -46,8 +46,8 @@ func Test_Xlsx2Proto(t *testing.T) {
 	)
 }
 
-func Test_Xlsx2JSON(t *testing.T) {
-	tableau.Xlsx2Conf(
+func Test_Excel2JSON(t *testing.T) {
+	tableau.Excel2Conf(
 		"test",
 		"./testdata/",
 		"./_output/json/",
@@ -55,8 +55,8 @@ func Test_Xlsx2JSON(t *testing.T) {
 	)
 }
 
-func Test_Xlsx2JSON_Select(t *testing.T) {
-	tableau.Xlsx2Conf(
+func Test_Excel2JSON_Select(t *testing.T) {
+	tableau.Excel2Conf(
 		"test",
 		"./testdata/",
 		"./_output/json/",
