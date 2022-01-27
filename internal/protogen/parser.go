@@ -3,7 +3,6 @@ package protogen
 import (
 	"fmt"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -23,12 +22,6 @@ const (
 	timestampProtoPath = "google/protobuf/timestamp.proto"
 	durationProtoPath  = "google/protobuf/duration.proto"
 )
-
-var structRegexp *regexp.Regexp
-
-func init() {
-	structRegexp = regexp.MustCompile(`^\{(.+)\}(.+)`) // e.g.: {Type}uint32
-}
 
 type bookParser struct {
 	wb       *tableaupb.Workbook
@@ -518,33 +511,79 @@ func ParseIncellStruct(elemType string) []string {
 	return fieldPairs
 }
 
+type Node struct {
+	nav *xmlquery.NodeNavigator
+	cursor int
+}
+
+func String(nodes []Node) string {
+	s := "["
+	for _, n := range nodes {
+		s += fmt.Sprintf("(%s,%d), ", n.nav.LocalName(), n.cursor)
+	}
+	return  s + "]"
+}
+
+func (gen *XmlGenerator) parseXml(nodes []Node, metaSheet *xlsxgen.MetaSheet) error {
+	for len(nodes) > 0 {
+		// pop front
+		nav := nodes[0].nav
+		cursor := nodes[0].cursor
+		nodes = nodes[1:]
+		// parse node
+		if err := gen.parseNode(nav, metaSheet, cursor); err != nil {
+			return errors.Wrapf(err, "parseXml for the first node %s failed", nav.LocalName())
+		}
+		// push back
+		nodeMap := make(map[string]int)
+		for flag := nav.MoveToChild(); flag; flag = nav.MoveToNext() {
+			// commentNode, documentNode and other meaningless nodes should be filtered
+			if nav.NodeType() != xpath.ElementNode {
+				continue
+			}
+			tagName := nav.LocalName()
+			navCopy := *nav
+			if count, existed := nodeMap[tagName]; existed {
+				// `TABLEAU` can only be placed in the first child node
+				if xmlquery.FindOne(nav.Current(), "/TABLEAU") != nil {
+					return fmt.Errorf("`TABLEAU` found in node %s (index:%d) which is not the first child", tagName, count + 1)
+				}
+				// duplicate means a list, should expand vertically
+				row := metaSheet.CopyRow(cursor)
+				nodes = append(nodes, Node{&navCopy, row.Index})
+				nodeMap[tagName]++
+			} else {
+				nodes = append(nodes, Node{&navCopy, cursor})
+				nodeMap[tagName] = 1
+			}
+		}
+		atom.Log.Debug(String(nodes))
+	}
+
+	return nil
+}
+
 // TODO(shannonzhu):
 // 1. FeatureToggle下多次出现META导致list类型被覆盖为普通类型
 // 2. 自动检测@TYPE="repeated"
-// 3. 转出来的excel的col同一个struct或者list可能不连续的问题
-func (gen *XmlGenerator) parseXml(nav *xmlquery.NodeNavigator, metaSheet *xlsxgen.MetaSheet, cursor int) error {
+func (gen *XmlGenerator) parseNode(nav *xmlquery.NodeNavigator, metaSheet *xlsxgen.MetaSheet, cursor int) error {
 	// preprocess
-	realParent, prefix, defineType, defineDefault := nav.Current().Parent, "", false, false
+	realParent, prefix, isMeta := nav.Current().Parent, "", false
 	// skip `TABLEAU` to find real parent
 	for flag, navCopy := true, *nav; flag && navCopy.LocalName() != metaSheet.Worksheet; flag = navCopy.MoveToParent() {
-		if navCopy.LocalName() == "META" {
-			defineType = true
-		} else if navCopy.LocalName() == "DEFAULT" {
-			defineDefault = true
-		} else if navCopy.LocalName() != "TABLEAU" {
-			// skip `TABLEAU` `META` `DEFAULT`
+		if navCopy.LocalName() == "TABLEAU" {
+			isMeta = true
+		} else {
 			prefix = strcase.ToCamel(navCopy.LocalName()) + prefix
 		}
-		if navCopy.Current().Parent != nil && (navCopy.Current().Parent.Data == "META" || navCopy.Current().Parent.Data == "DEFAULT") {
-			realParent = navCopy.Current().Parent.Parent.Parent
+		if navCopy.Current().Parent != nil && navCopy.Current().Parent.Data == "TABLEAU" {
+			realParent = navCopy.Current().Parent.Parent
 		}
 	}
-	keyCol := xmlquery.FindOne(realParent, "@KeyCol")
-	typeAttr := xmlquery.FindOne(nav.Current(), "@TYPE")
-	repeated := len(xmlquery.Find(realParent, nav.LocalName())) > 1 || (typeAttr != nil && typeAttr.InnerText() == "repeated")
+	repeated := len(xmlquery.Find(realParent, nav.LocalName())) > 1
 
 	// clear to the bottom
-	if navCopy := *nav; !navCopy.MoveToChild() {
+	if navCopy := *nav; !isMeta && !navCopy.MoveToChild() {
 		for tmpCusor := cursor; tmpCusor < len(metaSheet.Rows); tmpCusor++ {
 			metaSheet.ForEachCol(tmpCusor, func(name string, cell *xlsxgen.Cell) error {
 				if strings.HasPrefix(name, prefix) {
@@ -555,92 +594,68 @@ func (gen *XmlGenerator) parseXml(nav *xmlquery.NodeNavigator, metaSheet *xlsxge
 		}
 	}
 
-	if nav.LocalName() != metaSheet.Worksheet {
-		// iterate over attributes
-		for i, attr := range nav.Current().Attr {
-			if typeAttr != nil {
-				i--
-			}
-			switch attr.Name.Local {
-			case "KeyCol":
-				tagName := strings.Split(attr.Value, ".")[0]
-				attrName := strings.Split(attr.Value, ".")[1]
-				keyNode := xmlquery.FindOne(nav.Current(), fmt.Sprintf("/%s/@%s", tagName, attrName))
-				if keyNode == nil {
-					return fmt.Errorf("KeyCol:%s not found in the immediately following nodes of %s", attr.Value, nav.LocalName())
-				}
-			case "TYPE":
-			default:
-				attrName := attr.Name.Local
-				attrValue := attr.Value
-				t, d := guessType(attrValue)
-				colName := prefix + strcase.ToCamel(attrName)
-				lastColName := metaSheet.GetLastColName()
-				if defineDefault {
-					metaSheet.SetDefaultValue(colName, attrValue)
+	// iterate over attributes
+	for i, attr := range nav.Current().Attr {
+		switch attr.Name.Local {
+		default:
+			attrName := attr.Name.Local
+			attrValue := attr.Value
+			t, d := guessType(attrValue)
+			colName := prefix + strcase.ToCamel(attrName)
+			lastColName := metaSheet.GetLastColName()
+			metaSheet.SetDefaultValue(colName, d)
+			if isMeta {
+				if index := strings.Index(attrValue, "|"); index > 0 {
+					t = attrValue[:index-1]
+					metaSheet.SetDefaultValue(colName, attrValue[index+1:])
 				} else {
-					metaSheet.SetDefaultValue(colName, d)
-				}
-				if defineType {
 					t = attrValue
 				}
+			} else {
 				// fill values to the bottom when backtrace to top line
-				if !defineType && !defineDefault {
-					for tmpCusor := cursor; tmpCusor < len(metaSheet.Rows); tmpCusor++ {
-						metaSheet.Cell(tmpCusor, colName).Data = attrValue
+				for tmpCusor := cursor; tmpCusor < len(metaSheet.Rows); tmpCusor++ {
+					metaSheet.Cell(tmpCusor, colName).Data = attrValue
+				}
+			}
+			curType := metaSheet.GetColType(colName)
+			matches := types.MatchStruct(curType)
+			// 1. <TABLEAU>
+			// 2. type not set
+			// 3. {Type}int32 -> [Type]int32
+			needChangeType := isMeta || curType == "" || (len(matches) > 0 && repeated)
+			// 1. new struct(list), not subsequent
+			// 2. {Type}int32 -> [Type]int32
+			setKeyedType := !strings.HasPrefix(lastColName, prefix) || (len(matches) > 0 && repeated)
+			if needChangeType {
+				if matches := types.MatchMap(t); len(matches) == 2 {
+					if types.IsScalarType(matches[0]) || len(types.MatchEnum(matches[0])) > 0 {
+						return fmt.Errorf("%s is not scalar type in node %s attr %s type %s", matches[0], nav.LocalName(), attrName, t)
 					}
+					if matches[1] != nav.LocalName() {
+						return fmt.Errorf("%s in attr %s type %s must be the same as node name %s", matches[1], attrName, t, nav.LocalName())
+					}
+					metaSheet.SetColType(colName, t)
+				} else if matches := types.MatchKeyedList(t); len(matches) == 2 {
+					if i != 0 {
+						return fmt.Errorf("KeyedList attr %s in node %s must be the first attr", attrName, nav.LocalName())
+					}
+					if types.IsScalarType(matches[1]) || len(types.MatchEnum(matches[1])) > 0 {
+						return fmt.Errorf("%s is not scalar type in node %s attr %s type %s", matches[1], nav.LocalName(), attrName, t)
+					}
+					if matches[0] != nav.LocalName() {
+						return fmt.Errorf("%s in attr %s type %s must be the same as node name %s", matches[0], attrName, t, nav.LocalName())
+					}
+					metaSheet.SetColType(colName, t)
+				} else if i == 0 && setKeyedType {
+					if repeated {
+						metaSheet.SetColType(colName, fmt.Sprintf("[%s]<%s>", strcase.ToCamel(nav.LocalName()), t))
+					} else {
+						metaSheet.SetColType(colName, fmt.Sprintf("{%s}%s", strcase.ToCamel(nav.LocalName()), t))
+					}
+				} else {
+					metaSheet.SetColType(colName, t)
 				}
-				curType := metaSheet.GetColType(colName)
-				matches := structRegexp.FindStringSubmatch(curType)
-				// 1. <META>
-				// 2. type not set
-				// 3. {Type}int32 -> [Type]int32
-				needChangeType := defineType || curType == "" || (len(matches) > 0 && repeated)
-				// 1. new struct(list), not subsequent
-				// 2. {Type}int32 -> [Type]int32
-				setKeyedType := !strings.HasPrefix(lastColName, prefix) || (len(matches) > 0 && repeated)
-				if needChangeType {
-					if keyCol != nil && strings.Split(keyCol.InnerText(), ".")[1] == attrName {
-						metaSheet.SetColType(colName, fmt.Sprintf("map<%s, %s>", t, strcase.ToCamel(nav.LocalName())))
-					} else if i == 0 && setKeyedType {
-					   if repeated {
-						   metaSheet.SetColType(colName, fmt.Sprintf("[%s]<%s>", strcase.ToCamel(nav.LocalName()), t))
-					   } else {
-						   metaSheet.SetColType(colName, fmt.Sprintf("{%s}%s", strcase.ToCamel(nav.LocalName()), t))
-					   }
-				   } else {
-					   metaSheet.SetColType(colName, t)
-				   }
-				}
 			}
-		}
-	}
-
-	// iterate over child nodes
-	nodeMap := make(map[string]int)
-	navCopy := *nav
-	for flag := navCopy.MoveToChild(); flag; flag = navCopy.MoveToNext() {
-		// commentNode, documentNode and other meaningless nodes should be filtered
-		if navCopy.NodeType() != xpath.ElementNode {
-			continue
-		}
-		tagName := navCopy.LocalName()
-		if count, existed := nodeMap[tagName]; existed {
-			// `TABLEAU` can only be placed in the first child node
-			if xmlquery.FindOne(navCopy.Current(), "/TABLEAU") != nil {
-				return fmt.Errorf("`TABLEAU` found in node %s (index:%d) which is not the first child", tagName, count + 1)
-			}
-			// duplicate means a list, should expand vertically
-			row := metaSheet.NewRow()
-			if err := gen.parseXml(&navCopy, metaSheet, row.Index); err != nil {
-				return errors.Wrapf(err, "parseXml for node %s (index:%d) failed", tagName, count + 1)
-			}
-			nodeMap[tagName]++
-		} else {
-			if err := gen.parseXml(&navCopy, metaSheet, cursor); err != nil {
-				return errors.Wrapf(err, "parseXml for the first node %s failed", tagName)
-			}
-			nodeMap[tagName] = 1
 		}
 	}
 

@@ -67,14 +67,16 @@ func NewMetaSheet(worksheet string, header *options.HeaderOption, transpose bool
 	}
 }
 
-func (sheet *MetaSheet) NewRow() *Row {
+func (sheet *MetaSheet) CopyRow(i int) *Row {
+	oldRow := sheet.Rows[i].Cells
 	row := Row{
-		Cells: make([]Cell, len(sheet.Rows[len(sheet.Rows) - 1].Cells)),
+		Cells: make([]Cell, len(oldRow)),
 		Index: len(sheet.Rows),
 	}
 	// Critical!!! copy common value from parent node
-	copy(row.Cells, sheet.Rows[len(sheet.Rows) - 1].Cells)
+	copy(row.Cells, oldRow)
 	sheet.Rows = append(sheet.Rows, row)
+
 	return &row
 }
 

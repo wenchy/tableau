@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"encoding/xml"
 
 	"github.com/Wenchy/tableau/internal/atom"
 	"github.com/Wenchy/tableau/internal/confgen"
@@ -331,12 +332,16 @@ func (gen *XmlGenerator) convert(dir, filename string) error {
 		return errors.Wrapf(err, "failed to open %s", xmlPath)
 	}
 	// replacement for `<` and `>` not allowed in attribute values
-	enumRegexp := regexp.MustCompile(`"enum<([.A-Za-z0-9]+)>"`)
+	attrValRegexp := regexp.MustCompile(`"\S+"`)
 	nudeRegexp := regexp.MustCompile(`<([A-Za-z0-9]+)>`)
-	keywordRegexp := regexp.MustCompile(`@([A-Z]+)`)
-	replaced_str := enumRegexp.ReplaceAllString(string(buf), `"enum&lt;$1&gt;"`)
+	keywordRegexp := regexp.MustCompile(`([</]+)@([A-Z]+)`)
+	replaced_str := attrValRegexp.ReplaceAllStringFunc(string(buf), func(s string) string {
+		var buf bytes.Buffer
+		xml.EscapeText(&buf, []byte(s[1:len(s)-1]))
+		return fmt.Sprintf("\"%s\"", buf.String())
+	})
 	replaced_str = nudeRegexp.ReplaceAllString(replaced_str, `<$1 TableauPlaceholder="0">`)
-	replaced_str = keywordRegexp.ReplaceAllString(replaced_str, `$1`)
+	replaced_str = keywordRegexp.ReplaceAllString(replaced_str, `$1$2`)
 	s := strings.NewReader(replaced_str)
 	p, err := xmlquery.CreateStreamParser(s, "/")
 	if err != nil {
@@ -385,7 +390,7 @@ func (gen *XmlGenerator) convert(dir, filename string) error {
 	xlsxGen.ExportSheet(metaSheet)
 	// generate data sheet
 	metaSheet = xlsxgen.NewMetaSheet(root.LocalName(), gen.Header, false)
-	if err := gen.parseXml(root, metaSheet, int(gen.Header.Datarow)-1); err != nil {
+	if err := gen.parseXml([]Node{{nav: root, cursor: int(gen.Header.Datarow)-1}}, metaSheet); err != nil {
 		return errors.Wrapf(err, "parseXml for root node %s failed", root.LocalName())
 	}
 	xlsxGen.ExportSheet(metaSheet)
