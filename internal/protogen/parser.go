@@ -3,6 +3,7 @@ package protogen
 import (
 	"fmt"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -511,93 +512,38 @@ func ParseIncellStruct(elemType string) []string {
 	return fieldPairs
 }
 
-type Node struct {
-	nav *xmlquery.NodeNavigator
-	cursor int
-}
-
-func String(nodes []Node) string {
-	s := "["
-	for _, n := range nodes {
-		s += fmt.Sprintf("(%s,%d), ", n.nav.LocalName(), n.cursor)
+func (gen *XmlGenerator) parseXml(root xmlquery.NodeNavigator, metaSheet *xlsxgen.MetaSheet) error {
+	if err := gen.genHeader([]xmlquery.NodeNavigator{root}, metaSheet); err != nil {
+		return errors.Wrapf(err, "genHeader failed")
 	}
-	return  s + "]"
-}
-
-func (gen *XmlGenerator) parseXml(nodes []Node, metaSheet *xlsxgen.MetaSheet) error {
-	for len(nodes) > 0 {
-		// pop front
-		nav := nodes[0].nav
-		cursor := nodes[0].cursor
-		nodes = nodes[1:]
-		// parse node
-		if err := gen.parseNode(nav, metaSheet, cursor); err != nil {
-			return errors.Wrapf(err, "parseXml for the first node %s failed", nav.LocalName())
-		}
-		// push back
-		nodeMap := make(map[string]int)
-		for flag := nav.MoveToChild(); flag; flag = nav.MoveToNext() {
-			// commentNode, documentNode and other meaningless nodes should be filtered
-			if nav.NodeType() != xpath.ElementNode {
-				continue
-			}
-			tagName := nav.LocalName()
-			navCopy := *nav
-			if count, existed := nodeMap[tagName]; existed {
-				// `TABLEAU` can only be placed in the first child node
-				if xmlquery.FindOne(nav.Current(), "/TABLEAU") != nil {
-					return fmt.Errorf("`TABLEAU` found in node %s (index:%d) which is not the first child", tagName, count + 1)
-				}
-				// duplicate means a list, should expand vertically
-				row := metaSheet.CopyRow(cursor)
-				nodes = append(nodes, Node{&navCopy, row.Index})
-				nodeMap[tagName]++
-			} else {
-				nodes = append(nodes, Node{&navCopy, cursor})
-				nodeMap[tagName] = 1
-			}
-		}
-		atom.Log.Debug(String(nodes))
+	if err := gen.parseNode(root, metaSheet, int(gen.Header.Datarow)-1); err != nil {
+		return errors.Wrapf(err, "parseNode failed from row %d", int(gen.Header.Datarow)-1)
 	}
-
 	return nil
 }
 
-// TODO(shannonzhu):
-// 1. FeatureToggle下多次出现META导致list类型被覆盖为普通类型
-// 2. 自动检测@TYPE="repeated"
-func (gen *XmlGenerator) parseNode(nav *xmlquery.NodeNavigator, metaSheet *xlsxgen.MetaSheet, cursor int) error {
-	// preprocess
-	realParent, prefix, isMeta := nav.Current().Parent, "", false
-	// skip `TABLEAU` to find real parent
-	for flag, navCopy := true, *nav; flag && navCopy.LocalName() != metaSheet.Worksheet; flag = navCopy.MoveToParent() {
-		if navCopy.LocalName() == "TABLEAU" {
-			isMeta = true
-		} else {
-			prefix = strcase.ToCamel(navCopy.LocalName()) + prefix
+func (gen *XmlGenerator) genHeader(nodes []xmlquery.NodeNavigator, metaSheet *xlsxgen.MetaSheet) error {
+	for len(nodes) > 0 {
+		// pop front
+		nav := nodes[0]
+		nodes = nodes[1:]
+		// preprocess
+		realParent, prefix, isMeta := nav.Current().Parent, "", false
+		// skip `TABLEAU` to find real parent
+		for flag, navCopy := true, nav; flag && navCopy.LocalName() != metaSheet.Worksheet; flag = navCopy.MoveToParent() {
+			if navCopy.LocalName() == "TABLEAU" {
+				isMeta = true
+			} else {
+				prefix = strcase.ToCamel(navCopy.LocalName()) + prefix
+			}
+			if navCopy.Current().Parent != nil && navCopy.Current().Parent.Data == "TABLEAU" {
+				realParent = navCopy.Current().Parent.Parent
+			}
 		}
-		if navCopy.Current().Parent != nil && navCopy.Current().Parent.Data == "TABLEAU" {
-			realParent = navCopy.Current().Parent.Parent
-		}
-	}
-	repeated := len(xmlquery.Find(realParent, nav.LocalName())) > 1
+		repeated := len(xmlquery.Find(realParent, nav.LocalName())) > 1
 
-	// clear to the bottom
-	if navCopy := *nav; !isMeta && !navCopy.MoveToChild() {
-		for tmpCusor := cursor; tmpCusor < len(metaSheet.Rows); tmpCusor++ {
-			metaSheet.ForEachCol(tmpCusor, func(name string, cell *xlsxgen.Cell) error {
-				if strings.HasPrefix(name, prefix) {
-					cell.Data = metaSheet.GetDefaultValue(name)
-				}
-				return nil
-			})
-		}
-	}
-
-	// iterate over attributes
-	for i, attr := range nav.Current().Attr {
-		switch attr.Name.Local {
-		default:
+		// iterate over attributes
+		for i, attr := range nav.Current().Attr {
 			attrName := attr.Name.Local
 			attrValue := attr.Value
 			t, d := guessType(attrValue)
@@ -606,15 +552,10 @@ func (gen *XmlGenerator) parseNode(nav *xmlquery.NodeNavigator, metaSheet *xlsxg
 			metaSheet.SetDefaultValue(colName, d)
 			if isMeta {
 				if index := strings.Index(attrValue, "|"); index > 0 {
-					t = attrValue[:index-1]
+					t = attrValue[:index]
 					metaSheet.SetDefaultValue(colName, attrValue[index+1:])
 				} else {
 					t = attrValue
-				}
-			} else {
-				// fill values to the bottom when backtrace to top line
-				for tmpCusor := cursor; tmpCusor < len(metaSheet.Rows); tmpCusor++ {
-					metaSheet.Cell(tmpCusor, colName).Data = attrValue
 				}
 			}
 			curType := metaSheet.GetColType(colName)
@@ -627,23 +568,34 @@ func (gen *XmlGenerator) parseNode(nav *xmlquery.NodeNavigator, metaSheet *xlsxg
 			// 2. {Type}int32 -> [Type]int32
 			setKeyedType := !strings.HasPrefix(lastColName, prefix) || (len(matches) > 0 && repeated)
 			if needChangeType {
-				if matches := types.MatchMap(t); len(matches) == 2 {
-					if types.IsScalarType(matches[0]) || len(types.MatchEnum(matches[0])) > 0 {
-						return fmt.Errorf("%s is not scalar type in node %s attr %s type %s", matches[0], nav.LocalName(), attrName, t)
+				if matches := types.MatchMap(t); len(matches) == 3 {
+					if !types.IsScalarType(matches[1]) && len(types.MatchEnum(matches[1])) == 0 {
+						return fmt.Errorf("%s is not scalar type in node %s attr %s type %s", matches[1], nav.LocalName(), attrName, t)
+					}
+					if matches[2] != nav.LocalName() {
+						return fmt.Errorf("%s in attr %s type %s must be the same as node name %s", matches[2], attrName, t, nav.LocalName())
+					}
+					metaSheet.SetColType(colName, t)
+				} else if matches := types.MatchKeyedList(t); len(matches) == 3 {
+					if i != 0 {
+						return fmt.Errorf("KeyedList attr %s in node %s must be the first attr", attrName, nav.LocalName())
+					}
+					if !types.IsScalarType(matches[2]) && len(types.MatchEnum(matches[2])) == 0 {
+						return fmt.Errorf("%s is not scalar type in node %s attr %s type %s", matches[2], nav.LocalName(), attrName, t)
 					}
 					if matches[1] != nav.LocalName() {
 						return fmt.Errorf("%s in attr %s type %s must be the same as node name %s", matches[1], attrName, t, nav.LocalName())
 					}
 					metaSheet.SetColType(colName, t)
-				} else if matches := types.MatchKeyedList(t); len(matches) == 2 {
+				} else if matches := types.MatchList(t); len(matches) == 3 {
 					if i != 0 {
 						return fmt.Errorf("KeyedList attr %s in node %s must be the first attr", attrName, nav.LocalName())
 					}
-					if types.IsScalarType(matches[1]) || len(types.MatchEnum(matches[1])) > 0 {
-						return fmt.Errorf("%s is not scalar type in node %s attr %s type %s", matches[1], nav.LocalName(), attrName, t)
+					if !types.IsScalarType(matches[2]) && len(types.MatchEnum(matches[2])) == 0 {
+						return fmt.Errorf("%s is not scalar type in node %s attr %s type %s", matches[2], nav.LocalName(), attrName, t)
 					}
-					if matches[0] != nav.LocalName() {
-						return fmt.Errorf("%s in attr %s type %s must be the same as node name %s", matches[0], attrName, t, nav.LocalName())
+					if matches[1] != nav.LocalName() {
+						return fmt.Errorf("%s in attr %s type %s must be the same as node name %s", matches[1], attrName, t, nav.LocalName())
 					}
 					metaSheet.SetColType(colName, t)
 				} else if i == 0 && setKeyedType {
@@ -657,10 +609,104 @@ func (gen *XmlGenerator) parseNode(nav *xmlquery.NodeNavigator, metaSheet *xlsxg
 				}
 			}
 		}
+		// push back
+		newNodes := []xmlquery.NodeNavigator{}
+		if tableauNode := xmlquery.FindOne(nav.Current(), "/TABLEAU"); tableauNode != nil {
+			tableauNav := xmlquery.CreateXPathNavigator(tableauNode)
+			for flag := tableauNav.MoveToChild(); flag; flag = tableauNav.MoveToNext() {
+				// commentNode, documentNode and other meaningless nodes should be filtered
+				if tableauNav.NodeType() != xpath.ElementNode {
+					continue
+				}
+				newNodes = append(newNodes, *tableauNav)
+			}
+		}
+		for flag := nav.MoveToChild(); flag; flag = nav.MoveToNext() {
+			// commentNode, documentNode and other meaningless nodes should be filtered
+			if nav.NodeType() != xpath.ElementNode {
+				continue
+			}
+			if nav.LocalName() == "TABLEAU" {
+				continue
+			}
+			newNodes = append(newNodes, nav)
+		}
+		sort.Slice(newNodes, func (i, j int) bool {
+			return newNodes[i].LocalName() > newNodes[j].LocalName()
+		})
+		nodes = append(nodes, newNodes...)
 	}
 
 	return nil
 }
+
+func (gen *XmlGenerator) parseNode(nav xmlquery.NodeNavigator, metaSheet *xlsxgen.MetaSheet, cursor int) error {
+	// preprocess
+	prefix, isMeta := "", false
+	// skip `TABLEAU` to find real parent
+	for flag, navCopy := true, nav; flag && navCopy.LocalName() != metaSheet.Worksheet; flag = navCopy.MoveToParent() {
+		if navCopy.LocalName() == "TABLEAU" {
+			isMeta = true
+		} else {
+			prefix = strcase.ToCamel(navCopy.LocalName()) + prefix
+		}
+	}
+
+	// clear to the bottom
+	if navCopy := nav; !isMeta && !navCopy.MoveToChild() {
+		for tmpCusor := cursor; tmpCusor < len(metaSheet.Rows); tmpCusor++ {
+			metaSheet.ForEachCol(tmpCusor, func(name string, cell *xlsxgen.Cell) error {
+				if strings.HasPrefix(name, prefix) {
+					cell.Data = metaSheet.GetDefaultValue(name)
+				}
+				return nil
+			})
+		}
+	}
+
+	// iterate over attributes
+	for _, attr := range nav.Current().Attr {
+		if !isMeta {
+			attrName := attr.Name.Local
+			attrValue := attr.Value
+			colName := prefix + strcase.ToCamel(attrName)
+			// fill values to the bottom when backtrace to top line
+			for tmpCusor := cursor; tmpCusor < len(metaSheet.Rows); tmpCusor++ {
+				metaSheet.Cell(tmpCusor, colName).Data = attrValue
+			}
+		}
+	}
+
+	// iterate over child nodes
+	nodeMap := make(map[string]int)
+	for flag := nav.MoveToChild(); flag; flag = nav.MoveToNext() {
+		// commentNode, documentNode and other meaningless nodes should be filtered
+		if nav.NodeType() != xpath.ElementNode {
+			continue
+		}
+		tagName := nav.LocalName()
+		if count, existed := nodeMap[tagName]; existed {
+			// `TABLEAU` can only be placed in the first child node
+			if xmlquery.FindOne(nav.Current(), "/TABLEAU") != nil {
+				return fmt.Errorf("`TABLEAU` found in node %s (index:%d) which is not the first child", tagName, count + 1)
+			}
+			// duplicate means a list, should expand vertically
+			row := metaSheet.NewRow()
+			if err := gen.parseNode(nav, metaSheet, row.Index); err != nil {
+				return errors.Wrapf(err, "parseNode for node %s (index:%d) failed", tagName, count + 1)
+			}
+			nodeMap[tagName]++
+		} else {
+			if err := gen.parseNode(nav, metaSheet, cursor); err != nil {
+				return errors.Wrapf(err, "parseNode for the first node %s failed", tagName)
+			}
+			nodeMap[tagName] = 1
+		}
+	}
+
+	return nil
+}
+
 
 func guessType(value string) (string, string) {
 	var t, d string

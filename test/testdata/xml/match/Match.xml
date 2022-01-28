@@ -1,29 +1,27 @@
 <MatchCfg>
     <@TABLEAU>
-        <@META>
-            <ConfirmTimeOutPunish Time="duration" />
-            <MatchStatInfo ReportInterval="duration"/>
-            <MatchMode @TYPE="repeated" MissionType="enum<.MissionType>" desc="string" >
-                <Time MinTime="duration" MaxTime="duration" Freq="int32" ConfirmTime="duration" />
-                <Open BeginDate="date" BeginTime="time"  EndDate="date" EndTime="time" />
-                <Camp @TYPE="repeated" CampID="uint32" PlayerNum="int32" desc="string" />
-                <Strategy StrategyID="enum<.ENMMatchStrategy>" desc="string" />
+        <ConfirmTimeOutPunish Time="duration" />
+        <MatchStatInfo ReportInterval="duration"/>
+        <MatchMode MissionType="map<enum<.MissionType>,MatchMode>" desc="string" >
+            <Time MinTime="duration" MaxTime="duration" Freq="int32" ConfirmTime="duration" />
+            <Open BeginDate="date" BeginTime="time"  EndDate="date" EndTime="time" />
+            <Camp CampID="[Camp]<uint32>" PlayerNum="int32" desc="string" />
+            <Strategy StrategyID="enum<.ENMMatchStrategy>" desc="string" />
 
-                <Scope    ScopeID="enum<.ENMMatchScope>"  desc="string" />
-                <Filter @TYPE="repeated" FilterID="enum<.ENMMatchFilter>" Open="bool" Value="int32"  UpdInterval="duration" desc="string">
-                    <Power @TYPE="repeated" HornorPower="int32">
-                        <Param @TYPE="repeated" Value="int32"/>
-                    </Power>
-                </Filter>
-                <Route    Key="int32" desc="string" />
-                <!-- PlayerOnlyOneCamp: 匹配到AI的玩家都在一个阵营 GuaranteeAIRatio:保底AI概率万分比 -->
-                <MatchAI IsOpen="bool" PlayerOnlyOneCamp="bool" GuaranteeAIRatio="int32">
-                    <AI Type="enum<.ENMAIWarmType>" IsOpen="bool" MinTime="duration" MaxTime="duration"  desc="string" />
-                </MatchAI>
-                <!-- 优先级, 随机模式随机先后顺序的权重，用于控制随机模式各个模式的比例 -->
-                <Random @TYPE="repeated" MissionType="enum<.MissionType>" Priority="int32" />
-            </MatchMode>
-        </@META>
+            <Scope    ScopeID="enum<.ENMMatchScope>"  desc="string" />
+            <Filter FilterID="[Filter]<enum<.ENMMatchFilter>>" Open="bool" Value="int32"  UpdInterval="duration" desc="string">
+                <Power HornorPower="[Power]<int32>">
+                    <Param Value="[Param]<int32>"/>
+                </Power>
+            </Filter>
+            <Route    Key="int32" desc="string" />
+            <!-- PlayerOnlyOneCamp: 匹配到AI的玩家都在一个阵营 GuaranteeAIRatio:保底AI概率万分比 -->
+            <MatchAI IsOpen="bool" PlayerOnlyOneCamp="bool" GuaranteeAIRatio="int32">
+                <AI Type="[AI]<enum<.ENMAIWarmType>>" IsOpen="bool" MinTime="duration" MaxTime="duration"  desc="string" />
+            </MatchAI>
+            <!-- 优先级, 随机模式随机先后顺序的权重，用于控制随机模式各个模式的比例 -->
+            <Random MissionType="[Random]<enum<.MissionType>>" Priority="int32" />
+        </MatchMode>
     </@TABLEAU>
 
     <!-- 匹配确认超时惩罚时间 -->

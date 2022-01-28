@@ -12,9 +12,10 @@ option (tableau.workbook) = {name:"FeatureToggle.xlsx"};
 message ToggleCfg {
   option (tableau.worksheet) = {name:"ToggleCfg" namerow:1 typerow:2 noterow:3 datarow:4 nameline:1 typeline:1 nested:true};
 
-  map<int32, FeatureToggle> feature_toggle_map = 1 [(tableau.field) = {name:"FeatureToggle" key:"EnvID" layout:LAYOUT_VERTICAL}];
+  int32 tableau_placeholder = 1 [(tableau.field) = {name:"TableauPlaceholder"}];
+  map<uint32,FeatureToggle> feature_toggle_map = 2 [(tableau.field) = {name:"FeatureToggle" key:"EnvID" layout:LAYOUT_VERTICAL}];
   message FeatureToggle {
-    int32 env_id = 1 [(tableau.field) = {name:"EnvID"}];
+    uint32 env_id = 1 [(tableau.field) = {name:"EnvID"}];
     string desc = 2 [(tableau.field) = {name:"Desc"}];
     repeated Toggle toggle_list = 3 [(tableau.field) = {name:"Toggle" key:"Id" layout:LAYOUT_VERTICAL}];
     message Toggle {

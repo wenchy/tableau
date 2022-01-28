@@ -390,7 +390,7 @@ func (gen *XmlGenerator) convert(dir, filename string) error {
 	xlsxGen.ExportSheet(metaSheet)
 	// generate data sheet
 	metaSheet = xlsxgen.NewMetaSheet(root.LocalName(), gen.Header, false)
-	if err := gen.parseXml([]Node{{nav: root, cursor: int(gen.Header.Datarow)-1}}, metaSheet); err != nil {
+	if err := gen.parseXml(*root, metaSheet); err != nil {
 		return errors.Wrapf(err, "parseXml for root node %s failed", root.LocalName())
 	}
 	xlsxGen.ExportSheet(metaSheet)
