@@ -78,7 +78,6 @@ func (sheet *MetaSheet) NewRow() *Row {
 	return &row
 }
 
-
 func (sheet *MetaSheet) Cell(row int, name string) *Cell {
 	if col, existed := sheet.colMap[name]; existed {
 		if len(sheet.Rows[row].Cells) <= col {

@@ -3,7 +3,7 @@
     <!-- 添加新特性开关后，调用tools/gen_feature_toggle/search_all.py 生成代码 -->
 
     <@TABLEAU>
-        <FeatureToggle EnvID="map<uint32,FeatureToggle>">
+        <FeatureToggle EnvID="map<uint32,FeatureToggle>" desc="string">
             <Toggle ID="[Toggle]<enum<.FeatureToggleMacroType>>" OpenRate="int32" WorldID="uint32" ZoneID="uint32" OpenTime="datetime|2022-01-23 15:40:00"  CloseTime="datetime|2022-01-23 15:40:00" UserLimitType="int32" UserSourceType="int32" SysKey1="int64" SysKey2="int64" SysKey3="int64" NotifyClosed="bool" ErrCode="enum<.Code>" />
         </FeatureToggle>
     </@TABLEAU>

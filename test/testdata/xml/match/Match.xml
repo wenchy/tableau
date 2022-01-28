@@ -2,7 +2,7 @@
     <@TABLEAU>
         <ConfirmTimeOutPunish Time="duration" />
         <MatchStatInfo ReportInterval="duration"/>
-        <MatchMode MissionType="map<enum<.MissionType>,MatchMode>" desc="string" >
+        <MatchMode MissionType="[MatchMode]<enum<.MissionType>>" desc="string" >
             <Time MinTime="duration" MaxTime="duration" Freq="int32" ConfirmTime="duration" />
             <Open BeginDate="date" BeginTime="time"  EndDate="date" EndTime="time" />
             <Camp CampID="[Camp]<uint32>" PlayerNum="int32" desc="string" />
