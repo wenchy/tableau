@@ -39,7 +39,7 @@ func main() {
 		Long:  `Complete documentation is available at github.com/wenchy/tableau`,
 		Run: func(cmd *cobra.Command, args []string) {
 			// Do Stuff Here
-			g := protogen.NewXlsxGenerator(protoPackage, goPackage, inputDir, outputDir, options.Header(
+			_, g := protogen.NewGenerator(protoPackage, goPackage, inputDir, outputDir, options.Header(
 				&options.HeaderOption{
 					Namerow: namerow,
 					Typerow: typerow,

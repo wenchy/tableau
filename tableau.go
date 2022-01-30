@@ -15,14 +15,7 @@ import (
 // Excel2Conf converts excel files (with tableau header) to different formatted configuration files.
 // Supported formats: json, prototext, and protowire.
 func Excel2Conf(protoPackage, indir, outdir string, setters ...options.Option) {
-	opts := options.ParseOptions(setters...)
-	g := confgen.Generator{
-		ProtoPackage: protoPackage,
-		LocationName: opts.LocationName,
-		InputDir:     indir,
-		OutputDir:    outdir,
-		Output:       opts.Output,
-	}
+	opts, g := confgen.NewGenerator(protoPackage, indir, outdir, setters...)
 	atom.InitZap(opts.LogLevel)
 	atom.Log.Debugf("options inited: %+v, header: %+v, output: %+v", opts, opts.Header, opts.Output)
 	if err := g.Generate(opts.Workbook, opts.Worksheet); err != nil {
@@ -33,29 +26,9 @@ func Excel2Conf(protoPackage, indir, outdir string, setters ...options.Option) {
 
 // Excel2Proto converts excel files (with tableau header) to protoconf files.
 func Excel2Proto(protoPackage, goPackage, indir, outdir string, setters ...options.Option) {
-	opts := options.ParseOptions(setters...)
-	g := protogen.ExcelGenerator{
-		Generator: protogen.Generator{
-			ProtoPackage:   protoPackage,
-			GoPackage:      goPackage,
-			LocationName: opts.LocationName,
-			InputDir:     indir,
-			OutputDir:    outdir,
-
-			FilenameWithSubdirPrefix: opts.Output.FilenameWithSubdirPrefix,
-			FilenameSuffix:           opts.Output.FilenameSuffix,
-
-			Imports: opts.Imports,
-		},
-		Header:         opts.Header,
-	}
+	opts, g := protogen.NewGenerator(protoPackage, goPackage, indir, outdir, setters...)
 	atom.InitZap(opts.LogLevel)
-	atom.Log.Debugf("options inited: %+v, header: %+v, output: %+v", opts, opts.Header, opts.Output)
-}
-
-// Xlsx2Proto converts xlsx files (with meta header) to protoconf files.
-func Xlsx2Proto(protoPackage, goPackage, indir, outdir string, setters ...options.Option) {
-	g := protogen.NewXlsxGenerator(protoPackage, goPackage, indir, outdir, setters...)
+	atom.Log.Infof("options inited: %+v", opts)
 	if err := g.Generate(); err != nil {
 		atom.Log.Errorf("generate failed: %+v", err)
 		os.Exit(-1)
@@ -84,14 +57,7 @@ func ParseMeta(indir, relWorkbookPath string) importer.Importer {
 // Xml2Conf converts xml files to different formatted configuration files.
 // Supported formats: json, prototext, and protowire.
 func Xml2Conf(protoPackage, indir, outdir string, setters ...options.Option) {
-	opts := options.ParseOptions(setters...)
-	g := confgen.Generator{
-		ProtoPackage: protoPackage,
-		LocationName: opts.LocationName,
-		InputDir:     filepath.Join(indir, ".xml2xlsx"),
-		OutputDir:    outdir,
-		Output:       opts.Output,
-	}
+	opts, g := confgen.NewGenerator(protoPackage, indir, outdir, setters...)
 	atom.InitZap(opts.LogLevel)
 	atom.Log.Infof("options inited: %+v", opts)
 	if err := g.Generate(opts.Workbook, opts.Worksheet); err != nil {
@@ -102,7 +68,9 @@ func Xml2Conf(protoPackage, indir, outdir string, setters ...options.Option) {
 
 // Xml2Proto converts xml files to protoconf files.
 func Xml2Proto(protoPackage, goPackage, indir, outdir string, setters ...options.Option) {
-	g := protogen.NewXmlGenerator(protoPackage, goPackage, indir, outdir, setters...)
+	opts, g := protogen.NewGenerator(protoPackage, goPackage, indir, outdir, setters...)
+	atom.InitZap(opts.LogLevel)
+	atom.Log.Infof("options inited: %+v", opts)
 	if err := g.Generate(); err != nil {
 		atom.Log.Errorf("generate failed: %+v", err)
 		os.Exit(-1)

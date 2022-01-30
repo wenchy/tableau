@@ -29,5 +29,5 @@ gen_pb()
         fi
     done
 }
-gen_pb $test_indir/xlsx
+gen_pb $test_indir/excel
 gen_pb $test_indir/xml

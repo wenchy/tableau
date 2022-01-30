@@ -13,6 +13,7 @@ import (
 	"github.com/Wenchy/tableau/internal/atom"
 	"github.com/Wenchy/tableau/internal/camelcase"
 	"github.com/Wenchy/tableau/internal/types"
+	"github.com/Wenchy/tableau/options"
 	"github.com/Wenchy/tableau/proto/tableaupb"
 	"github.com/pkg/errors"
 	"github.com/xuri/excelize/v2"
@@ -27,12 +28,12 @@ type Importer interface {
 func New(filename string, setters ...Option) Importer {
 	opts := parseOptions(setters...)
 	switch opts.Format {
-	case Excel:
+	case options.Excel:
 		return NewExcelImporter(filename, opts.Sheets, opts.Parser, false)
-	case CSV:
+	case options.CSV:
 		return NewCSVImporter(filename)
-	// case XML:
-	// 	return NewXMLImporter()
+	case options.XML:
+		return NewXMLImporter(filename, opts.Header)
 	default:
 		return nil
 	}

@@ -8,7 +8,7 @@ import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 import "tableau/protobuf/tableau.proto";
 
-option (tableau.workbook) = {name:"match/Match.xlsx"};
+option (tableau.workbook) = {name:"match/Match.xml"};
 
 message MatchCfg {
   option (tableau.worksheet) = {name:"MatchCfg" namerow:1 typerow:2 noterow:3 datarow:4 nameline:1 typeline:1 nested:true};
@@ -22,7 +22,7 @@ message MatchCfg {
   message MatchStatInfo {
     google.protobuf.Duration report_interval = 1 [(tableau.field) = {name:"ReportInterval"}];
   }
-  repeated MatchMode match_mode_list = 4 [(tableau.field) = {name:"MatchMode" key:"MissionType" layout:LAYOUT_VERTICAL}];
+  map<int32, MatchMode> match_mode_map = 4 [(tableau.field) = {name:"MatchMode" key:"MissionType" layout:LAYOUT_VERTICAL}];
   message MatchMode {
     MissionType mission_type = 1 [(tableau.field) = {name:"MissionType"}];
     string desc = 2 [(tableau.field) = {name:"Desc"}];

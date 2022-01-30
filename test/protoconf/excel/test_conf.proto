@@ -54,13 +54,8 @@ message Activity {
         }
         Info incell_struct = 8 [(tableau.field) = {name:"IncellStruct" type:TYPE_INCELL_STRUCT}];
         repeated int32 int_params = 9 [(tableau.field) = {name:"IntParams" type:TYPE_INCELL_LIST}];
-<<<<<<< 68b940b72919953ce379f1f1f984aa8f44f831c3
         map<int32, string> tips = 10 [(tableau.field) = {name:"Tips" type:TYPE_INCELL_MAP}];
-        repeated string client_param_list = 11 [(tableau.field) = {name:"ClientParam" layout:LAYOUT_HORIZONTAL}];
-=======
-        map<int32,string> tips = 10 [(tableau.field) = {name:"Tips" type:TYPE_INCELL_MAP}];
         repeated string client_param_list = 11 [(tableau.field) = {name:"ClientParam" layout:LAYOUT_HORIZONTAL list_max_len:3}];
->>>>>>> feat: xlsxgen and GetSuffix
       }
     }
   }
@@ -103,13 +98,8 @@ message MatchConf {
   Task task = 5 [(tableau.field) = {name:"Task"}];
   message Task {
     int32 type = 1 [(tableau.field) = {name:"Type"}];
-<<<<<<< 6d0bd943b9ee672479aa9a33307d11a6ec01539d
-    repeated int32 param_list = 2 [(tableau.field) = {name:"Param" layout:LAYOUT_HORIZONTAL}];
-    map<uint32, Filter> filter_map = 3 [(tableau.field) = {name:"Filter" key:"Type" layout:LAYOUT_VERTICAL}];
-=======
     repeated int32 param_list = 2 [(tableau.field) = {name:"Param" layout:LAYOUT_HORIZONTAL list_max_len:2}];
-    map<uint32,Filter> filter_map = 3 [(tableau.field) = {name:"Filter" key:"Type" layout:LAYOUT_VERTICAL}];
->>>>>>> feat: TABLEAU meta and default
+    map<uint32, Filter> filter_map = 3 [(tableau.field) = {name:"Filter" key:"Type" layout:LAYOUT_VERTICAL}];
     message Filter {
       uint32 type = 1 [(tableau.field) = {name:"Type"}];
       bool open = 2 [(tableau.field) = {name:"Open"}];
@@ -140,9 +130,9 @@ message MatchConf {
 message Loader {
   option (tableau.worksheet) = {name:"Loader" namerow:1 typerow:2 noterow:3 datarow:5 nameline:1 typeline:1 nested:true};
 
-  map<int32, Server> server_map = 1 [(tableau.field) = {name:"Server" key:"Type" layout:LAYOUT_VERTICAL}];
+  map<string, Server> server_map = 1 [(tableau.field) = {name:"Server" key:"Name" layout:LAYOUT_VERTICAL}];
   message Server {
-    ServerType type = 1 [(tableau.field) = {name:"Type"}];
+    string name = 1 [(tableau.field) = {name:"Name"}];
     repeated Conf conf_list = 2 [(tableau.field) = {name:"Conf" key:"Type" layout:LAYOUT_VERTICAL}];
     message Conf {
       ConfType type = 1 [(tableau.field) = {name:"Type"}];

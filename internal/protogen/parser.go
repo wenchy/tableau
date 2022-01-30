@@ -3,18 +3,12 @@ package protogen
 import (
 	"fmt"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/Wenchy/tableau/internal/atom"
 	"github.com/Wenchy/tableau/internal/types"
 	"github.com/Wenchy/tableau/proto/tableaupb"
 	"github.com/iancoleman/strcase"
-	"github.com/pkg/errors"
-
-	"github.com/Wenchy/tableau/internal/xlsxgen"
-	"github.com/antchfx/xmlquery"
-	"github.com/antchfx/xpath"
 )
 
 const (
@@ -509,150 +503,4 @@ func ParseIncellStruct(elemType string) []string {
 		fieldPairs = append(fieldPairs, kv...)
 	}
 	return fieldPairs
-}
-
-// parseXml parse and convert an xml file to sheet format
-func (gen *XmlGenerator) parseXml(nav *xmlquery.NodeNavigator, metaSheet *xlsxgen.MetaSheet, cursor int) error {
-	// preprocess
-	realParent, prefix, isMeta := nav.Current().Parent, "", false
-	// skip `TABLEAU` to find real parent
-	for flag, navCopy := true, *nav; flag && navCopy.LocalName() != metaSheet.Worksheet; flag = navCopy.MoveToParent() {
-		if navCopy.LocalName() == "TABLEAU" {
-			isMeta = true
-		} else {
-			prefix = strcase.ToCamel(navCopy.LocalName()) + prefix
-		}
-		if navCopy.Current().Parent != nil && navCopy.Current().Parent.Data == "TABLEAU" {
-			realParent = navCopy.Current().Parent.Parent
-		}
-	}
-	repeated := len(xmlquery.Find(realParent, nav.LocalName())) > 1
-
-	// clear to the bottom
-	if navCopy := *nav; !navCopy.MoveToChild() {
-		for tmpCusor := cursor; tmpCusor < len(metaSheet.Rows); tmpCusor++ {
-			metaSheet.ForEachCol(tmpCusor, func(name string, cell *xlsxgen.Cell) error {
-				if strings.HasPrefix(name, prefix) {
-					cell.Data = metaSheet.GetDefaultValue(name)
-				}
-				return nil
-			})
-		}
-	}
-
-	// iterate over attributes
-	for i, attr := range nav.Current().Attr {
-		attrName := attr.Name.Local
-		attrValue := attr.Value
-		t, d := guessType(attrValue)
-		colName := prefix + strcase.ToCamel(attrName)
-		lastColName := metaSheet.GetLastColName()
-		metaSheet.SetDefaultValue(colName, d)
-		if isMeta {
-			if index := strings.Index(attrValue, "|"); index > 0 {
-				t = attrValue[:index]
-				metaSheet.SetDefaultValue(colName, attrValue[index+1:])
-			} else {
-				t = attrValue
-			}
-		} else {
-			// fill values to the bottom when backtrace to top line
-			for tmpCusor := cursor; tmpCusor < len(metaSheet.Rows); tmpCusor++ {
-				metaSheet.Cell(tmpCusor, colName).Data = attrValue
-			}
-		}
-
-		curType := metaSheet.GetColType(colName)
-		matches := types.MatchStruct(curType)
-		// 1. <TABLEAU>
-		// 2. type not set
-		// 3. {Type}int32 -> [Type]int32
-		needChangeType := isMeta || curType == "" || (len(matches) > 0 && repeated)
-		// 1. new struct(list), not subsequent
-		// 2. {Type}int32 -> [Type]int32
-		setKeyedType := !strings.HasPrefix(lastColName, prefix) || (len(matches) > 0 && repeated)
-		if needChangeType {
-			if matches := types.MatchMap(t); len(matches) == 3 {
-				if !types.IsScalarType(matches[1]) && len(types.MatchEnum(matches[1])) == 0 {
-					return fmt.Errorf("%s is not scalar type in node %s attr %s type %s", matches[1], nav.LocalName(), attrName, t)
-				}
-				if matches[2] != nav.LocalName() {
-					return fmt.Errorf("%s in attr %s type %s must be the same as node name %s", matches[2], attrName, t, nav.LocalName())
-				}
-				metaSheet.SetColType(colName, t)
-			} else if matches := types.MatchKeyedList(t); len(matches) == 3 {
-				if i != 0 {
-					return fmt.Errorf("KeyedList attr %s in node %s must be the first attr", attrName, nav.LocalName())
-				}
-				if !types.IsScalarType(matches[2]) && len(types.MatchEnum(matches[2])) == 0 {
-					return fmt.Errorf("%s is not scalar type in node %s attr %s type %s", matches[2], nav.LocalName(), attrName, t)
-				}
-				if matches[1] != nav.LocalName() {
-					return fmt.Errorf("%s in attr %s type %s must be the same as node name %s", matches[1], attrName, t, nav.LocalName())
-				}
-				metaSheet.SetColType(colName, t)
-			} else if matches := types.MatchList(t); len(matches) == 3 {
-				if i != 0 {
-					return fmt.Errorf("KeyedList attr %s in node %s must be the first attr", attrName, nav.LocalName())
-				}
-				if !types.IsScalarType(matches[2]) && len(types.MatchEnum(matches[2])) == 0 {
-					return fmt.Errorf("%s is not scalar type in node %s attr %s type %s", matches[2], nav.LocalName(), attrName, t)
-				}
-				if matches[1] != nav.LocalName() {
-					return fmt.Errorf("%s in attr %s type %s must be the same as node name %s", matches[1], attrName, t, nav.LocalName())
-				}
-				metaSheet.SetColType(colName, t)
-			} else if i == 0 && setKeyedType {
-				if repeated {
-					metaSheet.SetColType(colName, fmt.Sprintf("[%s]<%s>", strcase.ToCamel(nav.LocalName()), t))
-				} else {
-					metaSheet.SetColType(colName, fmt.Sprintf("{%s}%s", strcase.ToCamel(nav.LocalName()), t))
-				}
-			} else {
-				metaSheet.SetColType(colName, t)
-			}
-		}
-	}
-
-	// iterate over child nodes
-	nodeMap := make(map[string]int)
-	navCopy := *nav
-	for flag := navCopy.MoveToChild(); flag; flag = navCopy.MoveToNext() {
-		// commentNode, documentNode and other meaningless nodes should be filtered
-		if navCopy.NodeType() != xpath.ElementNode {
-			continue
-		}
-		tagName := navCopy.LocalName()
-		if count, existed := nodeMap[tagName]; existed {
-			// `TABLEAU` can only be placed in the first child node
-			if xmlquery.FindOne(navCopy.Current(), "/TABLEAU") != nil {
-				return fmt.Errorf("`TABLEAU` found in node %s (index:%d) which is not the first child", tagName, count + 1)
-			}
-			// duplicate means a list, should expand vertically
-			row := metaSheet.NewRow()
-			if err := gen.parseXml(&navCopy, metaSheet, row.Index); err != nil {
-				return errors.Wrapf(err, "parseXml for node %s (index:%d) failed", tagName, count + 1)
-			}
-			nodeMap[tagName]++
-		} else {
-			if err := gen.parseXml(&navCopy, metaSheet, cursor); err != nil {
-				return errors.Wrapf(err, "parseXml for the first node %s failed", tagName)
-			}
-			nodeMap[tagName] = 1
-		}
-	}
-
-	return nil
-}
-
-func guessType(value string) (string, string) {
-	var t, d string
-	if _, err := strconv.Atoi(value); err == nil {
-		t, d = "int32", "0"
-	} else if _, err := strconv.ParseInt(value, 10, 64); err == nil {
-		t, d = "int64", "0"
-	} else {
-		t, d = "string", ""
-	}
-	return t, d
 }
