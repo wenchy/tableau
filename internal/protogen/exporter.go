@@ -199,7 +199,7 @@ func (x *sheetExporter) exportField(depth int, tagid int, field *tableaupb.Field
 		if field.MapEntry != nil {
 			msgName = field.MapEntry.ValueType
 		}
-		nestedMsgName := prefix + "/" + msgName
+		nestedMsgName := prefix + "." + msgName
 
 		if isSameFieldMessageType(field, x.nestedMessages[nestedMsgName]) {
 			// if the nested message is the same as the previous one,

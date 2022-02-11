@@ -157,7 +157,7 @@ func (x *XMLImporter) parseNode(nav *xmlquery.NodeNavigator, metaSheet *xlsxgen.
 	for i, attr := range nav.Current().Attr {
 		attrName := attr.Name.Local
 		attrValue := attr.Value
-		t, d := guessType(attrValue)
+		t, d := inferType(attrValue)
 		colName := prefix + strcase.ToCamel(attrName)
 		lastColName := metaSheet.GetLastColName()
 		metaSheet.SetDefaultValue(colName, d)
@@ -258,7 +258,7 @@ func (x *XMLImporter) parseNode(nav *xmlquery.NodeNavigator, metaSheet *xlsxgen.
 	return nil
 }
 
-func guessType(value string) (string, string) {
+func inferType(value string) (string, string) {
 	var t, d string
 	if _, err := strconv.Atoi(value); err == nil {
 		t, d = "int32", "0"
