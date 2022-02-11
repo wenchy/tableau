@@ -1,3 +1,5 @@
+> 💡 Future development will be at https://github.com/tableauio/tableau.
+
 # Tableau
 
 A powerful configuration conversion tool based on Protobuf(proto3).
