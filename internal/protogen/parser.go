@@ -19,7 +19,6 @@ const (
 
 type bookParser struct {
 	wb       *tableaupb.Workbook
-	types    map[string]bool // type name -> existed
 	withNote bool
 }
 
@@ -85,6 +84,9 @@ func (p *bookParser) parseSubField(field *tableaupb.Field, header *sheetHeader, 
 	cursor, ok := p.parseField(subField, header, cursor, prefix, nested)
 	if ok {
 		field.Fields = append(field.Fields, subField)
+		// if field.Options.Layout == tableaupb.Layout_LAYOUT_HORIZONTAL {
+		// 	field.Options.ListMaxLen /= int32(len(field.Fields))
+		// }
 	}
 	return cursor
 }
@@ -259,6 +261,7 @@ func (p *bookParser) parseListField(field *tableaupb.Field, header *sheetHeader,
 	// preprocess
 	layout := tableaupb.Layout_LAYOUT_VERTICAL // default layout is vertical.
 	index := -1
+	// tmpCursor := cursor
 	if index = strings.Index(trimmedNameCell, "1"); index > 0 {
 		layout = tableaupb.Layout_LAYOUT_HORIZONTAL
 		if cursor+1 < len(header.namerow) {
@@ -285,6 +288,12 @@ func (p *bookParser) parseListField(field *tableaupb.Field, header *sheetHeader,
 				}
 			}
 		}
+		// for tmpNameCell, listName := trimmedNameCell, trimmedNameCell[:index]; strings.Contains(tmpNameCell, listName); {
+		// 	if tmpCursor++; tmpCursor >= len(header.namerow) {
+		// 		break
+		// 	}
+		// 	tmpNameCell = strings.TrimPrefix(header.getNameCell(tmpCursor), prefix)
+		// }
 	} else {
 		if isScalarType {
 			layout = tableaupb.Layout_LAYOUT_DEFAULT // incell list
@@ -341,6 +350,7 @@ func (p *bookParser) parseListField(field *tableaupb.Field, header *sheetHeader,
 		field.Options = &tableaupb.FieldOptions{
 			Name:   listName,
 			Layout: layout,
+			// ListMaxLen: int32(tmpCursor - cursor),
 		}
 		if isScalarType {
 			for cursor++; cursor < len(header.namerow); cursor++ {

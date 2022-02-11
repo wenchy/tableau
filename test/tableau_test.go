@@ -7,7 +7,8 @@ import (
 	"github.com/Wenchy/tableau/internal/atom"
 	"github.com/Wenchy/tableau/internal/importer"
 	"github.com/Wenchy/tableau/options"
-	_ "github.com/Wenchy/tableau/test/testpb"
+	_ "github.com/Wenchy/tableau/test/testpb/excel"
+	_ "github.com/Wenchy/tableau/test/testpb/xml"
 )
 
 func init() {
@@ -16,10 +17,10 @@ func init() {
 
 func Test_Excel2Proto(t *testing.T) {
 	tableau.Excel2Proto(
-		"test",
-		"github.com/Wenchy/tableau/cmd/test/testpb",
-		"./testdata",
-		"./protoconf",
+		"testexcel",
+		"github.com/Wenchy/tableau/cmd/test/testpb/excel",
+		"./testdata/excel",
+		"./protoconf/excel",
 		options.Header(
 			&options.HeaderOption{
 				Namerow: 1,
@@ -48,8 +49,8 @@ func Test_Excel2Proto(t *testing.T) {
 
 func Test_Excel2JSON(t *testing.T) {
 	tableau.Excel2Conf(
-		"test",
-		"./testdata/",
+		"testexcel",
+		"./testdata/excel",
 		"./_output/json/",
 		options.LogLevel("debug"),
 	)
@@ -57,8 +58,8 @@ func Test_Excel2JSON(t *testing.T) {
 
 func Test_Excel2JSON_Select(t *testing.T) {
 	tableau.Excel2Conf(
-		"test",
-		"./testdata/",
+		"testexcel",
+		"./testdata/excel",
 		"./_output/json/",
 		options.LogLevel("debug"),
 		// options.Workbook("hero/Test.xlsx"),
@@ -70,8 +71,8 @@ func Test_Excel2JSON_Select(t *testing.T) {
 
 func Test_Excel2CSV(t *testing.T) {
 	paths := []string{
-		"./testdata/Test.xlsx",
-		"./testdata/hero/Test.xlsx",
+		"./testdata/excel/Test.xlsx",
+		"./testdata/excel/hero/Test.xlsx",
 	}
 	for _, path := range paths {
 		imp := importer.NewExcelImporter(path, nil, nil, true)
@@ -84,23 +85,56 @@ func Test_Excel2CSV(t *testing.T) {
 
 func Test_CSV2Excel(t *testing.T) {
 	paths := []string{
-		"./testdata/Test#Activity.csv",
-		"./testdata/Test#Reward.csv",
-		"./testdata/Test#Exchange.csv",
-		"./testdata/Test#Match.csv",
-		"./testdata/Test#Loader.csv",
-		"./testdata/Test#@TABLEAU.csv",
-		"./testdata/Test#Sheet2.csv",
+		"./testdata/excel/Test#Activity.csv",
+		"./testdata/excel/Test#Reward.csv",
+		"./testdata/excel/Test#Exchange.csv",
+		"./testdata/excel/Test#Match.csv",
+		"./testdata/excel/Test#Loader.csv",
+		"./testdata/excel/Test#@TABLEAU.csv",
+		"./testdata/excel/Test#Sheet2.csv",
 
-
-		"./testdata/hero/Test#Hero.csv",
-		"./testdata/hero/Test#@TABLEAU.csv",
+		"./testdata/excel/hero/Test#Hero.csv",
+		"./testdata/excel/hero/Test#@TABLEAU.csv",
 	}
 	for _, path := range paths {
 		imp := importer.NewCSVImporter(path)
 		err := imp.ExportExcel()
 		if err != nil {
-			t.Errorf("%+v",err)
+			t.Errorf("%+v", err)
 		}
 	}
+}
+
+func Test_XML2Proto(t *testing.T) {
+	tableau.XML2Proto(
+		"testxml",
+		"github.com/Wenchy/tableau/cmd/test/testpb/xml",
+		"./testdata/xml",
+		"./protoconf/xml",
+		options.Imports(
+			[]string{
+				"cs_com_def.proto",
+			},
+		),
+		options.Input(
+			&options.InputOption{
+				Format: options.XML,
+			},
+		),
+	)
+}
+
+func Test_XML2JSON(t *testing.T) {
+	tableau.XML2Conf(
+		"testxml",
+		"./testdata/xml",
+		"./_output/json",
+		options.LogLevel("debug"),
+		options.Input(
+			&options.InputOption{
+				Format: options.XML,
+			},
+		),
+	)
+	// tableau.Generate("test", "./testdata/", "./_output/xml/")
 }

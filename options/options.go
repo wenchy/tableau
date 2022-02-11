@@ -5,8 +5,11 @@ type Format int
 // file format
 const (
 	JSON      Format = 0
-	Protowire        = 1
-	Prototext        = 2
+	Protowire Format = 1
+	Prototext Format = 2
+	Excel     Format = 3
+	CSV       Format = 4
+	XML       Format = 5
 )
 
 // Options is the wrapper of tableau params.
@@ -16,6 +19,7 @@ type Options struct {
 	LogLevel     string        // Log level: debug, info, warn, error
 	Header       *HeaderOption // header rows of excel file.
 	Output       *OutputOption // output settings.
+	Input        *InputOption  // input settings.
 	Imports      []string      // imported common proto file paths
 	Workbook     string        // workbook path or name
 	Worksheet    string        // worksheet name
@@ -57,6 +61,10 @@ type OutputOption struct {
 	EmitUnpopulated bool // default true
 }
 
+type InputOption struct {
+	Format Format
+}
+
 // Option is the functional option type.
 type Option func(*Options)
 
@@ -69,6 +77,12 @@ func Header(o *HeaderOption) Option {
 func Output(o *OutputOption) Option {
 	return func(opts *Options) {
 		opts.Output = o
+	}
+}
+
+func Input(o *InputOption) Option {
+	return func(opts *Options) {
+		opts.Input = o
 	}
 }
 
@@ -119,6 +133,9 @@ func newDefaultOptions() *Options {
 			Pretty:                   true,
 			EmitUnpopulated:          true,
 		},
+		Input: &InputOption{
+			Format: Excel,
+		},
 	}
 }
 
@@ -129,4 +146,17 @@ func ParseOptions(setters ...Option) *Options {
 		setter(opts)
 	}
 	return opts
+}
+
+func Ext2Format(ext string) Format {
+	switch ext {
+	case ".xlsx":
+		return Excel
+	case ".xml":
+		return XML
+	case ".csv":
+		return CSV
+	default:
+		return Excel
+	}
 }

@@ -34,9 +34,67 @@ type Generator struct {
 	FilenameWithSubdirPrefix bool   // filename dir separator `/` or `\` is replaced by "__"
 	FilenameSuffix           string // filename suffix of generated protoconf files.
 
-	Imports []string // imported common proto file paths
+	Imports   []string              // imported common proto file paths
+	Header    *options.HeaderOption // header settings.
+	InputOpts *options.InputOption
+}
 
-	Header *options.HeaderOption // header settings.
+func NewGenerator(protoPackage, goPackage, indir, outdir string, setters ...options.Option) *Generator {
+	opts := options.ParseOptions(setters...)
+	g := &Generator{
+		ProtoPackage: protoPackage,
+		GoPackage:    goPackage,
+		LocationName: opts.LocationName,
+		InputDir:     indir,
+		OutputDir:    outdir,
+
+		FilenameWithSubdirPrefix: opts.Output.FilenameWithSubdirPrefix,
+		FilenameSuffix:           opts.Output.FilenameSuffix,
+
+		Imports:   opts.Imports,
+		Header:    opts.Header,
+		InputOpts: opts.Input,
+	}
+	return g
+}
+
+func (gen *Generator) PrepareOutpuDir() error {
+	existed, err := fs.Exists(gen.OutputDir)
+	if err != nil {
+		return errors.Wrapf(err, "failed to check existence of output dir: %s", gen.OutputDir)
+	}
+	if existed {
+		// remove all *.proto file but not Imports
+		imports := make(map[string]int)
+		for _, path := range gen.Imports {
+			imports[path] = 1
+		}
+		files, err := os.ReadDir(gen.OutputDir)
+		if err != nil {
+			return errors.Wrapf(err, "failed to read dir: %s", gen.OutputDir)
+		}
+		for _, file := range files {
+			if !strings.HasSuffix(file.Name(), ".proto") {
+				continue
+			}
+			if _, ok := imports[file.Name()]; ok {
+				continue
+			}
+			fpath := filepath.Join(gen.OutputDir, file.Name())
+			err := os.Remove(fpath)
+			if err != nil {
+				return errors.Wrapf(err, "failed to remove file: %s", fpath)
+			}
+		}
+	} else {
+		// create output dir
+		err = os.MkdirAll(gen.OutputDir, 0700)
+		if err != nil {
+			return errors.Wrapf(err, "failed to create output dir: %s", gen.OutputDir)
+		}
+	}
+
+	return nil
 }
 
 func (gen *Generator) Generate() error {
@@ -48,7 +106,7 @@ func (gen *Generator) Generate() error {
 
 func (gen *Generator) GenOneWorkbook(relativeWorkbookPath string) error {
 	absPath := filepath.Join(gen.InputDir, relativeWorkbookPath)
-	return gen.convertWorkbook(filepath.Dir(absPath), filepath.Base(absPath))
+	return gen.convert(filepath.Dir(absPath), filepath.Base(absPath))
 }
 
 func (gen *Generator) generate(dir string) error {
@@ -72,11 +130,11 @@ func (gen *Generator) generate(dir string) error {
 			continue
 		}
 		// atom.Log.Debugf("generating %s, %s", entry.Name(), filepath.Ext(entry.Name()))
-		if filepath.Ext(entry.Name()) != ".xlsx" {
+		if options.Ext2Format(filepath.Ext(entry.Name())) != gen.InputOpts.Format {
 			// ignore not xlsx files
 			continue
 		}
-		if err := gen.convertWorkbook(dir, entry.Name()); err != nil {
+		if err := gen.convert(dir, entry.Name()); err != nil {
 			return errors.WithMessage(err, "failed to convert workbook")
 		}
 	}
@@ -94,14 +152,14 @@ func getRelCleanSlashPath(rootdir, dir, filename string) (string, error) {
 	return relSlashPath, nil
 }
 
-func (gen *Generator) convertWorkbook(dir, filename string) error {
+func (gen *Generator) convert(dir, filename string) error {
 	relativePath, err := getRelCleanSlashPath(gen.InputDir, dir, filename)
 	if err != nil {
 		return errors.WithMessagef(err, "get relative path failed")
 	}
 	absPath := filepath.Join(dir, filename)
 	parser := confgen.NewSheetParser(TableauProtoPackage, gen.LocationName)
-	imp := importer.New(absPath, importer.Parser(parser))
+	imp := importer.New(absPath, importer.Parser(parser), importer.Format(gen.InputOpts.Format), importer.Header(gen.Header))
 	sheets, err := imp.GetSheets()
 	if err != nil {
 		return errors.Wrapf(err, "failed to get sheet of workbook: %s", absPath)
@@ -168,46 +226,6 @@ func (gen *Generator) convertWorkbook(dir, filename string) error {
 	return nil
 }
 
-func (gen *Generator) PrepareOutpuDir() error {
-	existed, err := fs.Exists(gen.OutputDir)
-	if err != nil {
-		return errors.Wrapf(err, "failed to check existence of output dir: %s", gen.OutputDir)
-	}
-	if existed {
-		// remove all *.proto file but not Imports
-		imports := make(map[string]int)
-		for _, path := range gen.Imports {
-			imports[path] = 1
-		}
-		files, err := os.ReadDir(gen.OutputDir)
-		if err != nil {
-			return errors.Wrapf(err, "failed to read dir: %s", gen.OutputDir)
-		}
-		for _, file := range files {
-			if !strings.HasSuffix(file.Name(), ".proto") {
-				continue
-			}
-			if _, ok := imports[file.Name()]; ok {
-				continue
-			}
-			fpath := filepath.Join(gen.OutputDir, file.Name())
-			err := os.Remove(fpath)
-			if err != nil {
-				return errors.Wrapf(err, "failed to remove file: %s", fpath)
-			}
-		}
-
-	} else {
-		// create output dir
-		err = os.MkdirAll(gen.OutputDir, 0700)
-		if err != nil {
-			return errors.Wrapf(err, "failed to create output dir: %s", gen.OutputDir)
-		}
-	}
-
-	return nil
-}
-
 type sheetHeader struct {
 	meta    *tableaupb.SheetMeta
 	namerow []string
@@ -216,8 +234,11 @@ type sheetHeader struct {
 }
 
 func getCell(row []string, cursor int, line int32) string {
-	cell := row[cursor]
-	return importer.ExtractFromCell(cell, line)
+	// empty cell may be not in list
+	if cursor >= len(row) {
+		return ""
+	}
+	return importer.ExtractFromCell(row[cursor], line)
 }
 
 func (sh *sheetHeader) getNameCell(cursor int) string {

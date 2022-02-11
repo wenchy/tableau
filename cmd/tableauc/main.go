@@ -39,17 +39,8 @@ func main() {
 		Long:  `Complete documentation is available at github.com/wenchy/tableau`,
 		Run: func(cmd *cobra.Command, args []string) {
 			// Do Stuff Here
-			g := protogen.Generator{
-				ProtoPackage: protoPackage,
-				GoPackage:    goPackage,
-				LocationName: locationName,
-				InputDir:     inputDir,
-				OutputDir:    outputDir,
-
-				FilenameWithSubdirPrefix: filenameWithSubdirPrefix,
-				FilenameSuffix:           filenameSuffix,
-
-				Header: &options.HeaderOption{
+			g := protogen.NewGenerator(protoPackage, goPackage, inputDir, outputDir, options.Header(
+				&options.HeaderOption{
 					Namerow: namerow,
 					Typerow: typerow,
 					Noterow: noterow,
@@ -58,8 +49,12 @@ func main() {
 					Nameline: nameline,
 					Typeline: typeline,
 				},
-				Imports: imports,
-			}
+			), options.Imports(imports), options.LocationName(locationName), options.Output(
+				&options.OutputOption{
+					FilenameSuffix: filenameSuffix,
+					FilenameWithSubdirPrefix: filenameWithSubdirPrefix,
+				},
+			))
 			atom.InitZap(logLevel)
 			if len(args) == 0 {
 				if err := g.Generate(); err != nil {

@@ -5,36 +5,30 @@ import (
 	"encoding/xml"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 	"unicode"
 
 	"github.com/Wenchy/tableau/internal/atom"
+	"github.com/Wenchy/tableau/options"
 	"github.com/Wenchy/tableau/proto/tableaupb"
 	"github.com/iancoleman/strcase"
+	"github.com/pkg/errors"
 	"github.com/xuri/excelize/v2"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/descriptorpb"
-	"google.golang.org/protobuf/types/dynamicpb"
 )
 
-type metasheet struct {
-	worksheet string // worksheet name
-	namerow   int32  // exact row number of name at worksheet
-	noterow   int32  // exact row number of description at wooksheet
-	datarow   int32  // start row number of data
-	transpose bool   // interchange the rows and columns
-}
 
 type Generator struct {
 	ProtoPackage string // protobuf package name.
 	InputDir         string // input dir of workbooks.
 	OutputDir        string // output dir of generated protoconf files.
-
-	metasheet metasheet // meta info of worksheet
+	Workbook string // Workbook name
 }
 
 var specialMessageMap = map[string]int{
@@ -43,10 +37,114 @@ var specialMessageMap = map[string]int{
 }
 
 type Cell struct {
-	Name string
 	Data string
 }
-type Row []Cell
+type Row struct {
+	Cells []Cell
+	Index int
+}
+type MetaSheet struct {
+	Worksheet string // worksheet name
+	options.HeaderOption
+	Transpose bool   // interchange the rows and columns
+	Rows []Row
+	colMap map[string]int // colName -> colNum
+	defaultMap map[string]string // colName -> default value
+}
+
+func NewMetaSheet(worksheet string, header *options.HeaderOption, transpose bool) *MetaSheet {
+	rows := make([]Row, header.Datarow)
+	for i := range rows {
+		rows[i].Index = i
+	}
+	return &MetaSheet{
+		Worksheet: worksheet,
+		HeaderOption: *header,
+		Transpose: transpose,
+		Rows: rows,
+		colMap: make(map[string]int),
+		defaultMap: make(map[string]string),
+	}
+}
+
+func (sheet *MetaSheet) NewRow() *Row {
+	row := Row{
+		Cells: make([]Cell, len(sheet.Rows[len(sheet.Rows) - 1].Cells)),
+		Index: len(sheet.Rows),
+	}
+	// Critical!!! copy common value from parent node
+	copy(row.Cells, sheet.Rows[len(sheet.Rows) - 1].Cells)
+	sheet.Rows = append(sheet.Rows, row)
+	return &row
+}
+
+func (sheet *MetaSheet) Cell(row int, name string) *Cell {
+	if col, existed := sheet.colMap[name]; existed {
+		if len(sheet.Rows[row].Cells) <= col {
+			newCols := make([]Cell, col-len(sheet.Rows[row].Cells)+1)
+			sheet.Rows[row].Cells = append(sheet.Rows[row].Cells, newCols...)
+		}
+		return &sheet.Rows[row].Cells[col]
+	}
+	sheet.colMap[name] = len(sheet.Rows[sheet.Namerow-1].Cells)
+	sheet.Rows[sheet.Namerow-1].Cells = append(sheet.Rows[sheet.Namerow-1].Cells, Cell{Data: name})
+	// if there is typerow and noterow
+	if sheet.Typerow < sheet.Datarow {
+		sheet.Rows[sheet.Typerow-1].Cells = append(sheet.Rows[sheet.Typerow-1].Cells, Cell{Data: ""})
+	}
+	if sheet.Noterow < sheet.Datarow {
+		sheet.Rows[sheet.Noterow-1].Cells = append(sheet.Rows[sheet.Noterow-1].Cells, Cell{Data: "Note"})
+	}
+	if row + 1 >= int(sheet.Datarow) {
+		sheet.Rows[row].Cells = append(sheet.Rows[row].Cells, Cell{Data: ""})
+	}
+	return &sheet.Rows[row].Cells[len(sheet.Rows[row].Cells)-1]
+}
+
+func (sheet *MetaSheet) SetColType(col, typ string) {
+	sheet.Cell(int(sheet.Typerow-1), col).Data = typ
+}
+
+func (sheet *MetaSheet) GetColType(col string) string {
+	return sheet.Cell(int(sheet.Typerow-1), col).Data
+}
+
+func (sheet *MetaSheet) SetColNote(col, note string) {
+	sheet.Cell(int(sheet.Noterow-1), col).Data = note
+}
+
+func (sheet *MetaSheet) SetDefaultValue(col, defaultVal string) {
+	// modification is not allowed
+	if d, existed := sheet.defaultMap[col]; existed && d != "" {
+		return
+	}
+	sheet.defaultMap[col] = defaultVal
+}
+
+func (sheet *MetaSheet) GetDefaultValue(col string) string {
+	if _, existed := sheet.defaultMap[col]; !existed {
+		return ""
+	}
+	return sheet.defaultMap[col]
+}
+
+func (sheet *MetaSheet) GetLastColName() string {
+	row := sheet.Rows[sheet.Namerow - 1].Cells
+	if len(row) == 0 {
+		return ""
+	}
+	return row[len(row) - 1].Data
+}
+
+func (sheet *MetaSheet) ForEachCol(rowId int, f func(name string, cell *Cell) error) error {
+	for name, i := range sheet.colMap {
+		cell := sheet.Cell(rowId, name)
+		if err := f(name, cell); err != nil {
+			return errors.Wrapf(err, "call user-defined failed when iterating col %s (%d, %d)", name, rowId, i)
+		}
+	}
+	return nil
+}
 
 func (gen *Generator) Generate() {
 	err := os.RemoveAll(gen.OutputDir)
@@ -74,35 +172,37 @@ func (gen *Generator) Generate() {
 			md := msgs.Get(i)
 			// atom.Log.Debugf("%s\n", md.FullName())
 			opts := md.Options().(*descriptorpb.MessageOptions)
-			worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(*tableaupb.WorksheetOptions)
-			if worksheet == nil {
+			worksheetOpt := proto.GetExtension(opts, tableaupb.E_Worksheet).(*tableaupb.WorksheetOptions)
+			if worksheetOpt == nil {
 				continue
 			}
-			atom.Log.Infof("generate: %s, message: %s#%s, worksheet: %s#%s", md.Name(), fd.Path(), md.Name(), workbook.Name, worksheet.Name)
-			newMsg := dynamicpb.NewMessage(md)
-			gen.export(newMsg)
+			atom.Log.Infof("generate: %s, message: %s@%s, worksheet: %s@%s", md.Name(), fd.Path(), md.Name(), workbook, worksheetOpt.Name)
+			// export the protomsg message.
+			_, workbook := TestParseFileOptions(md.ParentFile())
+			fmt.Println("==================", workbook)
+			msgName, worksheet, namerow, noterow, datarow, transpose := TestParseMessageOptions(md)
+			metaSheet := NewMetaSheet(worksheet, &options.HeaderOption{
+				Namerow: namerow,
+				Noterow: noterow,
+				Datarow: datarow,
+			}, transpose)
+			gen.TestParseFieldOptions(md, &metaSheet.Rows[metaSheet.Namerow-1].Cells, 0, "")
+			fmt.Println("==================", msgName)
+			if err := gen.ExportSheet(metaSheet); err != nil {
+				panic(err)
+			}
 		}
 		return true
 	})
 }
 
-// export the protomsg message.
-func (gen *Generator) export(protomsg proto.Message) {
-	md := protomsg.ProtoReflect().Descriptor()
-	_, workbook := TestParseFileOptions(md.ParentFile())
-	fmt.Println("==================", workbook)
-	msgName, worksheet, namerow, noterow, datarow, transpose := TestParseMessageOptions(md)
-	gen.metasheet.worksheet = worksheet
-	gen.metasheet.namerow = namerow
-	gen.metasheet.noterow = noterow
-	gen.metasheet.datarow = datarow
-	gen.metasheet.transpose = transpose
-
-	row := make(Row, 0)
-	gen.TestParseFieldOptions(md, &row, 0, "")
-	fmt.Println("==================", msgName)
-
-	filename := gen.OutputDir + workbook.Name
+// ExportSheet export a worksheet.
+func (gen *Generator) ExportSheet(metaSheet *MetaSheet) error {
+	// create output dir
+	if err := os.MkdirAll(gen.OutputDir, 0700); err != nil {
+		return errors.WithMessagef(err, "failed to create output dir: %s", gen.OutputDir)
+	}
+	filename := filepath.Join(gen.OutputDir, gen.Workbook)
 	var wb *excelize.File
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
 		wb = excelize.NewFile()
@@ -120,7 +220,7 @@ func (gen *Generator) export(protomsg proto.Message) {
 			Modified:       datetime,
 			Revision:       "0",
 			Subject:        "Configuration",
-			Title:          workbook.Name,
+			Title:          gen.Workbook,
 			Language:       "en-US",
 			Version:        "1.0.0",
 		})
@@ -128,15 +228,14 @@ func (gen *Generator) export(protomsg proto.Message) {
 			panic(err)
 		}
 		// The newly created workbook will by default contain a worksheet named `Sheet1`.
-		wb.SetSheetName("Sheet1", worksheet)
+		wb.SetSheetName("Sheet1", metaSheet.Worksheet)
 		wb.SetDefaultFont("Courier")
 	} else {
-		fmt.Println("exist file: ", filename)
 		wb, err = excelize.OpenFile(filename)
 		if err != nil {
 			panic(err)
 		}
-		wb.NewSheet(worksheet)
+		wb.NewSheet(metaSheet.Worksheet)
 	}
 
 	{
@@ -181,112 +280,118 @@ func (gen *Generator) export(protomsg proto.Message) {
 		if err != nil {
 			panic(err)
 		}
-		wb.SetRowHeight(worksheet, 1, 50)
-		for i, cell := range row {
-			hanWidth := 1 * float64(getHanCount(cell.Name))
-			letterWidth := 1 * float64(getLetterCount(cell.Name))
-			digitWidth := 1 * float64(getDigitCount(cell.Name))
-			width := hanWidth + letterWidth + digitWidth + 4.0
-			// width := 2 * float64(utf8.RuneCountInString(cell.Name))
-			colname, err := excelize.ColumnNumberToName(i + 1)
-			if err != nil {
-				panic(err)
-			}
-			wb.SetColWidth(worksheet, colname, colname, width)
+		wb.SetRowHeight(metaSheet.Worksheet, 1, 50)
+		for j, row := range metaSheet.Rows {
+			for i, cell := range row.Cells {
+				hanWidth := 1 * float64(getHanCount(cell.Data))
+				letterWidth := 1 * float64(getLetterCount(cell.Data))
+				digitWidth := 1 * float64(getDigitCount(cell.Data))
+				width := hanWidth + letterWidth + digitWidth + 4.0
+				// width := 2 * float64(utf8.RuneCountInString(cell.Data))
+				colname, err := excelize.ColumnNumberToName(i + 1)
+				if err != nil {
+					panic(err)
+				}
+				wb.SetColWidth(metaSheet.Worksheet, colname, colname, width)
 
-			axis, err := excelize.CoordinatesToCellName(i+1, 1)
-			if err != nil {
-				panic(err)
-			}
-			err = wb.SetCellValue(worksheet, axis, cell.Name)
-			if err != nil {
-				panic(err)
-			}
-
-			err = wb.AddComment(worksheet, axis, `{"author":"Tableau: ","text":"\n`+cell.Name+`, \nthis is a comment."}`)
-			if err != nil {
-				panic(err)
-			}
-			// set style
-			wb.SetCellStyle(worksheet, axis, axis, style)
-			if err != nil {
-				panic(err)
-			}
-			atom.Log.Debugf("%s(%v) ", cell.Name, width)
-
-			// test for validation
-			// - min
-			// - max
-			// - droplist
-			dataStartAxis, err := excelize.CoordinatesToCellName(i+1, 2)
-			if err != nil {
-				panic(err)
-			}
-			dataEndAxis, err := excelize.CoordinatesToCellName(i+1, 1000)
-			if err != nil {
-				panic(err)
-			}
-
-			if i == 0 {
-				dataAxis, err := excelize.CoordinatesToCellName(i+1, 2)
+				axis, err := excelize.CoordinatesToCellName(i+1, j+1)
+				if err != nil {
+					panic(err)
+				}
+				err = wb.SetCellValue(metaSheet.Worksheet, axis, cell.Data)
 				if err != nil {
 					panic(err)
 				}
 
-				// unique key validation
-				dv := excelize.NewDataValidation(true)
-				dv.Sqref = dataStartAxis + ":" + dataEndAxis
-				dv.Type = "custom"
-				// dv.SetInput("Key", "Must be unique in this column")
-				// NOTE(wenchyzhu): Five XML escape characters
-				// "   &quot;
-				// '   &apos;
-				// <   &lt;
-				// >   &gt;
-				// &   &amp;
-				//
-				// `<formula1>=COUNTIF($A$2:$A$1000,A2)<2</formula1`
-				//					||
-				//					\/
-				// `<formula1>=COUNTIF($A$2:$A$1000,A2)&lt;2</formula1`
-				formula := fmt.Sprintf("=COUNTIF($A$2:$A$10000,%s)<2", dataAxis)
-				dv.Formula1 = fmt.Sprintf("<formula1>%s</formula1>", escapeXml(formula))
+				// err = wb.AddComment(metaSheet.Worksheet, axis, `{"author":"Tableau: ","text":"\n`+cell.Data+`, \nthis is a comment."}`)
+				// if err != nil {
+				// 	panic(err)
+				// }
+				// set style
+				wb.SetCellStyle(metaSheet.Worksheet, axis, axis, style)
+				if err != nil {
+					panic(err)
+				}
+				// atom.Log.Debugf("%s(%v) ", cell.Data, width)
 
-				dv.SetError(excelize.DataValidationErrorStyleStop, "Error", "Key must be unique!")
-				err = wb.AddDataValidation(worksheet, dv)
-				if err != nil {
-					panic(err)
-				}
-			} else if i == 1 {
-				dv := excelize.NewDataValidation(true)
-				dv.Sqref = dataStartAxis + ":" + dataEndAxis
-				dv.SetDropList([]string{"1", "2", "3"})
-				dv.SetInput("Options", "1: coin\n2: gem\n3: coupon")
-				err := wb.AddDataValidation(worksheet, dv)
-				if err != nil {
-					panic(err)
-				}
-			} else if i == 2 {
-				dv := excelize.NewDataValidation(true)
-				dv.Sqref = dataStartAxis + ":" + dataEndAxis
-				dv.SetRange(10, 20, excelize.DataValidationTypeWhole, excelize.DataValidationOperatorBetween)
-				dv.SetError(excelize.DataValidationErrorStyleStop, "error title", "error body")
-				err := wb.AddDataValidation(worksheet, dv)
-				if err != nil {
-					panic(err)
-				}
+				gen.setDataValidation(wb, metaSheet, i)
 			}
-
 		}
-		fmt.Println()
 	}
 
 	err := wb.SaveAs(filename)
 	if err != nil {
 		panic(err)
 	}
+	return nil
 }
-func escapeXml(in string) string {
+
+func (gen *Generator) setDataValidation(wb *excelize.File, metaSheet *MetaSheet, col int) {
+	// test for validation
+	// - min
+	// - max
+	// - droplist
+	dataStartAxis, err := excelize.CoordinatesToCellName(col+1, 2)
+	if err != nil {
+		panic(err)
+	}
+	dataEndAxis, err := excelize.CoordinatesToCellName(col+1, 1000)
+	if err != nil {
+		panic(err)
+	}
+
+	if col == 0 {
+		dataAxis, err := excelize.CoordinatesToCellName(col+1, 2)
+		if err != nil {
+			panic(err)
+		}
+
+		// unique key validation
+		dv := excelize.NewDataValidation(true)
+		dv.Sqref = dataStartAxis + ":" + dataEndAxis
+		dv.Type = "custom"
+		// dv.SetInput("Key", "Must be unique in this column")
+		// NOTE(wenchyzhu): Five XML escape characters
+		// "   &quot;
+		// '   &apos;
+		// <   &lt;
+		// >   &gt;
+		// &   &amp;
+		//
+		// `<formula1>=COUNTIF($A$2:$A$1000,A2)<2</formula1`
+		//					||
+		//					\/
+		// `<formula1>=COUNTIF($A$2:$A$1000,A2)&lt;2</formula1`
+		formula := fmt.Sprintf("=COUNTIF($A$2:$A$10000,%s)<2", dataAxis)
+		dv.Formula1 = fmt.Sprintf("<formula1>%s</formula1>", escapeXML(formula))
+
+		dv.SetError(excelize.DataValidationErrorStyleStop, "Error", "Key must be unique!")
+		err = wb.AddDataValidation(metaSheet.Worksheet, dv)
+		if err != nil {
+			panic(err)
+		}
+	} else if col == 1 {
+		dv := excelize.NewDataValidation(true)
+		dv.Sqref = dataStartAxis + ":" + dataEndAxis
+		dv.SetDropList([]string{"1", "2", "3"})
+		dv.SetInput("Options", "1: coin\n2: gem\n3: coupon")
+		err := wb.AddDataValidation(metaSheet.Worksheet, dv)
+		if err != nil {
+			panic(err)
+		}
+	} else if col == 2 {
+		dv := excelize.NewDataValidation(true)
+		dv.Sqref = dataStartAxis + ":" + dataEndAxis
+		dv.SetRange(10, 20, excelize.DataValidationTypeWhole, excelize.DataValidationOperatorBetween)
+		dv.SetError(excelize.DataValidationErrorStyleStop, "error title", "error body")
+		err := wb.AddDataValidation(metaSheet.Worksheet, dv)
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+
+func escapeXML(in string) string {
 	var b bytes.Buffer
 	err := xml.EscapeText(&b, []byte(in))
 	if err != nil {
@@ -297,7 +402,7 @@ func escapeXml(in string) string {
 
 func getHanCount(s string) int {
 	count := 0
-	for _, r := range []rune(s) {
+	for _, r := range s {
 		if unicode.Is(unicode.Han, r) {
 			count++
 		}
@@ -307,7 +412,7 @@ func getHanCount(s string) int {
 
 func getLetterCount(s string) int {
 	count := 0
-	for _, r := range []rune(s) {
+	for _, r := range s {
 		if unicode.IsLetter(r) {
 			count++
 		}
@@ -317,7 +422,7 @@ func getLetterCount(s string) int {
 
 func getDigitCount(s string) int {
 	count := 0
-	for _, r := range []rune(s) {
+	for _, r := range s {
 		if unicode.IsDigit(r) {
 			count++
 		}
@@ -330,7 +435,7 @@ func TestParseFileOptions(fd protoreflect.FileDescriptor) (string, *tableaupb.Wo
 	opts := fd.Options().(*descriptorpb.FileOptions)
 	protofile := string(fd.FullName())
 	workbook := proto.GetExtension(opts, tableaupb.E_Workbook).(*tableaupb.WorkbookOptions)
-	atom.Log.Debugf("file:%s.proto, workbook:%s\n", protofile, workbook)
+	atom.Log.Debugf("file:%s, workbook:%s\n", fd.Path(), workbook)
 	return protofile, workbook
 }
 
@@ -367,7 +472,7 @@ func getTabStr(depth int) string {
 }
 
 // TestParseFieldOptions is aimed to parse the options of all the fields of a protobuf message.
-func (gen *Generator) TestParseFieldOptions(md protoreflect.MessageDescriptor, row *Row, depth int, prefix string) {
+func (gen *Generator) TestParseFieldOptions(md protoreflect.MessageDescriptor, row *[]Cell, depth int, prefix string) {
 	opts := md.Options().(*descriptorpb.MessageOptions)
 	worksheet := proto.GetExtension(opts, tableaupb.E_Worksheet).(*tableaupb.WorksheetOptions)
 	worksheetName := ""
@@ -445,7 +550,7 @@ func (gen *Generator) TestParseFieldOptions(md protoreflect.MessageDescriptor, r
 					panic("in-cell map do not support value as message type")
 				}
 				fmt.Println("cell(FIELD_TYPE_CELL_MAP): ", prefix+name)
-				*row = append(*row, Cell{Name: prefix + name})
+				*row = append(*row, Cell{Data: prefix + name})
 			} else {
 				if valueFd.Kind() == protoreflect.MessageKind {
 					if layout == tableaupb.Layout_LAYOUT_HORIZONTAL {
@@ -465,24 +570,19 @@ func (gen *Generator) TestParseFieldOptions(md protoreflect.MessageDescriptor, r
 					fmt.Println("cell(scalar map key): ", prefix+name+key)
 					fmt.Println("cell(scalar map value): ", prefix+name+value)
 
-					*row = append(*row, Cell{Name: prefix + name + key})
-					*row = append(*row, Cell{Name: prefix + name + value})
+					*row = append(*row, Cell{Data: prefix + name + key})
+					*row = append(*row, Cell{Data: prefix + name + value})
 				}
 			}
 		} else if fd.IsList() {
 			if fd.Kind() == protoreflect.MessageKind {
 				if layout == tableaupb.Layout_LAYOUT_VERTICAL {
 					gen.TestParseFieldOptions(fd.Message(), row, depth+1, prefix+name)
-				} else {
-					size := 2
-					for i := 1; i <= size; i++ {
-						gen.TestParseFieldOptions(fd.Message(), row, depth+1, prefix+name+strconv.Itoa(i))
-					}
 				}
 			} else {
 				if etype == tableaupb.Type_TYPE_INCELL_LIST {
 					fmt.Println("cell(FIELD_TYPE_CELL_LIST): ", prefix+name)
-					*row = append(*row, Cell{Name: prefix + name})
+					*row = append(*row, Cell{Data: prefix + name})
 				} else {
 					panic(fmt.Sprintf("unknown list type: %v\n", etype))
 				}
@@ -491,13 +591,13 @@ func (gen *Generator) TestParseFieldOptions(md protoreflect.MessageDescriptor, r
 			if fd.Kind() == protoreflect.MessageKind {
 				if etype == tableaupb.Type_TYPE_INCELL_STRUCT {
 					fmt.Println("cell(FIELD_TYPE_CELL_MESSAGE): ", prefix+name)
-					*row = append(*row, Cell{Name: prefix + name})
+					*row = append(*row, Cell{Data: prefix + name})
 				} else {
 					subMsgName := string(fd.Message().FullName())
 					_, found := specialMessageMap[subMsgName]
 					if found {
 						fmt.Println("cell(special message): ", prefix+name)
-						*row = append(*row, Cell{Name: prefix + name})
+						*row = append(*row, Cell{Data: prefix + name})
 					} else {
 						pkgName := fd.Message().ParentFile().Package()
 						if string(pkgName) != gen.ProtoPackage {
@@ -508,7 +608,7 @@ func (gen *Generator) TestParseFieldOptions(md protoreflect.MessageDescriptor, r
 				}
 			} else {
 				fmt.Println("cell: ", prefix+name)
-				*row = append(*row, Cell{Name: prefix + name})
+				*row = append(*row, Cell{Data: prefix + name})
 			}
 		}
 	}

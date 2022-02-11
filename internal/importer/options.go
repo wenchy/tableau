@@ -3,15 +3,7 @@ package importer
 import (
 	"github.com/Wenchy/tableau/proto/tableaupb"
 	"google.golang.org/protobuf/proto"
-)
-
-type format int
-
-// file format
-const (
-	Excel format = 0
-	CSV   format = 1
-	XML   format = 2
+	"github.com/Wenchy/tableau/options"
 )
 
 type SheetParser interface {
@@ -19,15 +11,16 @@ type SheetParser interface {
 }
 
 type Options struct {
-	Format format      // file format: Excel, CSV, XML. Default: Excel.
+	Format options.Format      // file format: Excel, CSV, XML. Default: Excel.
 	Sheets []string    // sheet names to import
 	Parser SheetParser // parser to parse the worksheet
+	Header *options.HeaderOption // header settings.
 }
 
 // Option is the functional option type.
 type Option func(*Options)
 
-func Format(fmt format) Option {
+func Format(fmt options.Format) Option {
 	return func(opts *Options) {
 		opts.Format = fmt
 	}
@@ -45,9 +38,15 @@ func Parser(sp SheetParser) Option {
 	}
 }
 
+func Header(header *options.HeaderOption) Option {
+	return func(opts *Options) {
+		opts.Header = header
+	}
+}
+
 func newDefaultOptions() *Options {
 	return &Options{
-		Format: Excel,
+		Format: options.Excel,
 	}
 }
 

@@ -23,11 +23,27 @@ type Generator struct {
 	OutputDir    string // output dir of generated files.
 
 	Output *options.OutputOption // output settings.
+	Input *options.InputOption // Input settings.
+	Header *options.HeaderOption // header settings.
 }
 
 var specialMessageMap = map[string]int{
 	"google.protobuf.Timestamp": 1,
 	"google.protobuf.Duration":  1,
+}
+
+func NewGenerator(protoPackage, indir, outdir string, setters ...options.Option) *Generator {
+	opts := options.ParseOptions(setters...)
+	g := &Generator{
+		ProtoPackage: protoPackage,
+		LocationName: opts.LocationName,
+		InputDir:     indir,
+		OutputDir:    outdir,
+		Output:       opts.Output,
+		Input: opts.Input,
+		Header: opts.Header,
+	}
+	return g
 }
 
 func (gen *Generator) Generate(relWorkbookPath string, worksheetName string) (err error) {
@@ -77,7 +93,7 @@ func (gen *Generator) Generate(relWorkbookPath string, worksheetName string) (er
 					}
 				}
 				wbPath := filepath.Join(gen.InputDir, workbook.Name)
-				imp := importer.New(wbPath, importer.Sheets(sheets))
+				imp := importer.New(wbPath, importer.Sheets(sheets), importer.Format(gen.Input.Format), importer.Header(gen.Header))
 				// atom.Log.Debugf("proto: %s, workbook %s", fd.Path(), workbook)
 				for sheetName, msgName := range sheetMap {
 					if worksheetName != "" && worksheetName != sheetName {
