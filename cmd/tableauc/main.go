@@ -32,11 +32,11 @@ var (
 )
 
 func main() {
-
 	var rootCmd = &cobra.Command{
-		Use:   "tableauc [FILE]...",
-		Short: "Tableauc is a protoconf generator",
-		Long:  `Complete documentation is available at github.com/wenchy/tableau`,
+		Use:     "tableauc [FILE]...",
+		Version: protogen.Version,
+		Short:   "Tableauc is a protoconf generator",
+		Long:    `Complete documentation is available at github.com/wenchy/tableau`,
 		Run: func(cmd *cobra.Command, args []string) {
 			// Do Stuff Here
 			g := protogen.NewGenerator(protoPackage, goPackage, inputDir, outputDir, options.Header(
@@ -51,7 +51,7 @@ func main() {
 				},
 			), options.Imports(imports), options.LocationName(locationName), options.Output(
 				&options.OutputOption{
-					FilenameSuffix: filenameSuffix,
+					FilenameSuffix:           filenameSuffix,
 					FilenameWithSubdirPrefix: filenameWithSubdirPrefix,
 				},
 			))
