@@ -214,3 +214,15 @@ Use [RFC 3339](https://tools.ietf.org/html/rfc3339) , which is following [ISO 86
 
 - [ ] Error: [https://github.com/pkg/errors](https://github.com/pkg/errors)
 - [ ] Log: [https://github.com/uber-go/zap](https://github.com/uber-go/zap)
+
+## Contribution
+
+### Requirements
+
+#### Protobuf
+
+Goto [Protocol Buffers v3.17.3](https://github.com/protocolbuffers/protobuf/releases/tag/v3.17.3), choose and download the correct platform of **protoc**, then install by README.
+
+#### protoc-gen-go
+
+Install: `go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.27.1`
