@@ -2,12 +2,12 @@ package importer
 
 import (
 	"bytes"
+	"encoding/xml"
 	"fmt"
 	"os"
 	"regexp"
-	"strings"
-	"encoding/xml"
 	"strconv"
+	"strings"
 
 	"github.com/Wenchy/tableau/internal/atom"
 	"github.com/Wenchy/tableau/internal/types"
@@ -16,26 +16,26 @@ import (
 	"github.com/Wenchy/tableau/proto/tableaupb"
 	"github.com/antchfx/xmlquery"
 	"github.com/antchfx/xpath"
-	"github.com/pkg/errors"
 	"github.com/iancoleman/strcase"
+	"github.com/pkg/errors"
 )
 
-type XmlImporter struct {
+type XMLImporter struct {
 	filename   string
 	sheetMap   map[string]*Sheet // sheet name -> sheet
 	sheetNames []string
-	header *options.HeaderOption // header settings.
+	header     *options.HeaderOption // header settings.
 }
 
 // TODO: options
-func NewXMLImporter(filename string, header *options.HeaderOption) *XmlImporter {
-	return &XmlImporter{
-		filename:   filename,
-		header: header,
+func NewXMLImporter(filename string, header *options.HeaderOption) *XMLImporter {
+	return &XMLImporter{
+		filename: filename,
+		header:   header,
 	}
 }
 
-func (x *XmlImporter) GetSheets() ([]*Sheet, error) {
+func (x *XMLImporter) GetSheets() ([]*Sheet, error) {
 	if x.sheetNames == nil {
 		if err := x.parse(); err != nil {
 			return nil, errors.WithMessagef(err, "failed to parse %s", x.filename)
@@ -54,7 +54,7 @@ func (x *XmlImporter) GetSheets() ([]*Sheet, error) {
 }
 
 // GetSheet returns a Sheet of the specified sheet name.
-func (x *XmlImporter) GetSheet(name string) (*Sheet, error) {
+func (x *XMLImporter) GetSheet(name string) (*Sheet, error) {
 	if x.sheetMap == nil {
 		if err := x.parse(); err != nil {
 			return nil, errors.WithMessagef(err, "failed to parse %s", x.filename)
@@ -68,7 +68,7 @@ func (x *XmlImporter) GetSheet(name string) (*Sheet, error) {
 	return sheet, nil
 }
 
-func (x *XmlImporter) parse() error {
+func (x *XMLImporter) parse() error {
 	x.sheetMap = make(map[string]*Sheet)
 	// open xml file and parse the document
 	xmlPath := x.filename
@@ -81,14 +81,14 @@ func (x *XmlImporter) parse() error {
 	attrValRegexp := regexp.MustCompile(`"\S+"`)
 	nudeRegexp := regexp.MustCompile(`<([A-Za-z0-9]+)>`)
 	keywordRegexp := regexp.MustCompile(`([</]+)@([A-Z]+)`)
-	replaced_str := attrValRegexp.ReplaceAllStringFunc(string(buf), func(s string) string {
+	replacedStr := attrValRegexp.ReplaceAllStringFunc(string(buf), func(s string) string {
 		var buf bytes.Buffer
 		xml.EscapeText(&buf, []byte(s[1:len(s)-1]))
 		return fmt.Sprintf("\"%s\"", buf.String())
 	})
-	replaced_str = nudeRegexp.ReplaceAllString(replaced_str, `<$1 TableauPlaceholder="0">`)
-	replaced_str = keywordRegexp.ReplaceAllString(replaced_str, `$1$2`)
-	s := strings.NewReader(replaced_str)
+	replacedStr = nudeRegexp.ReplaceAllString(replacedStr, `<$1 TableauPlaceholder="0">`)
+	replacedStr = keywordRegexp.ReplaceAllString(replacedStr, `$1$2`)
+	s := strings.NewReader(replacedStr)
 	p, err := xmlquery.CreateStreamParser(s, "/")
 	if err != nil {
 		return errors.Wrapf(err, "failed to create parser for string %s", s)
@@ -101,8 +101,8 @@ func (x *XmlImporter) parse() error {
 	x.sheetNames = append(x.sheetNames, root.LocalName())
 	// generate data sheet
 	metaSheet := xlsxgen.NewMetaSheet(root.LocalName(), x.header, false)
-	if err := x.parseXml(root, metaSheet, int(metaSheet.Datarow)-1); err != nil {
-		return errors.Wrapf(err, "parseXml for root node %s failed", root.LocalName())
+	if err := x.parseNode(root, metaSheet, int(metaSheet.Datarow)-1); err != nil {
+		return errors.Wrapf(err, "parseNode for root node %s failed", root.LocalName())
 	}
 	var rows [][]string
 	for i := 0; i < len(metaSheet.Rows); i++ {
@@ -114,18 +114,18 @@ func (x *XmlImporter) parse() error {
 	}
 	sheet := NewSheet(root.LocalName(), rows)
 	sheet.Meta = &tableaupb.SheetMeta{
-		Sheet: root.LocalName(),
-		Alias: root.LocalName(),
+		Sheet:    root.LocalName(),
+		Alias:    root.LocalName(),
 		Nameline: 1,
 		Typeline: 1,
-		Nested: true,
+		Nested:   true,
 	}
 	x.sheetMap[root.LocalName()] = sheet
 	return nil
 }
 
-// parseXml parse and convert an xml file to sheet format
-func (x *XmlImporter) parseXml(nav *xmlquery.NodeNavigator, metaSheet *xlsxgen.MetaSheet, cursor int) error {
+// parseNode parse and convert an xml file to sheet format
+func (x *XMLImporter) parseNode(nav *xmlquery.NodeNavigator, metaSheet *xlsxgen.MetaSheet, cursor int) error {
 	// preprocess
 	realParent, prefix, isMeta := nav.Current().Parent, "", false
 	// skip `TABLEAU` to find real parent
@@ -179,40 +179,40 @@ func (x *XmlImporter) parseXml(nav *xmlquery.NodeNavigator, metaSheet *xlsxgen.M
 		matches := types.MatchStruct(curType)
 		// 1. <TABLEAU>
 		// 2. type not set
-		// 3. {Type}int32 -> [Type]int32
+		// 3. {Type}int32 -> [Type]int32 (when mistaken it as a struct at first but discover multiple elements later)
 		needChangeType := isMeta || curType == "" || (len(matches) > 0 && repeated)
 		// 1. new struct(list), not subsequent
-		// 2. {Type}int32 -> [Type]int32
+		// 2. {Type}int32 -> [Type]int32 (when mistaken it as a struct at first but discover multiple elements later)
 		setKeyedType := !strings.HasPrefix(lastColName, prefix) || (len(matches) > 0 && repeated)
 		if needChangeType {
 			if matches := types.MatchMap(t); len(matches) == 3 {
 				if !types.IsScalarType(matches[1]) && len(types.MatchEnum(matches[1])) == 0 {
-					return fmt.Errorf("%s is not scalar type in node %s attr %s type %s", matches[1], nav.LocalName(), attrName, t)
+					return errors.Errorf("%s is not scalar type in node %s attr %s type %s", matches[1], nav.LocalName(), attrName, t)
 				}
 				if matches[2] != nav.LocalName() {
-					return fmt.Errorf("%s in attr %s type %s must be the same as node name %s", matches[2], attrName, t, nav.LocalName())
+					return errors.Errorf("%s in attr %s type %s must be the same as node name %s", matches[2], attrName, t, nav.LocalName())
 				}
 				metaSheet.SetColType(colName, t)
 			} else if matches := types.MatchKeyedList(t); len(matches) == 3 {
 				if i != 0 {
-					return fmt.Errorf("KeyedList attr %s in node %s must be the first attr", attrName, nav.LocalName())
+					return errors.Errorf("KeyedList attr %s in node %s must be the first attr", attrName, nav.LocalName())
 				}
 				if !types.IsScalarType(matches[2]) && len(types.MatchEnum(matches[2])) == 0 {
-					return fmt.Errorf("%s is not scalar type in node %s attr %s type %s", matches[2], nav.LocalName(), attrName, t)
+					return errors.Errorf("%s is not scalar type in node %s attr %s type %s", matches[2], nav.LocalName(), attrName, t)
 				}
 				if matches[1] != nav.LocalName() {
-					return fmt.Errorf("%s in attr %s type %s must be the same as node name %s", matches[1], attrName, t, nav.LocalName())
+					return errors.Errorf("%s in attr %s type %s must be the same as node name %s", matches[1], attrName, t, nav.LocalName())
 				}
 				metaSheet.SetColType(colName, t)
 			} else if matches := types.MatchList(t); len(matches) == 3 {
 				if i != 0 {
-					return fmt.Errorf("KeyedList attr %s in node %s must be the first attr", attrName, nav.LocalName())
+					return errors.Errorf("KeyedList attr %s in node %s must be the first attr", attrName, nav.LocalName())
 				}
 				if !types.IsScalarType(matches[2]) && len(types.MatchEnum(matches[2])) == 0 {
-					return fmt.Errorf("%s is not scalar type in node %s attr %s type %s", matches[2], nav.LocalName(), attrName, t)
+					return errors.Errorf("%s is not scalar type in node %s attr %s type %s", matches[2], nav.LocalName(), attrName, t)
 				}
 				if matches[1] != nav.LocalName() {
-					return fmt.Errorf("%s in attr %s type %s must be the same as node name %s", matches[1], attrName, t, nav.LocalName())
+					return errors.Errorf("%s in attr %s type %s must be the same as node name %s", matches[1], attrName, t, nav.LocalName())
 				}
 				metaSheet.SetColType(colName, t)
 			} else if i == 0 && setKeyedType {
@@ -239,17 +239,17 @@ func (x *XmlImporter) parseXml(nav *xmlquery.NodeNavigator, metaSheet *xlsxgen.M
 		if count, existed := nodeMap[tagName]; existed {
 			// `TABLEAU` can only be placed in the first child node
 			if xmlquery.FindOne(navCopy.Current(), "/TABLEAU") != nil {
-				return fmt.Errorf("`TABLEAU` found in node %s (index:%d) which is not the first child", tagName, count + 1)
+				return errors.Errorf("`TABLEAU` found in node %s (index:%d) which is not the first child", tagName, count+1)
 			}
 			// duplicate means a list, should expand vertically
 			row := metaSheet.NewRow()
-			if err := x.parseXml(&navCopy, metaSheet, row.Index); err != nil {
-				return errors.Wrapf(err, "parseXml for node %s (index:%d) failed", tagName, count + 1)
+			if err := x.parseNode(&navCopy, metaSheet, row.Index); err != nil {
+				return errors.Wrapf(err, "parseNode for node %s (index:%d) failed", tagName, count+1)
 			}
 			nodeMap[tagName]++
 		} else {
-			if err := x.parseXml(&navCopy, metaSheet, cursor); err != nil {
-				return errors.Wrapf(err, "parseXml for the first node %s failed", tagName)
+			if err := x.parseNode(&navCopy, metaSheet, cursor); err != nil {
+				return errors.Wrapf(err, "parseNode for the first node %s failed", tagName)
 			}
 			nodeMap[tagName] = 1
 		}

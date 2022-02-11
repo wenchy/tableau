@@ -12,13 +12,11 @@ import (
 	"github.com/Wenchy/tableau/internal/printer"
 	"github.com/Wenchy/tableau/proto/tableaupb"
 	"github.com/emirpasic/gods/sets/treeset"
-	"google.golang.org/protobuf/proto"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
-
-
 
 var protoTypeRegexp *regexp.Regexp
 
@@ -114,7 +112,6 @@ func (x *bookExporter) export() error {
 	g2.P("")
 	g2.P("option (tableau.workbook) = {", genPrototext(x.wb.Options), "};")
 	g2.P("")
-
 
 	path := filepath.Join(x.OutputDir, x.wb.Name+x.FilenameSuffix+".proto")
 	atom.Log.Infof("output: %s", path)

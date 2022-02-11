@@ -1,6 +1,6 @@
 syntax = "proto3";
-package test;
-option go_package = "github.com/Wenchy/tableau/cmd/test/testpb";
+package testexcel;
+option go_package = "github.com/Wenchy/tableau/cmd/test/testpb/excel";
 
 import "tableau/protobuf/tableau.proto";
 

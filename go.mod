@@ -14,6 +14,7 @@ require (
 	github.com/spf13/cobra v1.3.0
 	github.com/xuri/excelize/v2 v2.4.1
 	go.uber.org/zap v1.17.0
+	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/protobuf v1.27.1
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 )

@@ -3,7 +3,7 @@ syntax = "proto3";
 
 
 package testxml;
-option go_package = "github.com/Wenchy/tableau/cmd/test/testpb";
+option go_package = "github.com/Wenchy/tableau/cmd/test/testpb/xml";
 
 
 // 由gen_feature_toggle自动生成，请勿手动添加

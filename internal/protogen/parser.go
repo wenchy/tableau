@@ -84,9 +84,9 @@ func (p *bookParser) parseSubField(field *tableaupb.Field, header *sheetHeader, 
 	cursor, ok := p.parseField(subField, header, cursor, prefix, nested)
 	if ok {
 		field.Fields = append(field.Fields, subField)
-		if field.Options.Layout == tableaupb.Layout_LAYOUT_HORIZONTAL {
-			field.Options.ListMaxLen /= int32(len(field.Fields))
-		}
+		// if field.Options.Layout == tableaupb.Layout_LAYOUT_HORIZONTAL {
+		// 	field.Options.ListMaxLen /= int32(len(field.Fields))
+		// }
 	}
 	return cursor
 }
@@ -261,7 +261,7 @@ func (p *bookParser) parseListField(field *tableaupb.Field, header *sheetHeader,
 	// preprocess
 	layout := tableaupb.Layout_LAYOUT_VERTICAL // default layout is vertical.
 	index := -1
-	tmpCursor := cursor
+	// tmpCursor := cursor
 	if index = strings.Index(trimmedNameCell, "1"); index > 0 {
 		layout = tableaupb.Layout_LAYOUT_HORIZONTAL
 		if cursor+1 < len(header.namerow) {
@@ -288,12 +288,12 @@ func (p *bookParser) parseListField(field *tableaupb.Field, header *sheetHeader,
 				}
 			}
 		}
-		for tmpNameCell, listName := trimmedNameCell, trimmedNameCell[:index]; strings.Contains(tmpNameCell, listName); {
-			if tmpCursor++; tmpCursor >= len(header.namerow) {
-				break
-			}
-			tmpNameCell = strings.TrimPrefix(header.getNameCell(tmpCursor), prefix)
-		}
+		// for tmpNameCell, listName := trimmedNameCell, trimmedNameCell[:index]; strings.Contains(tmpNameCell, listName); {
+		// 	if tmpCursor++; tmpCursor >= len(header.namerow) {
+		// 		break
+		// 	}
+		// 	tmpNameCell = strings.TrimPrefix(header.getNameCell(tmpCursor), prefix)
+		// }
 	} else {
 		if isScalarType {
 			layout = tableaupb.Layout_LAYOUT_DEFAULT // incell list
@@ -350,7 +350,7 @@ func (p *bookParser) parseListField(field *tableaupb.Field, header *sheetHeader,
 		field.Options = &tableaupb.FieldOptions{
 			Name:   listName,
 			Layout: layout,
-			ListMaxLen: int32(tmpCursor - cursor),
+			// ListMaxLen: int32(tmpCursor - cursor),
 		}
 		if isScalarType {
 			for cursor++; cursor < len(header.namerow); cursor++ {
@@ -422,8 +422,8 @@ func (p *bookParser) parseStructField(field *tableaupb.Field, header *sheetHeade
 		field.Type, field.TypeDefined = p.parseType(elemType)
 		field.Name = strcase.ToSnake(field.Type)
 		// index := len(field.Type)
-		index := strings.Index(trimmedNameCell, field.Type) + len(field.Type)
-		structName := trimmedNameCell[:index]
+		// structName := trimmedNameCell[:index]
+		structName := field.Type
 		field.Options = &tableaupb.FieldOptions{
 			Name: structName,
 		}

@@ -12,22 +12,23 @@ tableau_proto="./proto"
 test_indir="./test/protoconf"
 test_outdir="./test/testpb"
 
-# remove *.go
-rm -fv $test_outdir/*.go
 
 gen_pb()
 {
-    for item in "$1"/* ; do
+    # remove *.go
+    rm -fv $test_outdir/$1/*.go
+
+    for item in "$test_indir/$1"/* ; do
         echo "$item"
         if [ -f "$item" ]; then
             protoc \
-            --go_out="$test_outdir" \
+            --go_out="$test_outdir/$1" \
             --go_opt=paths=source_relative \
-            --proto_path="$1" \
+            --proto_path="$test_indir/$1" \
             --proto_path="$tableau_proto" \
             "$item"
         fi
     done
 }
-gen_pb $test_indir/excel
-gen_pb $test_indir/xml
+gen_pb excel
+gen_pb xml

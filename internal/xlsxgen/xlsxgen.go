@@ -14,8 +14,8 @@ import (
 	"github.com/Wenchy/tableau/internal/atom"
 	"github.com/Wenchy/tableau/options"
 	"github.com/Wenchy/tableau/proto/tableaupb"
-	"github.com/pkg/errors"
 	"github.com/iancoleman/strcase"
+	"github.com/pkg/errors"
 	"github.com/xuri/excelize/v2"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -314,7 +314,7 @@ func (gen *Generator) ExportSheet(metaSheet *MetaSheet) error {
 				}
 				// atom.Log.Debugf("%s(%v) ", cell.Data, width)
 
-				// gen.setDataValidation(wb, i)
+				gen.setDataValidation(wb, metaSheet, i)
 			}
 		}
 	}
@@ -363,7 +363,7 @@ func (gen *Generator) setDataValidation(wb *excelize.File, metaSheet *MetaSheet,
 		//					\/
 		// `<formula1>=COUNTIF($A$2:$A$1000,A2)&lt;2</formula1`
 		formula := fmt.Sprintf("=COUNTIF($A$2:$A$10000,%s)<2", dataAxis)
-		dv.Formula1 = fmt.Sprintf("<formula1>%s</formula1>", escapeXml(formula))
+		dv.Formula1 = fmt.Sprintf("<formula1>%s</formula1>", escapeXML(formula))
 
 		dv.SetError(excelize.DataValidationErrorStyleStop, "Error", "Key must be unique!")
 		err = wb.AddDataValidation(metaSheet.Worksheet, dv)
@@ -391,7 +391,7 @@ func (gen *Generator) setDataValidation(wb *excelize.File, metaSheet *MetaSheet,
 	}
 }
 
-func escapeXml(in string) string {
+func escapeXML(in string) string {
 	var b bytes.Buffer
 	err := xml.EscapeText(&b, []byte(in))
 	if err != nil {
@@ -402,7 +402,7 @@ func escapeXml(in string) string {
 
 func getHanCount(s string) int {
 	count := 0
-	for _, r := range []rune(s) {
+	for _, r := range s {
 		if unicode.Is(unicode.Han, r) {
 			count++
 		}
@@ -412,7 +412,7 @@ func getHanCount(s string) int {
 
 func getLetterCount(s string) int {
 	count := 0
-	for _, r := range []rune(s) {
+	for _, r := range s {
 		if unicode.IsLetter(r) {
 			count++
 		}
@@ -422,7 +422,7 @@ func getLetterCount(s string) int {
 
 func getDigitCount(s string) int {
 	count := 0
-	for _, r := range []rune(s) {
+	for _, r := range s {
 		if unicode.IsDigit(r) {
 			count++
 		}
@@ -578,21 +578,11 @@ func (gen *Generator) TestParseFieldOptions(md protoreflect.MessageDescriptor, r
 			if fd.Kind() == protoreflect.MessageKind {
 				if layout == tableaupb.Layout_LAYOUT_VERTICAL {
 					gen.TestParseFieldOptions(fd.Message(), row, depth+1, prefix+name)
-				} else {
-					atom.Log.Debug(field)
-					for i := 1; i <= int(field.ListMaxLen); i++ {
-						gen.TestParseFieldOptions(fd.Message(), row, depth+1, prefix+name+strconv.Itoa(i))
-					}
 				}
 			} else {
 				if etype == tableaupb.Type_TYPE_INCELL_LIST {
 					fmt.Println("cell(FIELD_TYPE_CELL_LIST): ", prefix+name)
 					*row = append(*row, Cell{Data: prefix + name})
-				} else if layout == tableaupb.Layout_LAYOUT_HORIZONTAL {
-					atom.Log.Debug(field)
-					for i := 0; i < int(field.ListMaxLen); i++ {
-						*row = append(*row, Cell{Data: prefix + name + strconv.Itoa(i + 1)})
-					}
 				} else {
 					panic(fmt.Sprintf("unknown list type: %v\n", etype))
 				}

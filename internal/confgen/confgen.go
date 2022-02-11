@@ -32,7 +32,7 @@ var specialMessageMap = map[string]int{
 	"google.protobuf.Duration":  1,
 }
 
-func NewGenerator(protoPackage, indir, outdir string, setters ...options.Option) (*options.Options, *Generator) {
+func NewGenerator(protoPackage, indir, outdir string, setters ...options.Option) *Generator {
 	opts := options.ParseOptions(setters...)
 	g := &Generator{
 		ProtoPackage: protoPackage,
@@ -43,7 +43,7 @@ func NewGenerator(protoPackage, indir, outdir string, setters ...options.Option)
 		Input: opts.Input,
 		Header: opts.Header,
 	}
-	return opts, g
+	return g
 }
 
 func (gen *Generator) Generate(relWorkbookPath string, worksheetName string) (err error) {

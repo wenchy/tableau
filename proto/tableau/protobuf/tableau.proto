@@ -65,9 +65,6 @@ message FieldOptions {
   int32 min = 11;     // min value
   int32 max = 12;     // max value
   string range = 13;  // format like set description: [1,10], (1,10], [1,10), [1,~]
-
-  string default = 14; // field default value
-  int32 list_max_len = 15; // non-incell list max len
 }
 
 message EnumOptions {

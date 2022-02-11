@@ -23,8 +23,8 @@ const (
 )
 
 type Generator struct {
-	ProtoPackage   string   // protobuf package name.
-	GoPackage      string   // golang package name.
+	ProtoPackage string // protobuf package name.
+	GoPackage    string // golang package name.
 	// Location represents the collection of time offsets in use in a geographical area.
 	// Default is "Asia/Shanghai".
 	LocationName string
@@ -34,16 +34,16 @@ type Generator struct {
 	FilenameWithSubdirPrefix bool   // filename dir separator `/` or `\` is replaced by "__"
 	FilenameSuffix           string // filename suffix of generated protoconf files.
 
-	Imports        []string // imported common proto file paths
-	Header *options.HeaderOption // header settings.
+	Imports   []string              // imported common proto file paths
+	Header    *options.HeaderOption // header settings.
 	InputOpts *options.InputOption
 }
 
-func NewGenerator(protoPackage, goPackage, indir, outdir string, setters ...options.Option) (*options.Options, *Generator) {
+func NewGenerator(protoPackage, goPackage, indir, outdir string, setters ...options.Option) *Generator {
 	opts := options.ParseOptions(setters...)
 	g := &Generator{
-		ProtoPackage:   protoPackage,
-		GoPackage:      goPackage,
+		ProtoPackage: protoPackage,
+		GoPackage:    goPackage,
 		LocationName: opts.LocationName,
 		InputDir:     indir,
 		OutputDir:    outdir,
@@ -51,24 +51,11 @@ func NewGenerator(protoPackage, goPackage, indir, outdir string, setters ...opti
 		FilenameWithSubdirPrefix: opts.Output.FilenameWithSubdirPrefix,
 		FilenameSuffix:           opts.Output.FilenameSuffix,
 
-		Imports: opts.Imports,
-		Header:         opts.Header,
+		Imports:   opts.Imports,
+		Header:    opts.Header,
 		InputOpts: opts.Input,
 	}
-	return opts, g
-}
-
-func (gen *Generator) GetSuffix() string {
-	switch gen.InputOpts.Format {
-	case options.Excel:
-		return ".xlsx"
-	case options.CSV:
-		return ".csv"
-	case options.XML:
-		return ".xml"
-	}
-	// default excel
-	return ".xlsx"
+	return g
 }
 
 func (gen *Generator) PrepareOutpuDir() error {
@@ -117,6 +104,11 @@ func (gen *Generator) Generate() error {
 	return gen.generate(gen.InputDir)
 }
 
+func (gen *Generator) GenOneWorkbook(relativeWorkbookPath string) error {
+	absPath := filepath.Join(gen.InputDir, relativeWorkbookPath)
+	return gen.convert(filepath.Dir(absPath), filepath.Base(absPath))
+}
+
 func (gen *Generator) generate(dir string) error {
 	dirEntries, err := os.ReadDir(dir)
 	if err != nil {
@@ -130,6 +122,7 @@ func (gen *Generator) generate(dir string) error {
 			if err != nil {
 				return errors.WithMessagef(err, "failed to generate subdir: %s", subdir)
 			}
+			continue
 		}
 
 		if strings.HasPrefix(entry.Name(), "~$") {
@@ -137,7 +130,7 @@ func (gen *Generator) generate(dir string) error {
 			continue
 		}
 		// atom.Log.Debugf("generating %s, %s", entry.Name(), filepath.Ext(entry.Name()))
-		if filepath.Ext(entry.Name()) != gen.GetSuffix() {
+		if options.Ext2Format(filepath.Ext(entry.Name())) != gen.InputOpts.Format {
 			// ignore not xlsx files
 			continue
 		}
@@ -231,11 +224,6 @@ func (gen *Generator) convert(dir, filename string) error {
 	}
 
 	return nil
-}
-
-func (gen *Generator) GenOneWorkbook(relativeWorkbookPath string) error {
-	absPath := filepath.Join(gen.InputDir, relativeWorkbookPath)
-	return gen.convert(filepath.Dir(absPath), filepath.Base(absPath))
 }
 
 type sheetHeader struct {
