@@ -156,7 +156,7 @@ func Ext2Format(ext string) Format {
 		return XML
 	case ".csv":
 		return CSV
+	default:
+		return Excel
 	}
-	// default excel
-	return Excel
 }
