@@ -1,6 +1,6 @@
 module github.com/Wenchy/tableau
 
-go 1.14
+go 1.17
 
 require (
 	github.com/antchfx/xmlquery v1.3.8 // indirect
